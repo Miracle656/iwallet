@@ -1,0 +1,8 @@
+build/*
+traces/*
+.trace
+.coverage*
+Pub.*.toml
+scripts/.env
+*.env
+node_modules/
