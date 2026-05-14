@@ -5,6 +5,11 @@ edition = "2024"         # edition = "legacy" to use legacy (pre-2024) Move
 # authors = ["..."]      # e.g., ["Joe Smith (joesmith@noemail.com)", "John Snow (johnsnow@noemail.com)"]
 
 [dependencies]
+# Sui framework is resolved via Move.lock. DeepBook to be added before
+# `execute_trade` is uncommented — see docs/SOLUTION_ARCHITECTURE.md.
+
+[addresses]
+iwallet = "0x0"
 
 # Read more about the package management system options:
 # https://docs.sui.io/guides/developer/sui-101/move-package-management
