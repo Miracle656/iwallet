@@ -120,7 +120,7 @@ public fun withdraw_with_proof<T>(
     recipient: address,
     key: String,
     ctx: &mut TxContext,
-) {
+): coin:Coin<T> {
     // ── 1. Replay protection ──
     assert!(!identity.used_nonces.contains(nonce), ENonceAlreadyUsed);
 
@@ -163,7 +163,7 @@ public fun withdraw_with_proof<T>(
     // ── 5. Release funds ──
     let withdrawn = balance::split<T>(identity.staged_balances.borrow_mut(key), amount);
     let out_coin = coin::from_balance<T>(withdrawn, ctx);
-    transfer::public_transfer(out_coin, recipient);
+    out_coin
 }
 
 // ── Helper: get staged balance ──
