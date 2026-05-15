@@ -1,0 +1,9 @@
+[package]
+name = "sportsbook"
+edition = "2024"
+
+[dependencies]
+# Sui framework resolved via Move.lock.
+
+[addresses]
+sportsbook = "0x0"
