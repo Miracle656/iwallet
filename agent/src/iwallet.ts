@@ -1,21 +1,37 @@
 import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
+import { fromHex } from '@mysten/sui/utils';
 import type { Pick } from './picks.js';
+import {
+  assemblePublicInputs,
+  computeIntentHash,
+  freshNonce,
+  generateProof,
+} from './proof.js';
 
 /**
- * Transaction builder for the agent → I-Wallet → sportsbook flow.
+ * Builds the PTB that drives an agent bet:
+ *   tx[0]: iwallet::prototype::withdraw_with_proof   ->  Coin<T>
+ *   tx[1]: sportsbook::sportsbook::place_bet         <-  consumes that Coin
  *
- * The agent does NOT sign as the AgentObject (it has no key). Instead it
- * submits a transaction carrying a Groth16 proof; I-Wallet's verifier checks
- * the proof + mandate, then internally calls `sportsbook::place_bet`.
+ * Atomic: if the bet fails (market closed, mandate violation, etc.), the
+ * withdrawal reverts and the nonce isn't burned.
  *
- * This file is a stub — real signatures land once George finalizes
- * `execute_*` (see TBD-4 in docs/INTEGRATION_SPEC.md).
+ * Stub gate: if SUI_PRIVATE_KEY or AGENT_WITNESS_W is unset, this returns a
+ * fake digest so the rest of the agent loop can be exercised.
  */
 export class IWalletClient {
   private client: SuiClient;
   private signer?: Ed25519Keypair;
+
+  private readonly iwalletPackage = process.env.IWALLET_PACKAGE_ID ?? '';
+  private readonly sportsbookPackage = process.env.SPORTSBOOK_PACKAGE_ID ?? '';
+  private readonly identityObjectId = process.env.IIDENTITY_OBJECT_ID ?? '';
+  private readonly identityHashHex = process.env.IDENTITY_HASH ?? '';
+  private readonly witnessHex = process.env.AGENT_WITNESS_W ?? '';
+  private readonly stakeCoinType = process.env.STAKE_COIN_TYPE ?? '0x2::sui::SUI';
+  private readonly stagedBalanceKey = process.env.STAGED_BALANCE_KEY ?? 'default';
 
   constructor() {
     const network = (process.env.SUI_NETWORK ?? 'testnet') as
@@ -26,49 +42,64 @@ export class IWalletClient {
 
     const pk = process.env.SUI_PRIVATE_KEY;
     if (pk) {
-      // The signer is the agent-runner key (covers gas only — funds live in
-      // the AgentObject's BalanceManager, not on this key).
       this.signer = Ed25519Keypair.fromSecretKey(pk);
     }
   }
 
   async placeBet(pick: Pick): Promise<{ digest: string }> {
-    if (!this.signer) {
-      console.warn('[iwallet] SUI_PRIVATE_KEY not set — stub mode');
+    if (!this.signer || !this.witnessHex) {
+      console.warn('[iwallet] keys/witness not set — stub mode');
       return { digest: `stub-${pick.marketId}-${Date.now()}` };
     }
 
-    // TODO: depends on TBD-4 (execute_* signature). Sketch:
-    //
-    //   const tx = new Transaction();
-    //   const { proofPoints, publicInputs } = await this.buildProofPayload(pick);
-    //   tx.moveCall({
-    //     target: `${process.env.IWALLET_PACKAGE_ID}::iwallet::execute_bet`,
-    //     typeArguments: [process.env.STAKE_COIN_TYPE!],
-    //     arguments: [
-    //       tx.object(process.env.AGENT_OBJECT_ID!),
-    //       tx.object(process.env.REGISTRY_ID!),
-    //       tx.object(process.env.BALANCE_MANAGER_ID!),
-    //       tx.object(pick.marketId),
-    //       tx.pure.vector('u8', proofPoints),
-    //       tx.pure.vector('u8', publicInputs),
-    //       tx.pure.u64(pick.stake),
-    //       tx.pure.u8(outcomeCode(pick.outcome)),
-    //       tx.object('0x6'), // Clock
-    //     ],
-    //   });
-    //   const result = await this.client.signAndExecuteTransaction({
-    //     transaction: tx,
-    //     signer: this.signer,
-    //   });
-    //   return { digest: result.digest };
+    const recipient = this.signer.toSuiAddress();
+    const nonce = freshNonce();
+    const amount = BigInt(pick.stake);
+    const identityHash = fromHex(this.identityHashHex);
+    const witness = fromHex(this.witnessHex);
 
-    return { digest: `todo-${pick.marketId}-${Date.now()}` };
+    const intentHash = computeIntentHash(nonce, amount, recipient);
+    const publicInputs = assemblePublicInputs(identityHash, intentHash);
+    const { proofBytes } = await generateProof({ witness, identityHash, intentHash });
+
+    const tx = new Transaction();
+
+    const [stakeCoin] = tx.moveCall({
+      target: `${this.iwalletPackage}::prototype::withdraw_with_proof`,
+      typeArguments: [this.stakeCoinType],
+      arguments: [
+        tx.object(this.identityObjectId),
+        tx.pure.vector('u8', Array.from(proofBytes)),
+        tx.pure.vector('u8', Array.from(publicInputs)),
+        tx.pure.vector('u8', Array.from(nonce)),
+        tx.pure.u64(amount),
+        tx.pure.address(recipient),
+        tx.pure.string(this.stagedBalanceKey),
+      ],
+    });
+
+    tx.moveCall({
+      target: `${this.sportsbookPackage}::sportsbook::place_bet`,
+      typeArguments: [this.stakeCoinType],
+      arguments: [
+        tx.object(pick.marketId),
+        tx.pure.id(this.identityObjectId),
+        tx.pure.u8(outcomeCode(pick.outcome)),
+        stakeCoin,
+        tx.object('0x6'), // Clock
+      ],
+    });
+
+    const result = await this.client.signAndExecuteTransaction({
+      transaction: tx,
+      signer: this.signer,
+    });
+    return { digest: result.digest };
   }
 }
 
+/** Matches sportsbook::OUTCOME_* constants. */
 export function outcomeCode(o: Pick['outcome']): number {
-  // Matches sportsbook::OUTCOME_* constants.
   if (o === 'home') return 1;
   if (o === 'away') return 2;
   return 3;
