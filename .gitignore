@@ -6,3 +6,47 @@ Pub.*.toml
 scripts/.env
 *.env
 node_modules/
+
+
+# =========================
+# 1. ZK CIRCUITS & CRYPTO
+# =========================
+# Ignore all intermediate Powers of Tau files (these are massive and useless after setup)
+circuits/*.ptau
+# Ignore the intermediate un-contributed key
+circuits/*_0000.zkey
+
+# CRITICAL: If you ever create a file to hold your secret witness (w) for testing,
+# it MUST be ignored. Never push your inputs to GitHub.
+circuits/input.json
+circuits/witness.wtns
+
+# Ignore the downloaded circomlib folder (anyone cloning can just re-download it)
+circuits/node_modules/
+
+# =========================
+# 3. RUST DAEMON (Trojan Horse)
+# =========================
+# Ignore compiled Rust binaries and dependency caches
+daemon/target/
+daemon/Cargo.lock
+
+# =========================
+# 4. NEXT.JS FRONTEND
+# =========================
+# Ignore Node modules and Next.js build caches
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+
+# =========================
+# 5. ENVIRONMENT & SECRETS
+# =========================
+# CRITICAL: Never commit your .env files. This is where your Gas Station private
+# keys or RPC URLs will live.
+*.env
+*.env.local
+*.env.development
+*.env.test
+*.env.production
