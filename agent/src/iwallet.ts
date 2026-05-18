@@ -6,12 +6,19 @@ import { Transaction } from '@mysten/sui/transactions';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { fromHex } from '@mysten/sui/utils';
 import type { Pick } from './picks.js';
-import {
-  assemblePublicInputs,
-  computeIntentHash,
-  freshNonce,
-  generateProof,
-} from './proof.js';
+import { computeIntentHash, freshNonce, generateProof } from './proof.js';
+
+/** Parse a hex string (with or without 0x) as a big-endian bigint. */
+function parseWitness(hex: string): bigint {
+  const s = (hex.startsWith('0x') ? hex.slice(2) : hex).trim();
+  return BigInt('0x' + (s || '0'));
+}
+
+function bytesEq(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
 
 /**
  * Builds the PTB that drives an agent bet:
@@ -61,12 +68,25 @@ export class IWalletClient {
     const recipient = this.signer.toSuiAddress();
     const nonce = freshNonce();
     const amount = BigInt(pick.stake);
-    const identityHash = fromHex(this.identityHashHex);
-    const witness = fromHex(this.witnessHex);
+    const w = parseWitness(this.witnessHex);
 
     const intentHash = computeIntentHash(nonce, amount, recipient);
-    const publicInputs = assemblePublicInputs(identityHash, intentHash);
-    const { proofBytes } = await generateProof({ witness, identityHash, intentHash });
+    const { proofBytes, publicInputs, identityHashBytes } = await generateProof({
+      w,
+      intentHash,
+    });
+
+    // Sanity: the registered identity_hash on-chain must equal Poseidon(w) BE.
+    // Better to fail loudly here than burn a nonce on an EIntentMismatch abort.
+    if (this.identityHashHex) {
+      const envBytes = fromHex(this.identityHashHex);
+      if (!bytesEq(envBytes, identityHashBytes)) {
+        throw new Error(
+          '[iwallet] IDENTITY_HASH env does not equal Poseidon(AGENT_WITNESS_W) BE bytes — ' +
+            'witness/registration mismatch',
+        );
+      }
+    }
 
     const tx = new Transaction();
 
