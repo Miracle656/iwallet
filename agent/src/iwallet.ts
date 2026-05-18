@@ -76,13 +76,14 @@ export class IWalletClient {
       intentHash,
     });
 
-    // Sanity: the registered identity_hash on-chain must equal Poseidon(w) BE.
-    // Better to fail loudly here than burn a nonce on an EIntentMismatch abort.
+    // Sanity: the registered identity_hash on-chain must equal Poseidon(w),
+    // LE-encoded. Better to fail loudly here than burn a nonce on an
+    // EIntentMismatch abort.
     if (this.identityHashHex) {
       const envBytes = fromHex(this.identityHashHex);
       if (!bytesEq(envBytes, identityHashBytes)) {
         throw new Error(
-          '[iwallet] IDENTITY_HASH env does not equal Poseidon(AGENT_WITNESS_W) BE bytes — ' +
+          '[iwallet] IDENTITY_HASH env does not equal Poseidon(AGENT_WITNESS_W) LE bytes — ' +
             'witness/registration mismatch',
         );
       }

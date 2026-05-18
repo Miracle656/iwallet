@@ -7,28 +7,30 @@ import { resolve } from 'node:path';
 /**
  * Off-chain proof generation against `circuits/iwallet.circom`.
  *
- * Encoding per George's 2026-05-18 spec:
- *  - All bytes hitting the Move contract are 32-byte BIG-ENDIAN.
+ * Encoding per George's 2026-05-18 update (LE supersedes the earlier BE pass):
+ *  - All bytes hitting the Move contract are 32-byte LITTLE-ENDIAN — that's
+ *    what Sui's arkworks-backed groth16 natively expects.
  *  - Circuit input is decimal field-element strings (snarkjs doesn't want bytes).
- *  - identity_hash = Poseidon([w]) computed off-chain.
- *  - intent_hash = keccak256(nonce || bcs(amount) || bcs(recipient)) with the
- *    top 3 bits of byte 0 masked to 0 — matches the contract's fix at
- *    `prototype.move`: `*first_byte = *first_byte & 0x1F;` (commit 8625025).
+ *  - identity_hash = Poseidon([w]); encoded LE for the public-inputs blob.
+ *  - intent_hash = keccak256(nonce || bcs(amount) || bcs(recipient)). Byte 0
+ *    is masked with 0x1F (caps the scalar < 2^253 < r), then the 32 bytes are
+ *    reversed so the masked byte lands at index 31 (the LE MSB). George's
+ *    contract reverses the keccak output on-chain to match.
  */
 
 const BN254_R =
   21888242871839275222246405745257275088548364400416034343698204186575808495617n;
 
-function bytesToBigIntBE(b: Uint8Array): bigint {
+function bytesToBigIntLE(b: Uint8Array): bigint {
   let x = 0n;
-  for (const byte of b) x = (x << 8n) | BigInt(byte);
+  for (let i = b.length - 1; i >= 0; i--) x = (x << 8n) | BigInt(b[i]);
   return x;
 }
 
-function bigIntToBytes32BE(x: bigint): Uint8Array {
+function bigIntToBytes32LE(x: bigint): Uint8Array {
   const out = new Uint8Array(32);
   let v = x;
-  for (let i = 31; i >= 0; i--) {
+  for (let i = 0; i < 32; i++) {
     out[i] = Number(v & 0xffn);
     v >>= 8n;
   }
@@ -37,8 +39,10 @@ function bigIntToBytes32BE(x: bigint): Uint8Array {
 
 /**
  * On-chain intent_hash, byte-for-byte identical to the contract recompute:
- *   keccak256(nonce || bcs(amount: u64) || bcs(recipient: address))
- *   then mask byte[0] &= 0x1F (caps the BE-decoded scalar below BN254 r).
+ *   1. keccak256(nonce || bcs(amount: u64) || bcs(recipient: address))
+ *   2. mask byte[0] &= 0x1F  (caps the scalar < 2^253 < r)
+ *   3. reverse the 32 bytes  (so masked byte lands at index 31 = LE MSB)
+ * The returned bytes go directly into public_inputs_bytes as the second slot.
  */
 export function computeIntentHash(
   nonce: Uint8Array,
@@ -53,10 +57,11 @@ export function computeIntentHash(
   buf.set(recipientBytes, nonce.length + amountBytes.length);
   const h = keccak_256(buf);
   h[0] = h[0] & 0x1f;
+  h.reverse();
   return h;
 }
 
-/** Public-inputs blob the contract expects: identity_hash (32 BE) || intent_hash (32 BE masked). */
+/** Public-inputs blob the contract expects: identity_hash (32 LE) || intent_hash (32 LE). */
 export function assemblePublicInputs(
   identityHashBytes: Uint8Array,
   intentHashBytes: Uint8Array,
@@ -78,38 +83,38 @@ async function getPoseidon() {
   return poseidonInstance;
 }
 
-/** Poseidon(w) as a BN254 field element + its 32-byte BE encoding. */
+/** Poseidon(w) as a BN254 field element + its 32-byte LE encoding. */
 export async function computeIdentityHash(
   w: bigint,
 ): Promise<{ field: bigint; bytes: Uint8Array }> {
   const p = await getPoseidon();
   const raw = p([w]);
   const field = p.F.toObject(raw) as bigint;
-  return { field, bytes: bigIntToBytes32BE(field) };
+  return { field, bytes: bigIntToBytes32LE(field) };
 }
 
-function g1ToBytesBE(p: string[]): Uint8Array {
+function g1ToBytes(p: string[]): Uint8Array {
   const out = new Uint8Array(64);
-  out.set(bigIntToBytes32BE(BigInt(p[0])), 0);
-  out.set(bigIntToBytes32BE(BigInt(p[1])), 32);
+  out.set(bigIntToBytes32LE(BigInt(p[0])), 0);
+  out.set(bigIntToBytes32LE(BigInt(p[1])), 32);
   return out;
 }
 
-function g2ToBytesBE(p: string[][]): Uint8Array {
+function g2ToBytes(p: string[][]): Uint8Array {
   // snarkjs G2: [[x.c0, x.c1], [y.c0, y.c1], [z...]]. Fp2 ordering c0 then c1.
   const out = new Uint8Array(128);
-  out.set(bigIntToBytes32BE(BigInt(p[0][0])), 0);
-  out.set(bigIntToBytes32BE(BigInt(p[0][1])), 32);
-  out.set(bigIntToBytes32BE(BigInt(p[1][0])), 64);
-  out.set(bigIntToBytes32BE(BigInt(p[1][1])), 96);
+  out.set(bigIntToBytes32LE(BigInt(p[0][0])), 0);
+  out.set(bigIntToBytes32LE(BigInt(p[0][1])), 32);
+  out.set(bigIntToBytes32LE(BigInt(p[1][0])), 64);
+  out.set(bigIntToBytes32LE(BigInt(p[1][1])), 96);
   return out;
 }
 
-/** snarkjs proof JSON -> Sui `groth16::proof_points_from_bytes` (a||b||c, 256B, BE). */
+/** snarkjs proof JSON -> Sui `groth16::proof_points_from_bytes` (a||b||c, 256B, LE). */
 function serializeProof(proof: Groth16Proof): Uint8Array {
-  const a = g1ToBytesBE(proof.pi_a);
-  const b = g2ToBytesBE(proof.pi_b);
-  const c = g1ToBytesBE(proof.pi_c);
+  const a = g1ToBytes(proof.pi_a);
+  const b = g2ToBytes(proof.pi_b);
+  const c = g1ToBytes(proof.pi_c);
   const out = new Uint8Array(256);
   out.set(a, 0);
   out.set(b, 64);
@@ -125,7 +130,7 @@ const ZKEY_PATH =
 export type ProofPayload = {
   proofBytes: Uint8Array;
   publicInputs: Uint8Array;
-  /** Poseidon(w) BE bytes — caller can sanity-check against the stored identity_hash. */
+  /** Poseidon(w) LE bytes — caller can sanity-check against the stored identity_hash. */
   identityHashBytes: Uint8Array;
 };
 
@@ -142,7 +147,7 @@ export async function generateProof(args: {
 }): Promise<ProofPayload> {
   const { field: identityField, bytes: identityHashBytes } =
     await computeIdentityHash(args.w);
-  const intentField = bytesToBigIntBE(args.intentHash);
+  const intentField = bytesToBigIntLE(args.intentHash);
 
   if (intentField >= BN254_R) {
     // Should be unreachable given the mask, but guard explicitly.
