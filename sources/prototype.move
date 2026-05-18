@@ -120,7 +120,7 @@ public fun withdraw_with_proof<T>(
     recipient: address,
     key: String,
     ctx: &mut TxContext,
-): coin:Coin<T> {
+): coin::Coin<T> {
     // ── 1. Replay protection ──
     assert!(!identity.used_nonces.contains(nonce), ENonceAlreadyUsed);
 
