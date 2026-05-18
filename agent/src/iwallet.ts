@@ -1,4 +1,7 @@
-import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
+import {
+  SuiJsonRpcClient,
+  getJsonRpcFullnodeUrl,
+} from '@mysten/sui/jsonRpc';
 import { Transaction } from '@mysten/sui/transactions';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { fromHex } from '@mysten/sui/utils';
@@ -22,7 +25,7 @@ import {
  * fake digest so the rest of the agent loop can be exercised.
  */
 export class IWalletClient {
-  private client: SuiClient;
+  private client: SuiJsonRpcClient;
   private signer?: Ed25519Keypair;
 
   private readonly iwalletPackage = process.env.IWALLET_PACKAGE_ID ?? '';
@@ -38,7 +41,10 @@ export class IWalletClient {
       | 'testnet'
       | 'mainnet'
       | 'devnet';
-    this.client = new SuiClient({ url: getFullnodeUrl(network) });
+    this.client = new SuiJsonRpcClient({
+      url: getJsonRpcFullnodeUrl(network),
+      network,
+    });
 
     const pk = process.env.SUI_PRIVATE_KEY;
     if (pk) {
