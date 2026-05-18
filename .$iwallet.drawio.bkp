@@ -1,0 +1,88 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/24.7.8 Chrome/128.0.6613.36 Electron/32.0.1 Safari/537.36" version="24.7.8">
+  <diagram name="Page-1" id="7uqzfZri6zijusgAlb3W">
+    <mxGraphModel dx="1114" dy="576" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="DuxqaNMU4oM7RP9XK2fe-11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="DuxqaNMU4oM7RP9XK2fe-2" target="DuxqaNMU4oM7RP9XK2fe-10">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="DuxqaNMU4oM7RP9XK2fe-2" value="fund" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="260" y="260" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="DuxqaNMU4oM7RP9XK2fe-6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="DuxqaNMU4oM7RP9XK2fe-3" target="DuxqaNMU4oM7RP9XK2fe-5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="DuxqaNMU4oM7RP9XK2fe-3" value="create" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="260" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="DuxqaNMU4oM7RP9XK2fe-8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="DuxqaNMU4oM7RP9XK2fe-5" target="DuxqaNMU4oM7RP9XK2fe-7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="DuxqaNMU4oM7RP9XK2fe-9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="DuxqaNMU4oM7RP9XK2fe-5" target="DuxqaNMU4oM7RP9XK2fe-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="DuxqaNMU4oM7RP9XK2fe-5" value="list of Iwallet" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="120" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="DuxqaNMU4oM7RP9XK2fe-7" value="linked agent" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="260" y="120" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="DuxqaNMU4oM7RP9XK2fe-10" value="list processed transaction" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="460" y="260" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="DuxqaNMU4oM7RP9XK2fe-28" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;curved=1;" edge="1" parent="1" source="DuxqaNMU4oM7RP9XK2fe-12" target="DuxqaNMU4oM7RP9XK2fe-27">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="DuxqaNMU4oM7RP9XK2fe-12" value="" style="verticalLabelPosition=bottom;aspect=fixed;html=1;shape=mxgraph.salesforce.bots;" vertex="1" parent="1">
+          <mxGeometry x="1190" y="110" width="60" height="57" as="geometry" />
+        </mxCell>
+        <mxCell id="DuxqaNMU4oM7RP9XK2fe-13" value="" style="image;html=1;image=img/lib/clip_art/finance/Coins_128x128.png" vertex="1" parent="1">
+          <mxGeometry x="1810" y="130" width="80" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="DuxqaNMU4oM7RP9XK2fe-20" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="DuxqaNMU4oM7RP9XK2fe-14" target="DuxqaNMU4oM7RP9XK2fe-13">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="DuxqaNMU4oM7RP9XK2fe-14" value="" style="html=1;verticalLabelPosition=bottom;align=center;labelBackgroundColor=#ffffff;verticalAlign=top;strokeWidth=2;strokeColor=#0080F0;shadow=0;dashed=0;shape=mxgraph.ios7.icons.wallet;" vertex="1" parent="1">
+          <mxGeometry x="1690" y="76" width="30" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="DuxqaNMU4oM7RP9XK2fe-15" value="Actor" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" vertex="1" parent="1">
+          <mxGeometry x="1540" y="40" width="30" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="DuxqaNMU4oM7RP9XK2fe-21" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="DuxqaNMU4oM7RP9XK2fe-12" target="DuxqaNMU4oM7RP9XK2fe-15">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="DuxqaNMU4oM7RP9XK2fe-24" value="" style="image;aspect=fixed;perimeter=ellipsePerimeter;html=1;align=center;shadow=0;dashed=0;spacingTop=3;image=img/lib/active_directory/user_accounts.svg;" vertex="1" parent="1">
+          <mxGeometry x="1360" y="350" width="50" height="48.5" as="geometry" />
+        </mxCell>
+        <mxCell id="DuxqaNMU4oM7RP9XK2fe-27" value="" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#7AA116;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.iot_over_the_air_update;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="10" width="78" height="63" as="geometry" />
+        </mxCell>
+        <mxCell id="DuxqaNMU4oM7RP9XK2fe-32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="DuxqaNMU4oM7RP9XK2fe-29" target="DuxqaNMU4oM7RP9XK2fe-31">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="DuxqaNMU4oM7RP9XK2fe-29" value="" style="image;aspect=fixed;perimeter=ellipsePerimeter;html=1;align=center;shadow=0;dashed=0;fontColor=#4277BB;labelBackgroundColor=default;fontSize=12;spacingTop=3;image=img/lib/ibm/blockchain/wallet.svg;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="167" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="DuxqaNMU4oM7RP9XK2fe-30" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.517;entryY=0.949;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="DuxqaNMU4oM7RP9XK2fe-29" target="DuxqaNMU4oM7RP9XK2fe-12">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="DuxqaNMU4oM7RP9XK2fe-31" value="" style="image;html=1;image=img/lib/clip_art/finance/Coins_128x128.png" vertex="1" parent="1">
+          <mxGeometry x="1600" y="200" width="80" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="DuxqaNMU4oM7RP9XK2fe-33" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=-0.033;entryY=0.542;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="DuxqaNMU4oM7RP9XK2fe-15" target="DuxqaNMU4oM7RP9XK2fe-14">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="DuxqaNMU4oM7RP9XK2fe-34" value="iwallet" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="227" width="60" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="DuxqaNMU4oM7RP9XK2fe-35" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.533;entryY=0.879;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="DuxqaNMU4oM7RP9XK2fe-24" target="DuxqaNMU4oM7RP9XK2fe-12">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="DuxqaNMU4oM7RP9XK2fe-37" value="traditional&lt;br&gt;wallet" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="1675" y="100" width="60" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
