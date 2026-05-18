@@ -31,9 +31,10 @@ async function tick(): Promise<void> {
   for (const pick of picks) {
     try {
       const { digest } = await client.placeBet(pick);
-      await logAuditTrail({ pick, txDigest: digest });
+      const { blobId, url } = await logAuditTrail({ pick, txDigest: digest });
       console.log(
-        `[agent] placed ${pick.stake} on ${pick.outcome} @ ${pick.odds} (tx: ${digest})`,
+        `[agent] placed ${pick.stake} on ${pick.outcome} @ ${pick.odds} ` +
+          `(tx: ${digest}, audit: ${url ?? blobId})`,
       );
     } catch (err) {
       console.error('[agent] bet failed:', pick, err);
