@@ -1,3 +1,12 @@
+declare module 'circomlibjs' {
+  type PoseidonInput = bigint | number | string;
+  type Poseidon = {
+    (inputs: PoseidonInput[]): Uint8Array;
+    F: { toObject(v: Uint8Array): bigint };
+  };
+  export function buildPoseidon(): Promise<Poseidon>;
+}
+
 declare module 'snarkjs' {
   export type Groth16Proof = {
     pi_a: string[];
