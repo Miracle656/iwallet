@@ -139,6 +139,8 @@ public fun withdraw_with_proof<T>(
     let first_byte = vector::borrow_mut(&mut actual_intent_hash, 0);
     *first_byte = *first_byte & 0x1F;
 
+    std::vector::reverse(&mut actual_intent_hash);
+
     // Ensure the public_inputs_bytes contains the identity.identity_hash
     // AND the actual_intent_hash we just calculated.
     let mut expected_public_inputs = vector[];
