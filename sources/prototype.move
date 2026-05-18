@@ -132,7 +132,12 @@ public fun withdraw_with_proof<T>(
     vector::append(&mut intent_data, bcs::to_bytes(&recipient));
 
     // Hash them to create the on-chain intent hash
-    let actual_intent_hash = keccak256(&intent_data);
+    let mut actual_intent_hash = keccak256(&intent_data);
+
+
+    // 🔥  This guarantees the hash will never trigger the 14% overflow abort.
+    let first_byte = vector::borrow_mut(&mut actual_intent_hash, 0);
+    *first_byte = *first_byte & 0x1F;
 
     // Ensure the public_inputs_bytes contains the identity.identity_hash
     // AND the actual_intent_hash we just calculated.
