@@ -42,7 +42,7 @@ function readEnv(): Map<string, string> {
   for (const line of readFileSync(ENV_PATH, 'utf8').split(/\r?\n/)) {
     const eq = line.indexOf('=');
     if (eq > 0 && !line.trimStart().startsWith('#')) {
-      m.set(line.slice(0, eq).trim(), line.slice(eq + 1));
+      m.set(line.slice(0, eq).trim(), line.slice(eq + 1).trim());
     }
   }
   return m;
