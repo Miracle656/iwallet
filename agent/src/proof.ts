@@ -93,32 +93,40 @@ export async function computeIdentityHash(
   return { field, bytes: bigIntToBytes32LE(field) };
 }
 
-function g1ToBytes(p: string[]): Uint8Array {
-  const out = new Uint8Array(64);
-  out.set(bigIntToBytes32LE(BigInt(p[0])), 0);
-  out.set(bigIntToBytes32LE(BigInt(p[1])), 32);
+/** BN254 base field q. */
+const Q_BASE =
+  21888242871839275222246405745257275088696311157297823662689037894645226208583n;
+const Q_BASE_HALF = (Q_BASE - 1n) / 2n;
+
+const fpIsNeg = (y: bigint): boolean => y > Q_BASE_HALF;
+const fp2IsNeg = (c0: bigint, c1: bigint): boolean =>
+  c1 === 0n ? fpIsNeg(c0) : fpIsNeg(c1);
+
+/** Arkworks-canonical compressed G1: x (32B LE) with y-sign flag in bit 7 of byte[31]. */
+function g1Compressed(p: string[]): Uint8Array {
+  const out = bigIntToBytes32LE(BigInt(p[0]));
+  if (fpIsNeg(BigInt(p[1]))) out[31] |= 0x80;
   return out;
 }
 
-function g2ToBytes(p: string[][]): Uint8Array {
-  // snarkjs G2: [[x.c0, x.c1], [y.c0, y.c1], [z...]]. Fp2 ordering c0 then c1.
-  const out = new Uint8Array(128);
+/** Arkworks-canonical compressed G2: x.c0||x.c1 (64B LE) with y-sign in bit 7 of byte[63]. */
+function g2Compressed(p: string[][]): Uint8Array {
+  const out = new Uint8Array(64);
   out.set(bigIntToBytes32LE(BigInt(p[0][0])), 0);
   out.set(bigIntToBytes32LE(BigInt(p[0][1])), 32);
-  out.set(bigIntToBytes32LE(BigInt(p[1][0])), 64);
-  out.set(bigIntToBytes32LE(BigInt(p[1][1])), 96);
+  if (fp2IsNeg(BigInt(p[1][0]), BigInt(p[1][1]))) out[63] |= 0x80;
   return out;
 }
 
-/** snarkjs proof JSON -> Sui `groth16::proof_points_from_bytes` (a||b||c, 256B, LE). */
+/** snarkjs proof JSON -> Sui `groth16::proof_points_from_bytes` (a||b||c, 128B compressed). */
 function serializeProof(proof: Groth16Proof): Uint8Array {
-  const a = g1ToBytes(proof.pi_a);
-  const b = g2ToBytes(proof.pi_b);
-  const c = g1ToBytes(proof.pi_c);
-  const out = new Uint8Array(256);
+  const a = g1Compressed(proof.pi_a);
+  const b = g2Compressed(proof.pi_b);
+  const c = g1Compressed(proof.pi_c);
+  const out = new Uint8Array(128);
   out.set(a, 0);
-  out.set(b, 64);
-  out.set(c, 192);
+  out.set(b, 32);
+  out.set(c, 96);
   return out;
 }
 
