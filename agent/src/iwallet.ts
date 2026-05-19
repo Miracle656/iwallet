@@ -42,6 +42,13 @@ export class IWalletClient {
   private readonly witnessHex = process.env.AGENT_WITNESS_W ?? '';
   private readonly stakeCoinType = process.env.STAKE_COIN_TYPE ?? '0x2::sui::SUI';
   private readonly stagedBalanceKey = process.env.STAGED_BALANCE_KEY ?? 'default';
+  /**
+   * Until real per-event markets are created, all bets route to a single
+   * configured market (`SETUP_MARKET_ID`). If unset, falls through to the
+   * pick.marketId (the-odds-api event id) — which is a placeholder and will
+   * fail place_bet on-chain.
+   */
+  private readonly fixedMarketId = process.env.SETUP_MARKET_ID ?? '';
 
   constructor() {
     const network = (process.env.SUI_NETWORK ?? 'testnet') as
@@ -109,7 +116,7 @@ export class IWalletClient {
       target: `${this.sportsbookPackage}::sportsbook::place_bet`,
       typeArguments: [this.stakeCoinType],
       arguments: [
-        tx.object(pick.marketId),
+        tx.object(this.fixedMarketId || pick.marketId),
         tx.pure.id(this.identityObjectId),
         tx.pure.u8(outcomeCode(pick.outcome)),
         stakeCoin,
