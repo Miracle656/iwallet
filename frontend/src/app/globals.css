@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: 'Satoshi-Variable';
+  src: url('/fonts/Satoshi-Variable.woff2') format('woff2'),
+    url('/fonts/Satoshi-Variable.woff') format('woff'),
+    url('/fonts/Satoshi-Variable.ttf') format('truetype');
+  font-weight: 300 900;
+  font-display: swap;
+  font-style: normal;
+}
+
+:root {
+  --background: #101113;
+  --foreground: #e5eef1;
+  --surface: #131416;
+  --surface-raised: #222328;
+  --accent: #fbff6c;
+  --muted: #92979d;
+  --line: rgba(229, 238, 241, 0.1);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  background-image: none !important;
+  color: var(--foreground);
+  font-family: 'Satoshi-Variable';
+}
+
+html,
+body {
+  background-image: none !important;
+  overflow-x: hidden;
+}
+
+body::before,
+body::after {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+}
+
+a,
+button,
+[role="button"],
+[data-hover-trigger] {
+  cursor: pointer;
+}
+
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+::selection {
+  background: rgba(251, 255, 108, 0.55);
+  color: #131416;
+}
