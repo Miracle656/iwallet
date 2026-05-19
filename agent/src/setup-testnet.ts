@@ -202,6 +202,10 @@ async function main(): Promise<void> {
   );
   if (!sent) throw new Error(`staged coin not found (tx ${send.digest})`);
 
+  // Wait for t1 to finalize so the next tx sees fresh gas + the new coin's ref.
+  await client.waitForTransaction({ digest: send.digest });
+
+  const sentRef = sent as { objectId: string; version: string; digest: string };
   const t2 = new Transaction();
   t2.moveCall({
     target: `${iwalletPkg!}::prototype::receive_coin`,
@@ -209,7 +213,11 @@ async function main(): Promise<void> {
     arguments: [
       t2.object(identityId!),
       t2.pure.string(KEY),
-      t2.object((sent as any).objectId),
+      t2.receivingRef({
+        objectId: sentRef.objectId,
+        version: sentRef.version,
+        digest: sentRef.digest,
+      }),
     ],
   });
   const recv = await client.signAndExecuteTransaction({ transaction: t2, signer });
