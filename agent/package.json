@@ -8,11 +8,13 @@
     "start": "tsx src/index.ts",
     "serve": "tsx src/server.ts",
     "setup:testnet": "tsx src/setup-testnet.ts",
+    "setup:markets": "tsx src/setup-markets.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.50.0",
+    "@mysten-incubation/memwal": "^0.0.3",
     "@mysten/sui": "^2.16.2",
     "@noble/hashes": "^1.5.0",
     "dotenv": "^17.4.2",
