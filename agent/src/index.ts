@@ -3,10 +3,13 @@ import { fetchUpcomingOdds, type OddsEvent } from './odds.js';
 import { pickBets, type Pick } from './picks.js';
 import { IWalletClient } from './iwallet.js';
 import { logAuditTrail } from './walrus.js';
+import { recallContext, rememberBet } from './memwal.js';
 
 export type BetRecord = {
   pick: Pick;
   digest: string;
+  /** On-chain Market object the agent minted + bet into (empty when stubbed). */
+  marketId: string;
   blobId: string;
   url?: string;
 };
@@ -17,6 +20,8 @@ export type TickResult = {
   picks: Pick[];
   bets: BetRecord[];
   notes: string[];
+  /** Memories the agent recalled (MemWal) to inform this tick's picks. */
+  memoriesUsed: string[];
 };
 
 /**
@@ -36,6 +41,7 @@ export async function runTick(): Promise<TickResult> {
     picks: [],
     bets: [],
     notes: [],
+    memoriesUsed: [],
   };
 
   result.events = await fetchUpcomingOdds();
@@ -44,18 +50,35 @@ export async function runTick(): Promise<TickResult> {
     return result;
   }
 
-  result.picks = await pickBets(result.events);
+  // Recall the agent's own betting history so Claude reasons with its track record.
+  result.memoriesUsed = await recallContext(
+    'past sports betting decisions, outcomes, and strategy lessons',
+  );
+
+  result.picks = await pickBets(result.events, result.memoriesUsed);
   if (result.picks.length === 0) {
-    result.notes.push('no picks — picks.ts is still stubbed (returns [])');
+    result.notes.push('no value bets passed the filter this tick');
     return result;
   }
 
   const client = new IWalletClient();
   for (const pick of result.picks) {
     try {
-      const { digest } = await client.placeBet(pick);
+      const { digest, marketId } = await client.placeBet(pick);
       const { blobId, url } = await logAuditTrail({ pick, txDigest: digest });
-      result.bets.push({ pick, digest, blobId, url });
+      result.bets.push({ pick, digest, marketId, blobId, url });
+      // Remember the bet so future ticks can recall it.
+      await rememberBet({
+        sport: pick.sport,
+        home: pick.home,
+        away: pick.away,
+        outcome: pick.outcome,
+        odds: pick.odds,
+        stake: pick.stake,
+        rationale: pick.rationale,
+        digest,
+        marketId,
+      });
     } catch (err) {
       result.notes.push(
         `bet failed for ${pick.marketId}: ${(err as Error).message}`,

@@ -1,28 +1,41 @@
 import { readFileSync } from 'node:fs';
 
 /**
- * Convert a snarkjs `verification_key.json` (BN254 groth16) into the
- * `vk_bytes` blob Sui's `groth16::prepare_verifying_key(&bn254(), &vk_bytes)`
- * expects.
+ * snarkjs `verification_key.json` (BN254 groth16) -> Sui `vk_bytes`.
  *
- * Layout = arkworks-canonical, uncompressed, little-endian:
- *   alpha_g1 (G1, 64B)
- *   beta_g2  (G2, 128B)
- *   gamma_g2 (G2, 128B)
- *   delta_g2 (G2, 128B)
- *   IC / gamma_abc_g1: arkworks Vec<G1> = u64 LE length prefix (8B) then
- *                      (nPublic+1) G1 points (64B each)
+ * Per Sui's groth16.move: `verifying_key: An Arkworks canonical COMPRESSED
+ * serialization of a verifying key.` So G1 = 32B, G2 = 64B, with the y-sign
+ * flag packed into the top bit of the last byte (arkworks SWFlags::NegativeY
+ * = 0x80). Field elements are 32-byte little-endian.
  *
- * ASSUMPTION (same class as the proof-point LE question George answered):
- * the IC vector carries the 8-byte arkworks length prefix. If the first
- * on-chain `prepare_verifying_key`/verify aborts, drop `IC_LENGTH_PREFIX`.
+ * Layout = arkworks `VerifyingKey<Bn254>` canonical:
+ *   alpha_g1 (32)
+ *   beta_g2  (64)
+ *   gamma_g2 (64)
+ *   delta_g2 (64)
+ *   gamma_abc_g1 / IC: arkworks Vec<G1> = u64 LE length (8B) + n × 32B
+ *
+ * For nPublic=2 -> 32 + 3×64 + 8 + 3×32 = 328 bytes.
  */
 
-const IC_LENGTH_PREFIX = true;
+/** BN254 base field modulus (alt_bn128 q). */
+const Q =
+  21888242871839275222246405745257275088696311157297823662689037894645226208583n;
+const Q_HALF = (Q - 1n) / 2n;
+
+function fpIsNeg(y: bigint): boolean {
+  return y > Q_HALF;
+}
+
+/** arkworks Fp2 Ord compares (c1, c0); y_sign = y > -y under that compare. */
+function fp2IsNeg(c0: bigint, c1: bigint): boolean {
+  if (c1 === 0n) return fpIsNeg(c0);
+  return fpIsNeg(c1);
+}
 
 function fieldToBytes32LE(x: bigint): Uint8Array {
   const out = new Uint8Array(32);
-  let v = x;
+  let v = ((x % Q) + Q) % Q;
   for (let i = 0; i < 32; i++) {
     out[i] = Number(v & 0xffn);
     v >>= 8n;
@@ -30,19 +43,21 @@ function fieldToBytes32LE(x: bigint): Uint8Array {
   return out;
 }
 
-function g1(p: string[]): Uint8Array {
-  const out = new Uint8Array(64);
-  out.set(fieldToBytes32LE(BigInt(p[0])), 0);
-  out.set(fieldToBytes32LE(BigInt(p[1])), 32);
+/** Compressed G1: x (32B LE) with y-sign flag in top bit of byte[31]. */
+function g1Compressed(p: string[]): Uint8Array {
+  const x = BigInt(p[0]);
+  const y = BigInt(p[1]);
+  const out = fieldToBytes32LE(x);
+  if (fpIsNeg(y)) out[31] |= 0x80;
   return out;
 }
 
-function g2(p: string[][]): Uint8Array {
-  const out = new Uint8Array(128);
+/** Compressed G2: x.c0||x.c1 (64B LE total) with y-sign flag in top bit of byte[63]. */
+function g2Compressed(p: string[][]): Uint8Array {
+  const out = new Uint8Array(64);
   out.set(fieldToBytes32LE(BigInt(p[0][0])), 0);
   out.set(fieldToBytes32LE(BigInt(p[0][1])), 32);
-  out.set(fieldToBytes32LE(BigInt(p[1][0])), 64);
-  out.set(fieldToBytes32LE(BigInt(p[1][1])), 96);
+  if (fp2IsNeg(BigInt(p[1][0]), BigInt(p[1][1]))) out[63] |= 0x80;
   return out;
 }
 
@@ -74,13 +89,13 @@ export function verificationKeyToBytes(vkJsonPath: string): Uint8Array {
   }
 
   const parts: Uint8Array[] = [
-    g1(vk.vk_alpha_1),
-    g2(vk.vk_beta_2),
-    g2(vk.vk_gamma_2),
-    g2(vk.vk_delta_2),
+    g1Compressed(vk.vk_alpha_1),
+    g2Compressed(vk.vk_beta_2),
+    g2Compressed(vk.vk_gamma_2),
+    g2Compressed(vk.vk_delta_2),
+    u64LE(vk.IC.length),
   ];
-  if (IC_LENGTH_PREFIX) parts.push(u64LE(vk.IC.length));
-  for (const ic of vk.IC) parts.push(g1(ic));
+  for (const ic of vk.IC) parts.push(g1Compressed(ic));
 
   const total = parts.reduce((n, p) => n + p.length, 0);
   const out = new Uint8Array(total);
@@ -92,10 +107,10 @@ export function verificationKeyToBytes(vkJsonPath: string): Uint8Array {
   return out;
 }
 
-// Allow `npx tsx src/vk.ts [path]` as a quick check.
+// Quick check: `npx tsx src/vk.ts [path]`.
 if (process.argv[1]?.endsWith('vk.ts')) {
   const path = process.argv[2] ?? '../circuits/verification_key.json';
   const bytes = verificationKeyToBytes(path);
-  console.log(`vk_bytes: ${bytes.length} bytes`);
+  console.log(`vk_bytes: ${bytes.length} bytes (expect 328 for nPublic=2)`);
   console.log(`hex head: ${Buffer.from(bytes).toString('hex').slice(0, 32)}…`);
 }
