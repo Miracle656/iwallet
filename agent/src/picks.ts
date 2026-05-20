@@ -15,6 +15,12 @@ export type Pick = {
   odds: number;
   /** Claude's one-line rationale — surfaced in the UI + audit trail */
   rationale: string;
+  /** Matchup carried from the source event so the agent mints a market that matches. */
+  sport: string;
+  home: string;
+  away: string;
+  homeOdds: number;
+  awayOdds: number;
 };
 
 const MAX_PICKS = Number(process.env.MANDATE_MAX_PICKS_PER_TICK ?? '3');
@@ -48,7 +54,10 @@ type SubmitPicksInput = { picks: Pick[] };
 
 const client = new Anthropic();
 
-export async function pickBets(events: OddsEvent[]): Promise<Pick[]> {
+export async function pickBets(
+  events: OddsEvent[],
+  memories: string[] = [],
+): Promise<Pick[]> {
   if (events.length === 0) return [];
   if (!process.env.ANTHROPIC_API_KEY) {
     console.warn('[picks] ANTHROPIC_API_KEY not set — returning empty list');
@@ -63,6 +72,12 @@ export async function pickBets(events: OddsEvent[]): Promise<Pick[]> {
     commenceAt: new Date(e.commenceTime).toISOString(),
     odds: e.bookmakerOdds,
   }));
+
+  const memoryBlock = memories.length
+    ? `\n\nYour own betting memory (recalled from encrypted storage — use it to ` +
+      `refine judgement and avoid repeating mistakes):\n` +
+      memories.map((m) => `- ${m}`).join('\n')
+    : '';
 
   const msg = await client.messages.create({
     model: MODEL,
@@ -98,22 +113,41 @@ export async function pickBets(events: OddsEvent[]): Promise<Pick[]> {
       },
     ],
     tool_choice: { type: 'tool', name: 'submit_picks' },
-    messages: [{ role: 'user', content: JSON.stringify({ events: compact }) }],
+    messages: [
+      {
+        role: 'user',
+        content: JSON.stringify({ events: compact }) + memoryBlock,
+      },
+    ],
   });
 
   for (const block of msg.content) {
     if (block.type === 'tool_use' && block.name === 'submit_picks') {
       const input = block.input as SubmitPicksInput;
-      // Defense-in-depth: re-validate against the same caps the schema enforces.
+      const byId = new Map(events.map((e) => [e.id, e]));
+      // Defense-in-depth: re-validate against the same caps the schema enforces,
+      // and enrich each pick with its source event's matchup.
       return (input.picks ?? [])
         .filter(
           (p) =>
             Number.isInteger(p.stake) &&
             p.stake > 0 &&
             p.stake <= MAX_STAKE &&
-            ['home', 'away', 'draw'].includes(p.outcome),
+            ['home', 'away', 'draw'].includes(p.outcome) &&
+            byId.has(p.marketId),
         )
-        .slice(0, MAX_PICKS);
+        .slice(0, MAX_PICKS)
+        .map((p) => {
+          const ev = byId.get(p.marketId)!;
+          return {
+            ...p,
+            sport: ev.sport,
+            home: ev.home,
+            away: ev.away,
+            homeOdds: ev.bookmakerOdds.home,
+            awayOdds: ev.bookmakerOdds.away,
+          };
+        });
     }
   }
   return [];
