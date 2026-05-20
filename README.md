@@ -1,304 +1,48 @@
-# IWallet Architecture
-## Trustless ZK Authorization for Autonomous On-Chain Agents
+# IWallet Architecture: Trustless ZK Agentic Authorization
+**Architect:** George-Goldman
 
-**Architect:** George Goldman
-
----
-
-# Executive Summary
-
-IWallet is a cryptographic authorization protocol built on the Sui blockchain that enables autonomous AI agents to execute decentralized finance (DeFi) operations without taking custody of user funds or relying on persistent private keys.
-
-The protocol combines:
-
-- Groth16 Zero-Knowledge Proofs
-- BN254 elliptic curve cryptography
-- Trusted Execution Environments (TEEs)
-- Sui Programmable Transaction Blocks (PTBs)
-- Sponsored Transactions
-
-to create a fully non-custodial execution framework where authorization is derived from mathematical proofs rather than traditional wallet signatures.
-
-Unlike conventional “AI wallet” systems that centralize key management on backend infrastructure, IWallet enforces user sovereignty at the protocol level through client-side witness generation and cryptographic intent binding.
+## Executive Summary
+IWallet is a trustless, zero-knowledge authorization layer built on the Sui network. It enables autonomous AI agents to execute high-frequency decentralized finance (DeFi) operations on behalf of users without ever taking custody of user funds or requiring human-in-the-loop transaction signing. By combining Groth16 zero-knowledge proofs over the BN254 curve, Trusted Execution Environments (TEEs), and Sui's Programmable Transaction Blocks (PTBs), IWallet achieves true cryptographic sovereignty.
 
 ---
 
-# 1. Problem Statement
+## Architecture Flow
+![IWallet End-to-End Architecture](./Untitled-2026-05-20-2024.png)
 
-## The Custodial Failure of Existing AI Agents
-
-Most existing Web3 AI agents fundamentally operate as custodial systems.
-
-In typical architectures:
-
-1. The backend server generates or stores private keys
-2. The AI agent controls transaction execution
-3. Users trust infrastructure operators not to misuse funds
-
-This creates a critical security contradiction:
-
-> The system claims decentralization while depending entirely on trusted infrastructure.
-
-Any compromise of the backend, cloud provider, CI/CD pipeline, or database exposes user assets.
-
-IWallet eliminates this trust assumption entirely.
+*(Note: The diagram above outlines the cryptographic genesis and autonomous intent execution flow between the Next.js client, the TEE agent, and the Sui Move smart contract.)*
 
 ---
 
-# 2. Non-Custodial Identity Genesis
+## 1. The Threat Model & Non-Custodial Genesis
+Traditional "Web3 AI Agents" fall into the Custodial Trap: the backend server generates the agent's private keys, fundamentally creating a bank where users must trust the developers not to steal their funds. 
 
-## Client-Side Witness Generation
+IWallet solves this by enforcing **Client-Side Genesis**:
+1. The secret witness ($w$) is generated locally in the user's browser.
+2. The browser computes the identity hash using a ZK-friendly function: $IdentityHash = Poseidon(w)$.
+3. The user submits a transaction to Sui, permanently locking the $IdentityHash$ inside an `IIdentity` Shared Object.
+4. Only after the blockchain vault is locked does the client delegate $w$ to the agent via an encrypted tunnel.
 
-IWallet begins with a cryptographic primitive known as the witness (`w`).
+Because the user generated the initial witness, they maintain ultimate sovereignty. If the agent infrastructure goes offline, the user can generate their own ZK proofs locally to recover their funds.
 
-The witness is generated locally inside the user’s browser and never originates from backend infrastructure.
+## 2. The Secure Execution Enclave (TEE)
+While the smart contract acts as the vault, the off-chain agent acts as the authorized proxy. To protect $w$ from host-level extraction (e.g., a compromised VPS or malicious cloud provider), the IWallet agent daemon is designed to run inside a Trusted Execution Environment (TEE), such as AWS Nitro Enclaves or Intel SGX. 
 
-```text
-w ← SecureRandom()
-```
-The frontend computes a ZK-friendly identity commitment:
-```
-identity_hash = Poseidon(w)
-```
-The resulting identity_hash is submitted to the Sui blockchain and permanently stored inside an IIdentity Shared Object.
+The TEE serves as a cryptographic black box. It holds $w$ in encrypted memory, observes market conditions, and calculates the Groth16 proofs locally. The TEE never leaks $w$ to the internet; it only broadcasts mathematically sound, computationally unforgeable proofs.
 
-## Identity Creation Flow
-1. User generates witness locally
-2. Browser computes Poseidon commitment
-3. Commitment is stored on-chain
-4. Witness is encrypted and delegated to the TEE agent
+## 3. Cryptographic Intent Binding & Scalar Field Safety
+To prevent a malicious actor from intercepting a valid ZK proof and altering the trade parameters (e.g., changing the recipient address), IWallet utilizes strict **On-Chain Intent Binding**.
 
-Because the user created the original witness, they retain ultimate ownership over authorization rights.
+The execution parameters (`nonce`, `amount`, `recipient`) are serialized and hashed to create an `intent_hash`, which is passed into the ZK circuit as a public input. The Move smart contract independently recalculates this hash during the transaction and asserts equality, guaranteeing the proof was generated specifically for the requested execution.
 
-Even if all IWallet infrastructure disappears, users can independently reconstruct proofs and recover access to funds.
+### Overcoming the BN254 Overflow
+A critical architectural challenge in integrating Keccak256 with Groth16 is scalar field overflow. The BN254 curve operates on a 254-bit prime field ($r$). Because Keccak outputs 256 bits, roughly 14% of legitimate intent hashes will exceed $r$, causing the on-chain verifier to fatally abort.
 
-This property establishes true cryptographic sovereignty.
+**The Solution:** Rather than implementing prohibitively expensive BigNum modulo arithmetic in the Move Virtual Machine, IWallet applies a highly optimized bitmask. Both the off-chain TypeScript daemon and the on-chain Move contract apply a bitwise `AND` operation (`0x1F`) to the most significant byte of the intent hash. This truncates the top bits, strictly bounding the hash below the scalar field limit while maintaining 253 bits of collision resistance. Furthermore, the Move contract reverses the resulting byte array to Little-Endian (LE) to perfectly synchronize with Sui's underlying Arkworks cryptography backend.
 
-# 3. Trusted Execution Environment (TEE)
+## 4. Gas Abstraction and PTB Composability
+IWallet eliminates the need for ephemeral wallets to hold network gas. By utilizing Sui's Programmable Transaction Blocks (PTBs) and Sponsored Transactions, the architecture achieves a frictionless agentic UX.
 
-## Secure Autonomous Execution
+1. **The Sponsor:** A designated Gas Station signs the PTB to cover all network fees.
+2. **The Atomic Trade:** Within a single PTB, the agent calls `withdraw_with_proof` to extract funds from the `IIdentity` shared object, routes those funds directly into a DEX (e.g., Cetus or Bluefin) for a swap, and routes the output asset back into the `IIdentity` bag storage via `receive_coin`. 
 
-The off-chain execution layer operates inside a Trusted Execution Environment (TEE), such as:
-
-- AWS Nitro Enclaves
-- Intel SGX
-- AMD SEV
-
-The TEE functions as an isolated cryptographic enclave that:
-
-- Stores witness material in protected memory
-- Monitors market conditions
-- Generates zero-knowledge proofs
-- Broadcasts authorized execution transactions
-
-At no point does the enclave expose the witness externally.
-
-Even if the host operating system or cloud provider is compromised, the witness remains inaccessible outside enclave memory boundaries.
-
-# 4. Zero-Knowledge Authorization
-## Groth16 Proof-Based Authentication
-Rather than authorizing actions with Ed25519 signatures, IWallet authenticates execution through Groth16 proofs over the BN254 curve.
-
-The proving system validates:
-
-- Knowledge of the original witness
-- Correct intent construction
-- Valid execution parameters
-- Proper nonce usage
-
-This transforms the wallet model from:
-
-`"Who signed this transaction?"`
-
-to: 
-
-`"Can this actor mathematically prove authorization?"`
-
-Authorization becomes purely cryptographic.
-
-# 5. Intent Binding & Replay Protection
-## Preventing Parameter Tampering
-A major challenge in autonomous execution systems is preventing proof replay or transaction mutation.
-
-An attacker could theoretically intercept a valid proof and attempt to alter:
-
-- recipient address
-- token amount
-- DEX route
-- nonce values
-
-IWallet solves this through strict intent binding.
-
-Intent Construction
-
-Execution parameters are serialized into deterministic byte structures:
-```
-intent_data = {
-    nonce,
-    amount,
-    recipient,
-    asset_in,
-    asset_out
-}
-```
-The serialized payload is hashed:
-```
-intent_hash = Keccak256(intent_data)
-```
-
-This hash becomes a public input to the ZK circuit.
-
-The Move contract independently reconstructs and validates the same hash during execution.
-
-If any parameter changes, proof verification fails immediately.
-
-This guarantees that proofs are bound to one exact execution intent.
-
-# 6. BN254 Scalar Field Safety
-
-## The 256-bit Overflow Problem
-
-Groth16 on BN254 operates within a 254-bit scalar field.
-
-However:
-
-```
-Keccak256 → 256 bits
-BN254 scalar field → 254 bits
-```
-This creates a dangerous incompatibility.
-
-Approximately 14% of valid Keccak hashes exceed the BN254 field modulus and would cause verifier failure.
-
-## Optimized Scalar Bounding
-
-Instead of performing expensive big-number modular arithmetic inside the Move VM, IWallet applies a deterministic scalar bounding strategy.
-
-## Step 1 — Bitmask Truncation
-
-The protocol applies a bitwise mask to the most significant byte:
-```
-masked[0] &= 0x1F
-```
-This guarantees the resulting scalar remains below the BN254 field modulus.
-
-## Step 2 — Endianness Synchronization
-The byte array is reversed into Little-Endian format to match Arkworks cryptographic expectations used internally by Sui.
-
-```
-bytes.reverse()
-```
-This synchronization prevents proof verification inconsistencies between:
-
-- SnarkJS
-- Circom
-- Arkworks
-- Move verifier logic
-
-while preserving approximately 253 bits of collision resistance.
-
-# 7. Atomic PTB Execution
-## Programmable Transaction Block Architecture
-IWallet leverages Sui Programmable Transaction Blocks (PTBs) to compose fully atomic DeFi execution flows.
-
-A single PTB can:
-
-- Verify authorization proofs
-- Withdraw funds
-- Execute DEX swaps
-- Return assets to vault storage
-
-All within one atomic transaction.
-
-## Example Execution Pipeline
-### Step 1 — Proof Withdrawal
-
-```
-withdraw_with_proof(proof_bytes)
-```
-The Move contract verifies:
-
-- Groth16 proof validity
-- Intent hash correctness
-- Nonce integrity
-- Scalar field constraints
-
-Funds are released only if all assertions pass.
-
-## Step 2 — DEX Interaction
-
-The PTB routes assets directly into integrated liquidity venues such as:
-
-Cetus
-Bluefin
-
-Example:
-```
-swap(Coin<SUI> → Coin<USDC>)
-```
-
-## Step 3 — Vault Re-Deposit
-The resulting assets are returned to the IIdentity Shared Object:
-```
-receive_coin(Coin<USDC>)
-```
-Assets remain inside protocol-controlled storage throughout execution.
-
-# 8. Sponsored Transactions & Gas Abstraction
-## Removing Gas Friction
-
-IWallet supports Sponsored Transactions to eliminate the need for agent wallets to maintain SUI balances for gas fees.
-
-A designated Gas Station signs the PTB and covers execution costs.
-
-This creates a seamless UX where:
-
-- Users retain sovereignty
-- Agents execute autonomously
-- No hot wallet requires gas management
-
-# 9. Shared Object Architecture
-## Universal Composability
-
-The IIdentity vault is implemented as a Sui Shared Object rather than an Address-Owned Object.
-
-This provides several advantages:
-
-Parallel transaction execution
-Protocol composability
-Stateless authorization
-Multi-agent interoperability
-
-Most importantly:
-
-    Authentication is derived from mathematics, not wallet signatures.
-
-The vault behaves as a neutral cryptographic execution layer capable of interoperating across any Sui DeFi protocol.
-
-# 10. Security Guarantees
-
-IWallet provides the following guarantees:
-
-| Property                     | Guarantee                      |
-| ---------------------------- | ------------------------------ |
-| User Sovereignty             | Witness originates client-side |
-| Non-Custodial Security       | Backend never owns funds       |
-| Replay Protection            | Intent-bound proofs            |
-| Host Compromise Resistance   | TEE isolation                  |
-| Atomic Settlement            | PTB composability              |
-| Gasless UX                   | Sponsored transactions         |
-| Cryptographic Authorization  | Groth16 proof verification     |
-| Cross-Protocol Composability | Shared Object architecture     |
-
-
-# Conclusion
-
-IWallet redefines wallet authorization for autonomous systems.
-
-By combining zero-knowledge cryptography, TEEs, and Sui PTBs, the protocol creates a new execution paradigm where:
-
-- users retain sovereignty,
-- agents operate autonomously,
-- and authorization is enforced mathematically rather than socially.
-
-The result is a trustless infrastructure layer for scalable autonomous finance on Sui.
+Because the `IIdentity` is a Shared Object rather than an Address-Owned Object, it acts as a universally composable, dumb vault that authenticates via pure mathematics rather than traditional Ed25519 signatures.
