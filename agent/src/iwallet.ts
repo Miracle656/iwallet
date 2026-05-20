@@ -43,12 +43,62 @@ export class IWalletClient {
   private readonly stakeCoinType = process.env.STAKE_COIN_TYPE ?? '0x2::sui::SUI';
   private readonly stagedBalanceKey = process.env.STAGED_BALANCE_KEY ?? 'default';
   /**
-   * Until real per-event markets are created, all bets route to a single
-   * configured market (`SETUP_MARKET_ID`). If unset, falls through to the
-   * pick.marketId (the-odds-api event id) — which is a placeholder and will
-   * fail place_bet on-chain.
+   * Markets the bets route to. The sportsbook allows one bet per bettor per
+   * market, so we round-robin a pool minted by `npm run setup:markets`
+   * (`MARKET_POOL`). Falls back to a single `SETUP_MARKET_ID`, then to
+   * pick.marketId (the-odds-api event id — a placeholder that fails on-chain).
    */
+  private readonly marketPool = (process.env.MARKET_POOL ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
   private readonly fixedMarketId = process.env.SETUP_MARKET_ID ?? '';
+  private readonly resolverCapId = (process.env.RESOLVER_CAP_ID ?? '').trim();
+  private marketCursor = 0;
+
+  /**
+   * Mint a market that matches THIS pick (same teams/odds) so the on-chain
+   * market the agent bets into is coherent with the pick — and so we never
+   * hit EBetAlreadyPlaced (every bet gets its own fresh market). Returns the
+   * new Market object id.
+   */
+  private async createMarketForPick(pick: Pick): Promise<string> {
+    const tx = new Transaction();
+    tx.moveCall({
+      target: `${this.sportsbookPackage}::sportsbook::create_market`,
+      typeArguments: [this.stakeCoinType],
+      arguments: [
+        tx.object(this.resolverCapId),
+        tx.pure.string(pick.sport),
+        tx.pure.string(pick.home),
+        tx.pure.string(pick.away),
+        tx.pure.u64(BigInt(Math.round(pick.homeOdds * 10000))),
+        tx.pure.u64(BigInt(Math.round(pick.awayOdds * 10000))),
+        tx.pure.u64(0n),
+        tx.pure.u64(BigInt(Date.now() + 14 * 24 * 3600 * 1000)),
+      ],
+    });
+    const res = await this.client.signAndExecuteTransaction({
+      transaction: tx,
+      signer: this.signer!,
+      options: { showObjectChanges: true },
+    });
+    const m = (res.objectChanges ?? []).find((c: any) =>
+      String(c.objectType).includes('::sportsbook::Market<'),
+    );
+    if (!m) throw new Error(`market not created (tx ${res.digest})`);
+    await this.client.waitForTransaction({ digest: res.digest });
+    return (m as { objectId: string }).objectId;
+  }
+
+  private nextMarketId(fallback: string): string {
+    if (this.marketPool.length > 0) {
+      const id = this.marketPool[this.marketCursor % this.marketPool.length];
+      this.marketCursor += 1;
+      return id;
+    }
+    return this.fixedMarketId || fallback;
+  }
 
   constructor() {
     const network = (process.env.SUI_NETWORK ?? 'testnet') as
@@ -66,16 +116,22 @@ export class IWalletClient {
     }
   }
 
-  async placeBet(pick: Pick): Promise<{ digest: string }> {
+  async placeBet(pick: Pick): Promise<{ digest: string; marketId: string }> {
     if (!this.signer || !this.witnessHex) {
       console.warn('[iwallet] keys/witness not set — stub mode');
-      return { digest: `stub-${pick.marketId}-${Date.now()}` };
+      return { digest: `stub-${pick.marketId}-${Date.now()}`, marketId: '' };
     }
 
     const recipient = this.signer.toSuiAddress();
     const nonce = freshNonce();
     const amount = BigInt(pick.stake);
     const w = parseWitness(this.witnessHex);
+
+    // Mint a market matching this pick (coherent + no EBetAlreadyPlaced).
+    // Fall back to the pool / fixed market if no ResolverCap is configured.
+    const marketId = this.resolverCapId
+      ? await this.createMarketForPick(pick)
+      : this.nextMarketId(pick.marketId);
 
     const intentHash = computeIntentHash(nonce, amount, recipient);
     const { proofBytes, publicInputs, identityHashBytes } = await generateProof({
@@ -116,7 +172,7 @@ export class IWalletClient {
       target: `${this.sportsbookPackage}::sportsbook::place_bet`,
       typeArguments: [this.stakeCoinType],
       arguments: [
-        tx.object(this.fixedMarketId || pick.marketId),
+        tx.object(marketId),
         tx.pure.id(this.identityObjectId),
         tx.pure.u8(outcomeCode(pick.outcome)),
         stakeCoin,
@@ -128,7 +184,7 @@ export class IWalletClient {
       transaction: tx,
       signer: this.signer,
     });
-    return { digest: result.digest };
+    return { digest: result.digest, marketId };
   }
 }
 
