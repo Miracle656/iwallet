@@ -4,13 +4,31 @@ import { AnimatedHoverText } from "@/components/animated-hover-text";
 import { HashText } from "@/components/hash-text";
 import { IconChip } from "@/components/icon-chip";
 import { TransactionStatusBadge, WalletStatusBadge } from "@/components/status-badge";
-import { getWallet, getWalletTransactions } from "@/lib/demo-data";
+import type { ProcessedTransaction } from "@/lib/demo-data";
+import { getIdentity } from "@/lib/sui-client";
 import { HiOutlineBanknotes, HiOutlineDocumentText, HiOutlineLink, HiOutlineLockClosed, HiOutlineShieldCheck, HiOutlineWallet } from "react-icons/hi2";
 
 export default async function IWalletDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const wallet = getWallet(id);
-  const transactions = getWalletTransactions(wallet.id);
+  const wallet = await getIdentity(id);
+
+  if (!wallet) {
+    return (
+      <AppShell eyebrow="iWallet" title="Not found" description="This identity object could not be read from Sui.">
+        <section className="rounded-[2.4rem] border border-white/10 bg-[#131416] p-7">
+          <p className="text-sm text-[#92979d]">
+            No <code className="text-[#e5eef1]">IIdentity</code> object exists at <HashText value={id} chars={10} /> on the configured network.
+          </p>
+          <Link href="/iwallets" data-hover-trigger className="mt-5 inline-flex rounded-full bg-[#222328] px-5 py-2.5 text-sm font-semibold text-[#e5eef1] hover:text-[#fbff6c]">
+            <AnimatedHoverText>Back to iWallets</AnimatedHoverText>
+          </Link>
+        </section>
+      </AppShell>
+    );
+  }
+
+  // Live transaction history is wired in a later step.
+  const transactions: ProcessedTransaction[] = [];
   const balance = wallet.balance.tokens[0];
 
   return (
@@ -67,6 +85,9 @@ export default async function IWalletDetailPage({ params }: { params: Promise<{ 
             <Link href={`/iwallets/${wallet.id}/transactions`} data-hover-trigger className="text-sm font-medium text-[#fbff6c]"><AnimatedHoverText>Open ledger</AnimatedHoverText></Link>
           </div>
           <div className="mt-5 flex flex-col">
+            {transactions.length === 0 && (
+              <p className="py-4 text-sm text-[#92979d]">No processed transactions yet for this identity.</p>
+            )}
             {transactions.slice(0, 3).map((tx) => (
               <div key={tx.id} className="flex flex-col gap-3 border-b border-white/10 py-4 last-of-type:border-none sm:flex-row sm:items-center sm:justify-between">
                 <div>

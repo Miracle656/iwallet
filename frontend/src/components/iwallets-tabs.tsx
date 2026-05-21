@@ -1,17 +1,38 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatedHoverText } from "@/components/animated-hover-text";
 import { HashText } from "@/components/hash-text";
 import { WalletStatusBadge } from "@/components/status-badge";
-import { iwallets } from "@/lib/demo-data";
+import type { IWallet } from "@/lib/demo-data";
+import { listIdentities } from "@/lib/sui-client";
+import { getLocalIdentityIds } from "@/lib/local-identities";
 import { HiOutlineBanknotes, HiOutlineEye, HiOutlineLink, HiOutlinePlus, HiOutlineWallet } from "react-icons/hi2";
 
 const tabs = ["Owned", "Fund"] as const;
 
 export function IWalletsTabs() {
   const [active, setActive] = useState<(typeof tabs)[number]>("Owned");
+  const [wallets, setWallets] = useState<IWallet[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    listIdentities(getLocalIdentityIds())
+      .then((result) => {
+        if (!cancelled) setWallets(result);
+      })
+      .catch(() => {
+        if (!cancelled) setWallets([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <section className="rounded-[2.4rem] border border-white/10 bg-[#131416] p-5 sm:p-7">
@@ -29,7 +50,18 @@ export function IWalletsTabs() {
       </div>
 
       <div className="mt-7 flex flex-col">
-        {iwallets.map((wallet) => (
+        {loading && (
+          <p className="py-10 text-center text-sm text-[#92979d]">Reading iWallets from Sui testnet…</p>
+        )}
+
+        {!loading && wallets.length === 0 && (
+          <div className="py-10 text-center">
+            <p className="text-sm text-[#e5eef1]">No iWallets yet.</p>
+            <p className="mt-1 text-xs text-[#92979d]">Create one to register an on-chain identity for your agent.</p>
+          </div>
+        )}
+
+        {!loading && wallets.map((wallet) => (
           <Link key={wallet.id} href={active === "Owned" ? `/iwallets/${wallet.id}` : `/iwallets/${wallet.id}/fund`} className="group flex flex-col gap-4 border-b border-white/10 py-5 last-of-type:border-none sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#222328] text-xl text-[#fbff6c]"><HiOutlineWallet /></div>
