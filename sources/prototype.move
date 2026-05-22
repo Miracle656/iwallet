@@ -20,18 +20,55 @@ const ENoBalanceForKey: u64 = 3;
 const EIntentMismatch: u64 = 4;
 
 
+// ── Errors ──
+const EPolicyExpired: u64 = 5;
+const EBudgetExceeded: u64 = 6;
+const EInvalidProtocolScope: u64 = 7;
+
+public struct AgentPolicy has store {
+    // Maximum amount the agent is allowed to spend
+    budget_cap: u64,
+    // Running total of what the agent has extracted
+    amount_spent: u64,
+    // The ONLY address this agent can send funds to (e.g., DeepBook Pool ID),
+    allow_recipients: vector<address>,
+    // The exact millisecond timestamp when the agent's keys become useless
+    expiration_ms: u64,
+}
+
+
 public struct IIdentity<phantom T> has key, store {
     id: UID,
     name: String,
     // The registered identity hash: Poseidon(witness) stored at creation time
+    owner: address,
     identity_hash: vector<u8>,
     // The prepared verifying key — stored so we don't recompute each time
     pvk: groth16::PreparedVerifyingKey,
     // Nonce registry — prevents replay attacks
     used_nonces: table::Table<vector<u8>, bool>,
     staged_balances: bag::Bag,
+    active_policy: Option<AgentPolicy>
 }
 
+
+public fun set_policy<T>(
+    identity: &mut IIdentity<T>,
+    budget_cap: u64,
+    expiration_ms: u64,
+)
+{
+
+    let policy = AgentPolicy {
+        budget_cap,
+        amount_spent: 0,
+        allow_recipients : vector<address>[],
+        expiration_ms,
+    };
+
+    // Lock the policy into the vault
+    option::fill(&mut identity.active_policy, policy);
+}
 
 
 
@@ -39,9 +76,6 @@ entry fun get_iidentity<T>(identity: &IIdentity<T>): address {
     identity.id.uid_to_address()
 }
 
-public fun get_iidentity_v2<T>(identity: &IIdentity<T>): address {
-    identity.id.uid_to_address()
-}
 
 // ── Create the agent identity ──
 // Owner registers the identity hash and verification key at creation time.
@@ -50,6 +84,7 @@ entry fun create_iidentity<T>(
     name: String,
     identity_hash: vector<u8>, // Poseidon(witness) — computed off-chain
     vk_bytes: vector<u8>, // Groth16 verifying key bytes from trusted setup
+    active_policy: Option<AgentPolicy>,
     ctx: &mut TxContext
 ) {
     // Prepare the verifying key once at creation — stored in the object
@@ -62,24 +97,16 @@ entry fun create_iidentity<T>(
         pvk,
         used_nonces: table::new<vector<u8>, bool>(ctx),
         staged_balances: bag::new(ctx),
+        active_policy,
+        owner: ctx.sender()
     };
 
     transfer::public_share_object(identity);
 }
 
-public fun withdraw_received_coin<T>(
-    identity: &mut IIdentity<T>,
-    sent_coin: Receiving<coin::Coin<T>>,
-    recipient: address,
-) {
-    // 1. Authenticate the coin (verifies it was sent to this identity)
-    let coin = transfer::public_receive<coin::Coin<T>>(&mut identity.id, sent_coin);
 
-    // 2. Transfer it out to the human user
-    transfer::public_transfer(coin, recipient);
-}
 
-public fun receive_coin<T>(
+fun receive_coin<T>(
     identity: &mut IIdentity<T>,
     key: String,
     sent_coin: Receiving<coin::Coin<T>>,
@@ -117,6 +144,7 @@ public fun withdraw_with_proof<T>(
     public_inputs_bytes: vector<u8>,
     nonce: vector<u8>,
     amount: u64,
+    opt_sent_coin: Option<Receiving<coin::Coin<T>>>,
     recipient: address,
     key: String,
     ctx: &mut TxContext,
@@ -168,6 +196,16 @@ public fun withdraw_with_proof<T>(
     identity.used_nonces.add(nonce, true);
 
     // ── 5. Release funds ──
+    if (option::is_some(&opt_sent_coin)) {
+        let sent_coin = option::destroy_some(opt_sent_coin);
+        receive_coin(identity, key, sent_coin);
+    } else {
+        option::destroy_none(opt_sent_coin);
+    };
+    // Ensure the bag actually has the key before borrowing
+    assert!(bag::contains(&identity.staged_balances, key), ENoBalanceForKey);
+
+    // Withdraw the requested amount
     let withdrawn = balance::split<T>(identity.staged_balances.borrow_mut(key), amount);
     let out_coin = coin::from_balance<T>(withdrawn, ctx);
     out_coin
