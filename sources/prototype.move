@@ -25,7 +25,9 @@ const EPolicyExpired: u64 = 5;
 const EBudgetExceeded: u64 = 6;
 const EInvalidProtocolScope: u64 = 7;
 
-public struct AgentPolicy has store {
+const ENotOwner: u64 = 8;
+
+public struct AgentPolicy has store, drop {
     // Maximum amount the agent is allowed to spend
     budget_cap: u64,
     // Running total of what the agent has extracted
@@ -55,18 +57,26 @@ public struct IIdentity<phantom T> has key, store {
 public fun set_policy<T>(
     identity: &mut IIdentity<T>,
     budget_cap: u64,
+    allow_recipients: vector<address>,
     expiration_ms: u64,
+    ctx: &mut TxContext
 )
 {
+
+    assert!(ctx.sender() == identity.owner, ENotOwner);
 
     let policy = AgentPolicy {
         budget_cap,
         amount_spent: 0,
-        allow_recipients : vector<address>[],
+        allow_recipients,
         expiration_ms,
     };
 
     // Lock the policy into the vault
+    // Note: if a policy exists, extract it first to avoid aborts
+    if (option::is_some(&identity.active_policy)) {
+        let _ = option::extract(&mut identity.active_policy);
+    };
     option::fill(&mut identity.active_policy, policy);
 }
 
@@ -147,8 +157,24 @@ public fun withdraw_with_proof<T>(
     opt_sent_coin: Option<Receiving<coin::Coin<T>>>,
     recipient: address,
     key: String,
+    clock: &sui::clock::Clock,
     ctx: &mut TxContext,
 ): coin::Coin<T> {
+
+    // ── 0. POLICY ENFORCEMENT (THE MISSING BLOCK) ──
+    assert!(option::is_some(&identity.active_policy), EPolicyExpired);
+    let policy = option::borrow_mut(&mut identity.active_policy);
+
+    // Rule A: Is the agent dead?
+    assert!(sui::clock::timestamp_ms(clock) <= policy.expiration_ms, EPolicyExpired);
+    // Rule B: Did the agent hit its spend limit?
+    assert!(policy.amount_spent + amount <= policy.budget_cap, EBudgetExceeded);
+    // Rule C: Is the recipient in the allowed list?
+    assert!(std::vector::contains(&policy.allow_recipients, &recipient), EInvalidProtocolScope);
+
+    // Update the tracker
+    policy.amount_spent = policy.amount_spent + amount;
+
     // ── 1. Replay protection ──
     assert!(!identity.used_nonces.contains(nonce), ENonceAlreadyUsed);
 
@@ -216,4 +242,34 @@ public fun staged_balance<T>(identity: &IIdentity<T>, key: String): u64 {
     assert!(sui::bag::contains(&identity.staged_balances, key) ,ENoBalanceForKey);
     let bal = sui::bag::borrow(&identity.staged_balances, key);
     balance::value<T>(bal)
+}
+
+public fun revoke_policy<T>(identity: &mut IIdentity<T>, ctx: &mut TxContext){
+    assert!(ctx.sender() == identity.owner, ENotOwner);
+
+    if (option::is_some(&identity.active_policy)) {
+        let _old_policy = option::extract(&mut identity.active_policy);
+    }
+}
+
+public fun owner_withdraw<T>(
+    identity: &mut IIdentity<T>,
+    amount: u64,
+    key: String,
+    ctx: &mut TxContext
+): coin::Coin<T>
+{
+    // 1. Check native Passkey wallet signature
+    assert!(tx_context::sender(ctx) == identity.owner, ENotOwner);
+
+    // 2. Ensure funds exist
+    assert!(bag::contains(&identity.staged_balances, key), ENoBalanceForKey);
+
+    // 3. Bypass ZK, extract funds directly
+    let withdrawn = balance::split<T>(
+        identity.staged_balances.borrow_mut(key),
+        amount
+    );
+
+    coin::from_balance<T>(withdrawn, ctx)
 }
