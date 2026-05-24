@@ -52,8 +52,9 @@ flowchart LR
 **Threats *not* covered (today):**
 - **Threat B** — host operator or anyone with shell on the agent host can read
   `w` from process memory and drain the Identity within the mandate window.
-- **Threat A/C** — mandate caps (max stake, cooldowns) are off-chain policy,
-  enforced by the agent on itself. A bad agent could choose to ignore them.
+- **Threat A/C** — ~~mandate caps are off-chain policy~~ **resolved 2026-05-24**:
+  budget cap, recipient whitelist, and expiry are now enforced on-chain by
+  `AgentPolicy` in `withdraw_with_proof` (`5af56cc`).
 
 > See [`security-concerns-deferred`](../) (internal) for the full deferred list.
 
@@ -160,12 +161,12 @@ PCR values stable.
 | Encrypted, owner-controlled memory | ✅ (MemWal/SEAL) | ✅ |
 | **Compromised host can't drain funds** (Threat B) | ❌ host reads `w` | ✅ `w` sealed in enclave |
 | Code is attested and tamper-evident | ❌ | ✅ via PCR on-chain |
-| Mandate caps enforced on-chain (Threats A/C) | ❌ off-chain only | ❌ still off-chain |
+| Mandate caps enforced on-chain (budget/scope/expiry) | ✅ on-chain `AgentPolicy` (5af56cc) | ✅ |
 | AWS / Nitro is in trust root | n/a | ⚠️ yes — residual trust |
 
-Nautilus closes the host-trust problem. It does *not* fix mandate
-enforcement; that's a separate Move-contract change (per-period withdraw
-caps tied to the Identity).
+Nautilus closes the host-trust problem (Threat B). Mandate enforcement
+(Threat A/C) is handled separately and is now **on-chain** via `AgentPolicy`
+(budget / recipient whitelist / expiry) as of `5af56cc`.
 
 ---
 
