@@ -111,7 +111,7 @@ Joseph's screens in `frontend/src/app/`, and what each must do once wired.
 | `iwallets/create/page.tsx` | W | **Genesis**: generate `w` → `Poseidon(w)` → sign `create_iidentity` → persist id locally |
 | `iwallets/[id]/page.tsx` (detail) | R | Object metadata, `staged_balance`, linked-agent status |
 | `iwallets/[id]/fund/page.tsx` | W | Split a `Coin<T>`, `transferObjects` to the object id, then `receive_coin` |
-| `iwallets/[id]/policy/page.tsx` | — | Mandate caps. **Off-chain only** — no on-chain mandate exists (see README §2 limits). Persist to agent config, not chain |
+| `iwallets/[id]/policy/page.tsx` | W | Mandate caps. **Now on-chain** — `set_policy(budget_cap, allow_recipients, expiration_ms)` (owner-only). `revoke_policy` removes it (revocation demo). |
 | `iwallets/[id]/agent/page.tsx` | — | Encrypted witness handoff. v1: download an agent config file containing `w`. v2: encrypt `w` to the TEE's attested pubkey |
 | `iwallets/[id]/transactions/page.tsx` | R | `queryTransactionBlocks` touching the object id; cross-reference Walrus audit blobs |
 | `dashboard/page.tsx`, `activity/page.tsx` | R | Aggregate views over the above |
@@ -188,9 +188,11 @@ write path and depend on the wallet adapter. Step 6 needs a Move change.
 
 ## 8. What this model deliberately does *not* claim
 
-- **No on-chain mandate.** Policy caps (max stake, cooldowns, recipient
-  whitelist) are enforced by the agent on itself, off-chain. The contract has
-  no caps. Do not pitch "mandate enforced on-chain."
+- **On-chain mandate (added 2026-05-24, `5af56cc`).** `withdraw_with_proof` now
+  enforces an on-chain `AgentPolicy` — `budget_cap`, `allow_recipients`
+  whitelist, `expiration_ms` — and tracks `amount_spent`. Owner-only
+  `set_policy` / `revoke_policy`. *"Budget / scope / expiry enforced on-chain"*
+  is now a true claim. Remaining caveat below.
 - **TEE protects `w` only once deployed.** The "compromised host can't drain
   funds" guarantee holds when the agent actually runs in the Nitro Enclave —
   not while it runs from a plain `.env`. See `HOSTING_AND_NAUTILUS.md`.

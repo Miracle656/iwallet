@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AnimatedHoverText } from "@/components/animated-hover-text";
+import { WalletConnectButton } from "@/components/wallet-connect-button";
 import { HiOutlineWallet } from "react-icons/hi2";
 
 const nav = [
@@ -20,18 +21,21 @@ export function Navbar() {
           </div>
           <p className="text-base font-semibold text-[#e5eef1]">iWallet</p>
         </Link>
-        <nav className="flex flex-wrap gap-2">
-          {nav.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                data-hover-trigger
-                className="rounded-full px-3 py-2 text-sm font-medium text-[#92979d] transition hover:text-[#e5eef1]"
-              >
-                <AnimatedHoverText>{item.label}</AnimatedHoverText>
-              </Link>
-          ))}
-        </nav>
+        <div className="flex flex-wrap items-center gap-3">
+          <nav className="flex flex-wrap gap-2">
+            {nav.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  data-hover-trigger
+                  className="rounded-full px-3 py-2 text-sm font-medium text-[#92979d] transition hover:text-[#e5eef1]"
+                >
+                  <AnimatedHoverText>{item.label}</AnimatedHoverText>
+                </Link>
+            ))}
+          </nav>
+          <WalletConnectButton />
+        </div>
       </div>
     </header>
   );

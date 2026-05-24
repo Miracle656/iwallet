@@ -1,10 +1,36 @@
+"use client";
+
+import { ConnectModal, useCurrentAccount, useDisconnectWallet } from "@mysten/dapp-kit";
 import { HiOutlineWallet } from "react-icons/hi2";
 
+const buttonClass =
+  "inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#222328] px-4 py-2 text-sm font-medium text-[#e5eef1] transition hover:border-[#fbff6c]/50 hover:text-[#fbff6c]";
+
+function shortAddress(address: string): string {
+  return `${address.slice(0, 6)}…${address.slice(-4)}`;
+}
+
 export function WalletConnectButton() {
+  const account = useCurrentAccount();
+  const { mutate: disconnect } = useDisconnectWallet();
+
+  if (account) {
+    return (
+      <button onClick={() => disconnect()} className={buttonClass} title="Disconnect wallet">
+        <HiOutlineWallet className="text-base" />
+        {shortAddress(account.address)}
+      </button>
+    );
+  }
+
   return (
-    <button className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#222328] px-4 py-2 text-sm font-medium text-[#e5eef1] transition hover:border-[#fbff6c]/50 hover:text-[#fbff6c]">
-      <HiOutlineWallet className="text-base" />
-      0x8a42...19fd
-    </button>
+    <ConnectModal
+      trigger={
+        <button className={buttonClass}>
+          <HiOutlineWallet className="text-base" />
+          Connect Wallet
+        </button>
+      }
+    />
   );
 }

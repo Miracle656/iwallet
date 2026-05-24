@@ -107,13 +107,8 @@ export async function getIdentity(objectId: string): Promise<IWallet | null> {
       },
       identityHash,
       createdAt: "On-chain",
-      // Mandate caps are off-chain policy — the contract has no caps.
-      policy: {
-        maxPerTransaction: "Off-chain mandate",
-        sessionLimit: "Off-chain mandate",
-        expiry: "—",
-        allowedTargets: [],
-      },
+      // On-chain AgentPolicy (5af56cc): budget cap, recipient whitelist, expiry.
+      policy: parsePolicy(fields.active_policy),
     };
   } catch {
     return null;
@@ -132,4 +127,93 @@ export async function listIdentities(
   );
   const results = await Promise.all(ids.map((id) => getIdentity(id)));
   return results.filter((w): w is IWallet => w !== null);
+}
+
+/** Project an on-chain Option<AgentPolicy> into the UI's policy shape. */
+function parsePolicy(raw: unknown): IWallet["policy"] {
+  const none: IWallet["policy"] = {
+    maxPerTransaction: "No policy set",
+    sessionLimit: "—",
+    expiry: "—",
+    allowedTargets: [],
+  };
+  if (!raw) return none;
+  const p = ((raw as { fields?: Record<string, unknown> }).fields ??
+    raw) as Record<string, unknown>;
+  if (!p || p.budget_cap == null) return none;
+  const cap = Number(p.budget_cap) / 1e9;
+  const spent = Number(p.amount_spent ?? 0) / 1e9;
+  const expMs = p.expiration_ms ? Number(p.expiration_ms) : 0;
+  const recipients = Array.isArray(p.allow_recipients)
+    ? (p.allow_recipients as string[])
+    : [];
+  return {
+    maxPerTransaction: `${cap} SUI budget`,
+    sessionLimit: `${spent} SUI spent`,
+    expiry: expMs ? new Date(expMs).toISOString().slice(0, 16).replace("T", " ") : "—",
+    allowedTargets: recipients,
+  };
+}
+
+// ── Write-path transaction builders ──
+// Return a Transaction for the owner (passkey) to sign — or for the gas
+// station to sponsor. Execution is pending George's contract republish
+// (new IWALLET_PACKAGE_ID) + a shipped vk_bytes asset for create.
+
+/** set_policy(budget_cap, allow_recipients, expiration_ms) — owner only. */
+export function buildSetPolicyTx(
+  identityId: string,
+  budgetCap: bigint,
+  allowRecipients: string[],
+  expirationMs: bigint,
+): Transaction {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${IWALLET_PACKAGE_ID}::prototype::set_policy`,
+    typeArguments: [STAKE_COIN_TYPE],
+    arguments: [
+      tx.object(identityId),
+      tx.pure.u64(budgetCap),
+      tx.pure.vector("address", allowRecipients),
+      tx.pure.u64(expirationMs),
+    ],
+  });
+  return tx;
+}
+
+/** revoke_policy — owner only. The Sub-track 2 revocation primitive. */
+export function buildRevokePolicyTx(identityId: string): Transaction {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${IWALLET_PACKAGE_ID}::prototype::revoke_policy`,
+    typeArguments: [STAKE_COIN_TYPE],
+    arguments: [tx.object(identityId)],
+  });
+  return tx;
+}
+
+/**
+ * create_iidentity(name, identity_hash, vk_bytes, none) — shares the vault,
+ * owner = tx sender (the passkey). Policy is set afterward via set_policy
+ * (no TS-constructible AgentPolicy). `vkBytes` must be the converted Groth16
+ * verifying key (agent/src/vk.ts output), shipped as a static asset.
+ */
+export function buildCreateIdentityTx(
+  name: string,
+  identityHashLE: Uint8Array,
+  vkBytes: Uint8Array,
+): Transaction {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${IWALLET_PACKAGE_ID}::prototype::create_iidentity`,
+    typeArguments: [STAKE_COIN_TYPE],
+    arguments: [
+      tx.pure.string(name),
+      tx.pure.vector("u8", Array.from(identityHashLE)),
+      tx.pure.vector("u8", Array.from(vkBytes)),
+      // None of Option<AgentPolicy>; serializes to 0x00 regardless of inner type.
+      tx.pure.option("u8", null),
+    ],
+  });
+  return tx;
 }
