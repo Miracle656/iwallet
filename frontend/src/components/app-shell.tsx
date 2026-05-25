@@ -11,7 +11,7 @@ export function AppShell({
 }) {
   return (
     <main className="min-h-screen bg-[#101113] text-[#e5eef1]">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 pb-6 pt-36">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-5 pb-6 pt-36 sm:px-8 lg:px-10">
         <section className="rounded-[2.2rem] py-5 lg:py-6">
           <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
             <div>
