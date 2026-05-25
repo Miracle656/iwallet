@@ -1,56 +1,77 @@
-// The public Walrus Testnet Publisher Node
-const WALRUS_PUBLISHER_URL =
-  "https://publisher.walrus-testnet.walrus.space/v1/store";
+import { MemWal } from "@mysten-incubation/memwal";
 
 // Define the interface for the agent's trade receipt
 export interface AgentReceipt {
-  agent_id: string; // The IIdentity Shared Object ID
-  intent_hash: string; // The ZK intent hash
-  trade_amount: number; // How much SUI was swapped
-  dex_target: string; // DeepBook Pool ID
-  sui_tx_digest: string; // The transaction hash on Sui
-  timestamp: string; // ISO format
+  agent_id: string;
+  sui_tx_digest: string;
+  amount: number;
+  target: string; // Market ID or Pool ID
+  rationale: string; // Claude's reasoning
+  action_type: string; // e.g., "PLACE_BET"
+  metadata?: Record<string, any>; // Sport, home, away, odds
+  timestamp: string;
+}
+
+// Singleton MemWal Client Setup
+let client: ReturnType<typeof MemWal.create> | null = null;
+
+function getClient(): ReturnType<typeof MemWal.create> | null {
+  const KEY = process.env.MEMWAL_KEY;
+  const ACCOUNT = process.env.MEMWAL_ACCOUNT_ID;
+  const SERVER =
+    process.env.MEMWAL_SERVER_URL ?? "https://relayer.staging.memwal.ai";
+  const NAMESPACE = process.env.MEMWAL_NAMESPACE ?? "iwallet-agent";
+
+  if (!KEY || !ACCOUNT) {
+    console.warn("[MemWal] Missing MEMWAL_KEY or MEMWAL_ACCOUNT_ID in .env");
+    return null;
+  }
+
+  if (!client) {
+    client = MemWal.create({
+      key: KEY,
+      accountId: ACCOUNT,
+      serverUrl: SERVER,
+      namespace: NAMESPACE,
+    });
+  }
+  return client;
 }
 
 /**
- * Uploads a JSON receipt to Walrus Decentralized Storage
- * Returns the permanent Blob ID or null if the upload fails.
+ * Uploads a semantic receipt to MemWal for Agent RAG and UI history.
  */
-export async function logTradeToWalrus(
+export async function logTradeToMemwal(
   receipt: AgentReceipt,
-): Promise<string | null> {
-  const payload = JSON.stringify(receipt, null, 2);
+): Promise<boolean> {
+  const c = getClient();
+  if (!c) return false;
 
-  console.log(`[Walrus] Uploading receipt for Tx: ${receipt.sui_tx_digest}...`);
+  console.log(`[MemWal] Sealing memory for Tx: ${receipt.sui_tx_digest}...`);
+
+  // We format this as a rich semantic string so Claude can easily read it during 'recallContext'
+  const sportContext = receipt.metadata
+    ? `${receipt.metadata.home} vs ${receipt.metadata.away} (${receipt.metadata.sport}) at odds ${receipt.metadata.odds}`
+    : `Market ${receipt.target}`;
+
+  const memoryText =
+    `AGENT_ID: ${receipt.agent_id} | ` +
+    `ACTION: Placed ${receipt.action_type.toUpperCase()} on ${sportContext}. ` +
+    `STAKE: ${receipt.amount} SUI. ` +
+    `REASONING: ${receipt.rationale} ` +
+    `ON_CHAIN_DIGEST: ${receipt.sui_tx_digest} | ` +
+    `TIMESTAMP: ${receipt.timestamp}`;
 
   try {
-    const response = await fetch(WALRUS_PUBLISHER_URL, {
-      method: "PUT",
-      body: payload,
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      console.error(
-        `[Walrus] Status ${response.status}: ${await response.text()}`,
-      );
-      return null;
-    }
-
-    const result = await response.json();
-
-    // Walrus response structure:
-    // Newly created object or existing certified blob
-    const blobId =
-      result.newlyCreated?.blobObject?.blobId ||
-      result.alreadyCertified?.blobId;
-
-    console.log(`[Walrus] Audit trail sealed. Immutable Blob ID: ${blobId}`);
-    return blobId;
+    // We send the formatted text to MemWal
+    await c.remember(memoryText);
+    console.log(`[MemWal] Audit trail successfully sealed in agent memory.`);
+    return true;
   } catch (error) {
-    console.error("[Walrus] Error connecting to Walrus storage:", error);
-    return null;
+    console.error(
+      "[MemWal] Error connecting to MemWal storage:",
+      (error as Error).message,
+    );
+    return false;
   }
 }

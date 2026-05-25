@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import { sponsorAndExecute } from "./sponsor.js";
-import { logTradeToWalrus } from "./logger.js"; // You'll create this next
+import { logTradeToMemwal } from "./logger.js"; // You'll create this next
 import { Transaction } from "@mysten/sui/transactions";
 import { SuiGrpcClient } from "@mysten/sui/grpc";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
@@ -48,7 +48,7 @@ app.post("/agent/execute", async (c) => {
   const result = await sponsorAndExecute(tx, keypair, client);
 
   // 2. Log receipt to Walrus (The fused audit trail)
-  const blobId = await logTradeToWalrus(receipt);
+  const blobId = await logTradeToMemwal(receipt);
 
   return c.json({
     digest: result.Transaction,
