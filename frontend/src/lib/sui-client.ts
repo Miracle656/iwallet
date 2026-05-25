@@ -204,6 +204,11 @@ export function buildCreateIdentityTx(
   vkBytes: Uint8Array,
 ): Transaction {
   const tx = new Transaction();
+  // Option<AgentPolicy> is a struct option — not a pure type. Build None on-chain.
+  const nonePolicy = tx.moveCall({
+    target: "0x1::option::none",
+    typeArguments: [`${IWALLET_PACKAGE_ID}::prototype::AgentPolicy`],
+  });
   tx.moveCall({
     target: `${IWALLET_PACKAGE_ID}::prototype::create_iidentity`,
     typeArguments: [STAKE_COIN_TYPE],
@@ -211,9 +216,127 @@ export function buildCreateIdentityTx(
       tx.pure.string(name),
       tx.pure.vector("u8", Array.from(identityHashLE)),
       tx.pure.vector("u8", Array.from(vkBytes)),
-      // None of Option<AgentPolicy>; serializes to 0x00 regardless of inner type.
-      tx.pure.option("u8", null),
+      nonePolicy,
     ],
   });
   return tx;
+}
+
+// ── Profile page reads ──
+// All numbers are plain (no bigint) so the result is serializable across the
+// Next server/client boundary.
+
+export type CoinHolding = {
+  coinType: string;
+  symbol: string;
+  amount: string; // human-readable
+  objectCount: number;
+};
+
+export type PolicyView = {
+  budgetCapSui: number;
+  amountSpentSui: number;
+  expirationMs: number;
+  allowRecipients: string[];
+};
+
+export type IdentityProfile = {
+  objectId: string;
+  name: string;
+  identityHash: string;
+  owner: string | null;
+  stagedBalanceSui: number;
+  coins: CoinHolding[];
+  policy: PolicyView | null;
+};
+
+export type ActivityItem = {
+  digest: string;
+  timestampMs: number | null;
+  success: boolean;
+};
+
+function symbolFromType(coinType: string): string {
+  return coinType.split("::").pop() ?? coinType;
+}
+
+/** Rich read for the iWallet profile page: identity + on-chain policy + coins held at the object address. */
+export async function getProfile(objectId: string): Promise<IdentityProfile | null> {
+  try {
+    const res = await client.getObject({
+      id: objectId,
+      options: { showContent: true, showType: true },
+    });
+    const content = res.data?.content;
+    if (!content || content.dataType !== "moveObject") return null;
+    const fields = content.fields as Record<string, unknown>;
+
+    const name = (fields.name as string) || "iWallet";
+    const identityHash = "0x" + toHex(fields.identity_hash);
+    const owner = typeof fields.owner === "string" ? (fields.owner as string) : null;
+
+    const stagedBalanceMist = await getStagedBalance(objectId);
+
+    // Coins sent to the shared object's address (George's funding model:
+    // transfer straight to the object id).
+    let coins: CoinHolding[] = [];
+    try {
+      const balances = await client.getAllBalances({ owner: objectId });
+      coins = balances.map((b) => {
+        const sym = symbolFromType(b.coinType);
+        const isSui = b.coinType === "0x2::sui::SUI";
+        const raw = BigInt(b.totalBalance);
+        const amount = isSui ? (Number(raw) / 1e9).toString() : raw.toString();
+        return { coinType: b.coinType, symbol: sym, amount, objectCount: b.coinObjectCount };
+      });
+    } catch {
+      coins = [];
+    }
+
+    // On-chain AgentPolicy
+    const raw = (fields.active_policy as { fields?: Record<string, unknown> } | null);
+    const p = (raw?.fields ?? raw) as Record<string, unknown> | null;
+    const policy: PolicyView | null =
+      p && p.budget_cap != null
+        ? {
+            budgetCapSui: Number(p.budget_cap) / 1e9,
+            amountSpentSui: Number(p.amount_spent ?? 0) / 1e9,
+            expirationMs: p.expiration_ms ? Number(p.expiration_ms) : 0,
+            allowRecipients: Array.isArray(p.allow_recipients)
+              ? (p.allow_recipients as string[])
+              : [],
+          }
+        : null;
+
+    return {
+      objectId,
+      name,
+      identityHash,
+      owner,
+      stagedBalanceSui: Number(stagedBalanceMist) / 1e9,
+      coins,
+      policy,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Recent transactions that touched the iWallet object. */
+export async function getActivity(objectId: string, limit = 12): Promise<ActivityItem[]> {
+  try {
+    const res = await client.queryTransactionBlocks({
+      filter: { ChangedObject: objectId },
+      options: { showEffects: true },
+      limit,
+      order: "descending",
+    });
+    return res.data.map((tx) => ({
+      digest: tx.digest,
+      timestampMs: tx.timestampMs ? Number(tx.timestampMs) : null,
+      success: tx.effects?.status?.status === "success",
+    }));
+  } catch {
+    return [];
+  }
 }

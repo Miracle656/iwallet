@@ -13,7 +13,8 @@ export const SUI_NETWORK: SuiNetwork =
 
 export const IWALLET_PACKAGE_ID =
   process.env.NEXT_PUBLIC_IWALLET_PACKAGE_ID ||
-  "0xe4381def6d7f83901c6347ff575328281fada46bd329e02fa91a1a7d8a4151c8";
+  // Updated 2026-05-25: fresh publish of the AgentPolicy contract.
+  "0x2d90b593a05eedce81d9c66c07ea330efa222fead13eca23437609c31af24740";
 
 export const STAKE_COIN_TYPE =
   process.env.NEXT_PUBLIC_STAKE_COIN_TYPE || "0x2::sui::SUI";
@@ -29,8 +30,9 @@ export const STAGED_BALANCE_KEY =
  * owner field, so the frontend tracks ownership locally for v1.
  */
 export const SEED_IDENTITY_IDS: string[] = (
+  // Provisioned 2026-05-25 under the new AgentPolicy package (0x2d90…).
   process.env.NEXT_PUBLIC_SEED_IDENTITY_IDS ||
-  "0x63896062d97b6cf3bb801dc263978c47e00e4e7496976874967423b0d0cc844c"
+  "0x88a80b4c68c44e2eb8df5e7d66c3f4c552b6180b4a97650cbc6ebec804806150"
 )
   .split(",")
   .map((s) => s.trim())

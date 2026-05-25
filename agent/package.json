@@ -9,6 +9,7 @@
     "serve": "tsx src/server.ts",
     "setup:testnet": "tsx src/setup-testnet.ts",
     "setup:markets": "tsx src/setup-markets.ts",
+    "provision": "tsx src/provision.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit"
   },
