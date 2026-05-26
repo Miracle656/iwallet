@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { PasskeyKeypair } from "@mysten/sui/keypairs/passkey";
+import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
+import type { Transaction } from "@mysten/sui/transactions";
 import { AnimatedHoverText } from "@/components/animated-hover-text";
 import { HashText } from "@/components/hash-text";
 import { addLocalIdentityId } from "@/lib/local-identities";
@@ -18,21 +20,42 @@ import {
   HiOutlineIdentification,
   HiOutlineLockClosed,
   HiOutlineShieldCheck,
+  HiOutlineWallet,
 } from "react-icons/hi2";
 
 const steps = ["Owner", "Identity", "Policy", "Create"] as const;
-
+type OwnerSource = "wallet" | "passkey";
 type ObjectChange = { type?: string; objectType?: string; objectId?: string };
+type SubmitResult = {
+  digest: string;
+  effects?: { status?: { status?: string; error?: string } };
+  objectChanges?: ObjectChange[];
+};
 
 export function CreateIWalletFlow() {
   const [step, setStep] = useState(0);
   const [name, setName] = useState("Operations iWallet");
 
-  // Owner (passkey)
-  const [keypair, setKeypair] = useState<PasskeyKeypair | null>(null);
-  const [ownerAddress, setOwnerAddress] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  // Owner — either connected wallet OR passkey
+  const account = useCurrentAccount();
+  const { mutateAsync: signWithWallet } = useSignAndExecuteTransaction({
+    execute: async ({ bytes, signature }) =>
+      suiClient.executeTransactionBlock({
+        transactionBlock: bytes,
+        signature,
+        options: { showObjectChanges: true, showEffects: true },
+      }),
+  });
+
+  const [ownerSource, setOwnerSource] = useState<OwnerSource | null>(null);
+  const [passkey, setPasskey] = useState<PasskeyKeypair | null>(null);
+  const [passkeyAddress, setPasskeyAddress] = useState<string | null>(null);
+  const [busyPasskey, setBusyPasskey] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const ownerAddress =
+    ownerSource === "wallet" ? account?.address ?? null :
+    ownerSource === "passkey" ? passkeyAddress : null;
 
   // Witness
   const [witnessHex, setWitnessHex] = useState<string | null>(null);
@@ -48,18 +71,29 @@ export function CreateIWalletFlow() {
   const [submitting, setSubmitting] = useState(false);
   const [createdId, setCreatedId] = useState<string | null>(null);
 
-  async function onCreatePasskey() {
-    setBusy(true);
+  function pickWallet() {
+    if (!account) return;
+    setError(null);
+    setOwnerSource("wallet");
+  }
+
+  async function pickPasskey() {
+    setBusyPasskey(true);
     setError(null);
     try {
       const owner = await createPasskeyOwner();
-      setKeypair(owner.keypair);
-      setOwnerAddress(owner.address);
+      setPasskey(owner.keypair);
+      setPasskeyAddress(owner.address);
+      setOwnerSource("passkey");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Passkey creation failed");
     } finally {
-      setBusy(false);
+      setBusyPasskey(false);
     }
+  }
+
+  function resetOwner() {
+    setOwnerSource(null);
   }
 
   function onGenerateWitness() {
@@ -86,8 +120,23 @@ export function CreateIWalletFlow() {
     URL.revokeObjectURL(url);
   }
 
+  async function submitTx(tx: Transaction): Promise<SubmitResult> {
+    if (ownerSource === "wallet") {
+      const res = await signWithWallet({ transaction: tx });
+      return res as unknown as SubmitResult;
+    }
+    if (ownerSource === "passkey" && passkey) {
+      return (await suiClient.signAndExecuteTransaction({
+        transaction: tx,
+        signer: passkey,
+        options: { showObjectChanges: true, showEffects: true },
+      })) as unknown as SubmitResult;
+    }
+    throw new Error("No owner selected");
+  }
+
   async function onCreate() {
-    if (!keypair || !ownerAddress || !identityHashBytes) {
+    if (!ownerAddress || !identityHashBytes) {
       setError("Owner + identity hash required");
       return;
     }
@@ -96,32 +145,22 @@ export function CreateIWalletFlow() {
     try {
       const vkBytes = await fetchVerificationKeyBytes();
 
-      // 1. create_iidentity — owner signs with passkey, owner pays gas
       const tx1 = buildCreateIdentityTx(name, identityHashBytes, vkBytes);
-      const r1 = await suiClient.signAndExecuteTransaction({
-        transaction: tx1,
-        signer: keypair,
-        options: { showObjectChanges: true, showEffects: true },
-      });
+      const r1 = await submitTx(tx1);
       if (r1.effects?.status?.status !== "success") {
         throw new Error(r1.effects?.status?.error ?? "create_iidentity failed");
       }
-      const created = (r1.objectChanges ?? []).find((c: ObjectChange) =>
+      const created = (r1.objectChanges ?? []).find((c) =>
         String(c.objectType ?? "").includes("::prototype::IIdentity<"),
-      ) as ObjectChange | undefined;
+      );
       const newId = created?.objectId;
       if (!newId) throw new Error(`IIdentity not created in tx ${r1.digest}`);
 
-      // 2. set_policy — owner-signed
       const budgetMist = BigInt(Math.max(0, Math.floor(Number(budget) * 1e9)));
       const expirationMs = BigInt(Date.now() + Math.max(1, Number(expiryDays)) * 86_400_000);
       const allow = recipient.trim() ? [recipient.trim()] : [];
       const tx2 = buildSetPolicyTx(newId, budgetMist, allow, expirationMs);
-      const r2 = await suiClient.signAndExecuteTransaction({
-        transaction: tx2,
-        signer: keypair,
-        options: { showEffects: true },
-      });
+      const r2 = await submitTx(tx2);
       if (r2.effects?.status?.status !== "success") {
         throw new Error(r2.effects?.status?.error ?? "set_policy failed");
       }
@@ -130,11 +169,11 @@ export function CreateIWalletFlow() {
       setCreatedId(newId);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Create failed";
-      // Friendlier gas hint — most likely cause for a fresh passkey.
       if (/insufficient.*gas|GasBalance|no.*gas/i.test(msg)) {
         setError(
-          `Owner has no SUI. Send testnet SUI to ${ownerAddress} (the passkey address) and retry. ` +
-            `Gas-station sponsorship is the next step.`,
+          ownerSource === "passkey"
+            ? `Owner has no SUI. Send testnet SUI to ${ownerAddress} (the passkey address) and retry.`
+            : `Wallet has no testnet SUI. Top it up and retry.`,
         );
       } else {
         setError(msg);
@@ -168,11 +207,7 @@ export function CreateIWalletFlow() {
 
       <div className="mt-7">
         {step === 0 && (
-          <Panel icon={<HiOutlineFingerPrint />} title="Owner — passkey">
-            <p className="text-sm text-[#92979d]">
-              Your passkey is the iWallet owner. It authorizes creation, sets the agent&apos;s
-              policy, and can revoke it — no seed phrase, no private key in the browser.
-            </p>
+          <Panel icon={<HiOutlineShieldCheck />} title="Owner — pick one">
             <Field label="iWallet name">
               <input
                 value={name}
@@ -180,21 +215,53 @@ export function CreateIWalletFlow() {
                 className="w-full rounded-xl border border-white/10 bg-[#101113] px-4 py-2.5 text-sm text-[#e5eef1] outline-none focus:border-[#fbff6c]/50"
               />
             </Field>
-            {ownerAddress ? (
-              <div className="rounded-[1.25rem] border border-[#fbff6c]/20 p-4">
-                <p className="text-xs text-[#6f747a]">Owner address (passkey)</p>
-                <p className="mt-2"><HashText value={ownerAddress} chars={16} /></p>
+
+            {ownerSource ? (
+              <div className="rounded-[1.25rem] border border-[#fbff6c]/20 bg-[#fbff6c]/5 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="inline-flex items-center gap-2 text-xs text-[#6f747a]">
+                      {ownerSource === "wallet" ? <HiOutlineWallet /> : <HiOutlineFingerPrint />}
+                      Owner ({ownerSource})
+                    </p>
+                    <p className="mt-2"><HashText value={ownerAddress!} chars={16} /></p>
+                  </div>
+                  <button onClick={resetOwner} className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-[#e5eef1] hover:text-[#fbff6c]">
+                    Switch
+                  </button>
+                </div>
               </div>
             ) : (
-              <button
-                onClick={onCreatePasskey}
-                disabled={busy}
-                data-hover-trigger
-                className="inline-flex w-fit items-center gap-2 rounded-full bg-[#fbff6c] px-6 py-3 text-sm font-semibold text-[#131416] hover:bg-[#f7ff8f] disabled:opacity-40"
-              >
-                <HiOutlineFingerPrint /> {busy ? "Waiting for passkey…" : "Create passkey owner"}
-              </button>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={pickWallet}
+                  disabled={!account}
+                  className="flex flex-col items-start gap-2 rounded-[1.25rem] border border-white/10 bg-[#101113] p-4 text-left transition hover:border-[#fbff6c]/40 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <span className="inline-flex items-center gap-2 text-sm font-medium text-[#e5eef1]">
+                    <HiOutlineWallet className="text-[#fbff6c]" /> Connected wallet
+                  </span>
+                  <span className="text-xs text-[#92979d]">
+                    {account ? <HashText value={account.address} chars={6} /> : "Connect from the navbar first"}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={pickPasskey}
+                  disabled={busyPasskey}
+                  className="flex flex-col items-start gap-2 rounded-[1.25rem] border border-white/10 bg-[#101113] p-4 text-left transition hover:border-[#fbff6c]/40 disabled:opacity-50"
+                >
+                  <span className="inline-flex items-center gap-2 text-sm font-medium text-[#e5eef1]">
+                    <HiOutlineFingerPrint className="text-[#fbff6c]" /> Passkey
+                  </span>
+                  <span className="text-xs text-[#92979d]">
+                    {busyPasskey ? "Waiting for passkey…" : "Create a new passkey on this device"}
+                  </span>
+                </button>
+              </div>
             )}
+
             {error && step === 0 && <p className="text-sm text-red-300">{error}</p>}
           </Panel>
         )}
@@ -250,7 +317,7 @@ export function CreateIWalletFlow() {
 
         {step === 3 && (
           <Panel icon={<HiOutlineShieldCheck />} title="Review & create">
-            <Summary label="Owner (passkey)" value={ownerAddress ?? "—"} mono />
+            <Summary label={`Owner (${ownerSource ?? "—"})`} value={ownerAddress ?? "—"} mono />
             <Summary label="Identity hash" value={identityHash ?? "—"} mono />
             <Summary label="Budget cap" value={`${budget} SUI`} />
             <Summary label="Expiry" value={`${expiryDays} day(s)`} />
@@ -259,17 +326,18 @@ export function CreateIWalletFlow() {
             {!createdId ? (
               <>
                 <div className="rounded-[1.25rem] border border-[#fbff6c]/20 bg-[#fbff6c]/5 p-4 text-sm text-[#fbff6c]">
-                  Submits <code>create_iidentity</code> + <code>set_policy</code>, both signed by your
-                  passkey. The owner address pays gas — fund {ownerAddress ? <HashText value={ownerAddress} chars={6} /> : "your passkey"} with a little testnet SUI first
-                  (gas-station sponsorship is the next step).
+                  Submits <code>create_iidentity</code> + <code>set_policy</code>, signed by your{" "}
+                  {ownerSource === "wallet" ? "connected wallet" : "passkey"}. The owner address pays gas
+                  (gas-station sponsorship is the next task).
                 </div>
                 <button
                   onClick={onCreate}
-                  disabled={submitting || !keypair || !identityHashBytes}
+                  disabled={submitting || !ownerSource}
                   data-hover-trigger
                   className="inline-flex w-fit items-center gap-2 rounded-full bg-[#fbff6c] px-8 py-4 text-sm font-semibold text-[#131416] hover:bg-[#f7ff8f] disabled:opacity-40"
                 >
-                  <HiOutlineFingerPrint /> {submitting ? "Signing & submitting…" : "Create iWallet"}
+                  {ownerSource === "wallet" ? <HiOutlineWallet /> : <HiOutlineFingerPrint />}
+                  {submitting ? "Signing & submitting…" : "Create iWallet"}
                 </button>
                 {error && <p className="text-sm text-red-300">{error}</p>}
               </>
