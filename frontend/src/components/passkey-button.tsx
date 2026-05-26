@@ -1,0 +1,59 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import {
+  clearStoredOwner,
+  getStoredOwnerAddress,
+  recoverPasskeyOwner,
+} from "@/lib/passkey";
+import { HiOutlineFingerPrint } from "react-icons/hi2";
+
+const buttonClass =
+  "inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#222328] px-4 py-2 text-sm font-medium text-[#e5eef1] transition hover:border-[#fbff6c]/50 hover:text-[#fbff6c] disabled:opacity-50";
+
+function shortAddress(address: string): string {
+  return `${address.slice(0, 6)}…${address.slice(-4)}`;
+}
+
+/** Passkey-based owner sign-in (independent of the dapp-kit wallet connect). */
+export function PasskeyButton() {
+  const [owner, setOwner] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    setOwner(getStoredOwnerAddress());
+  }, []);
+
+  async function signIn() {
+    setBusy(true);
+    try {
+      const { address } = await recoverPasskeyOwner();
+      setOwner(address);
+    } catch {
+      // No existing passkey for this domain or cancelled — created via /iwallets/create.
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function signOut() {
+    clearStoredOwner();
+    setOwner(null);
+  }
+
+  if (owner) {
+    return (
+      <button onClick={signOut} className={buttonClass} title="Sign out of passkey">
+        <HiOutlineFingerPrint className="text-base text-[#fbff6c]" />
+        {shortAddress(owner)}
+      </button>
+    );
+  }
+
+  return (
+    <button onClick={signIn} disabled={busy} className={buttonClass}>
+      <HiOutlineFingerPrint className="text-base" />
+      {busy ? "Passkey…" : "Sign in with passkey"}
+    </button>
+  );
+}

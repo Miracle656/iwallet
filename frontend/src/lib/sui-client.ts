@@ -18,10 +18,11 @@ import {
   SEED_IDENTITY_IDS,
 } from "./sui-config";
 
-const client = new SuiJsonRpcClient({
+export const suiClient = new SuiJsonRpcClient({
   url: getJsonRpcFullnodeUrl(SUI_NETWORK),
   network: SUI_NETWORK,
 });
+const client = suiClient;
 
 const ZERO_ADDRESS =
   "0x0000000000000000000000000000000000000000000000000000000000000000";
