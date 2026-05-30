@@ -5,10 +5,16 @@ such as 10.5 SUI or 0.00001 nBTC
 */
 
 import { SuiGrpcClient } from "@mysten/sui/grpc";
-import { type AccountInfo, deepbook } from "@mysten/deepbook-v3";
+import { deepbook } from "@mysten/deepbook-v3";
 import { Transaction } from "@mysten/sui/transactions";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import dotenv from "dotenv";
+import {
+  AccountInfo,
+  BaseQuantityOut,
+  QuantityOut,
+  QuoteQuantityOut,
+} from "../types";
 dotenv.config();
 
 export class DeepBookService {
@@ -124,7 +130,7 @@ export class DeepBookService {
       @balanceManagerKey: key of the balance manager defined in the SDK.
   */
   async account(poolKey: string, managerKey: string): Promise<AccountInfo> {
-    return this.grpcClient.deepbook.account(poolKey, managerKey);
+    return await this.grpcClient.deepbook.account(poolKey, managerKey);
   }
 
   /*
@@ -139,7 +145,10 @@ export class DeepBookService {
     poolKey: string,
     managerKey: string,
   ): Promise<string[]> {
-    return this.grpcClient.deepbook.accountOpenOrders(poolKey, managerKey);
+    return await this.grpcClient.deepbook.accountOpenOrders(
+      poolKey,
+      managerKey,
+    );
   }
 
   /*
@@ -155,4 +164,88 @@ export class DeepBookService {
     managerKey: String that identifies the balance manager to query.
     coinKey: String that identifies the coin to query the balance of.
   */
+  async checkManagerBalance(
+    managerKey: string,
+    coinKey: string,
+  ): Promise<{
+    coinType: string;
+    balance: number;
+  }> {
+    return await this.grpcClient.deepbook.checkManagerBalance(
+      managerKey,
+      coinKey,
+    );
+  }
+
+  /*
+  Use getOrder to retrieve an order's information.
+  The call returns a Promise in the Order struct, which has the following form:
+
+  {
+    balance_manager_id: {
+      bytes: '0x6149bfe6808f0d6a9db1c766552b7ae1df477f5885493436214ed4228e842393'
+    },
+    order_id: '9223372036873222552073709551614',
+    client_order_id: '888',
+    quantity: '50000000',
+    filled_quantity: '0',
+    fee_is_deep: true,
+    order_deep_price: { asset_is_base: false, deep_per_asset: '0' },
+    epoch: '440',
+    status: 0,
+    expire_timestamp: '1844674407370955161'
+  }
+
+  Parameters
+
+  poolKey: String that identifies the pool to query. orderId: ID of the order to query.
+
+  */
+  async getOrder(
+    poolKey: string,
+    orderId: string,
+  ): Promise<{
+    balance_manager_id: string;
+    order_id: string;
+    client_order_id: string;
+    quantity: string;
+    filled_quantity: string;
+    fee_is_deep: boolean;
+    order_deep_price: { asset_is_base: boolean; deep_per_asset: string };
+    epoch: string;
+    status: number;
+    expire_timestamp: string;
+  } | null> {
+    return await this.grpcClient.deepbook.getOrder(poolKey, orderId);
+  }
+
+  /*
+  Use getQuantityOut to retrieve the output quantities for the base or quote quantity you provide.
+  You provide values for both quantities, but only one of them can be nonzero. The call returns a Promise with the form:
+
+  {
+    baseQuantity: number,
+    quoteQuantity: number,
+    baseOut: number,
+    quoteOut: number,
+    deepRequired: number
+  }
+
+  Parameters
+
+  poolKey: String that identifies the pool to query.
+  baseQuantity: Number that defines the base quantity you want to convert. Set to 0 if using quote quantity.
+  quoteQuantity: Number that defines the quote quantity you want to convert. Set to 0 if using base quantity.
+  */
+  async getQuantityOut(
+    poolKey: string,
+    baseQuantity: number,
+    quoteQuantity: number,
+  ): Promise<QuantityOut> {
+    return await this.grpcClient.deepbook.getQuantityOut(
+      poolKey,
+      baseQuantity,
+      quoteQuantity,
+    );
+  }
 }
