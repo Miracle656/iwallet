@@ -46,6 +46,7 @@ export class DeepBookService {
     return this.tx;
   }
 
+  // withdraw a coin from deepbook
   async withdrawFund(
     managerKey: string,
     coinKey: string,
@@ -59,6 +60,49 @@ export class DeepBookService {
         this._keypair.getPublicKey().toString(),
       ),
     );
+    return this.tx;
+  }
+
+  // withdrw all the deep from deepbook
+  async withdrawAllDeep(
+    managerKey: string,
+    coinKey: string,
+  ): Promise<Transaction> {
+    this.tx.add(
+      this.grpcClient.deepbook.balanceManager.withdrawAllFromManager(
+        managerKey,
+        coinKey,
+        this._keypair.getPublicKey().toString(),
+      ),
+    );
+    return this.tx;
+  }
+
+  // creating capability from delegate trading on deepbook
+  async mintAndUseTradeCap(
+    managerKey: string,
+    traderAddress: string,
+  ): Promise<Transaction> {
+    const tradeCap = this.tx.add(
+      this.grpcClient.deepbook.balanceManager.mintTradeCap(managerKey),
+    );
+
+    this.tx.transferObjects([tradeCap], traderAddress);
+
+    return this.tx;
+  }
+
+  // minting a trading capability
+  async mintDepositCap(
+    managerKey: string,
+    coinKey: string,
+    amount: number,
+    recipient: string,
+  ): Promise<Transaction> {
+    const depositCap = this.tx.add(
+      this.grpcClient.deepbook.balanceManager.mintDepositCap(managerKey),
+    );
+    this.tx.transferObjects([depositCap], recipient);
     return this.tx;
   }
 }
