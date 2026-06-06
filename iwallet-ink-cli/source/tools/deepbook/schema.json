@@ -119,14 +119,6 @@
 					"type": "string",
 					"description": "String that identifies the balance manager."
 				},
-				"coinKey": {
-					"type": "string",
-					"description": "String that identifies the coin to withdraw."
-				},
-				"amount": {
-					"type": "string",
-					"description": "String that identifies the amount to deposit."
-				},
 				"recipient": {
 					"type": "string",
 					"description": "String that identifies the recipient's address."
