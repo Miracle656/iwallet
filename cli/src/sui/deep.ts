@@ -131,8 +131,11 @@ export class DeepBookService {
       @poolKey: String that identifies the pool to query.
       @balanceManagerKey: key of the balance manager defined in the SDK.
   */
-  async account(poolKey: string, managerKey: string): Promise<AccountInfo> {
-    return await this.grpcClient.deepbook.account(poolKey, managerKey);
+  async account(
+    poolKey: string,
+    balanceManagerKey: string,
+  ): Promise<AccountInfo> {
+    return await this.grpcClient.deepbook.account(poolKey, balanceManagerKey);
   }
 
   /*
@@ -301,4 +304,7 @@ export class DeepBookService {
   ): Promise<Level2TicksFromMid> {
     return await this.grpcClient.deepbook.getLevel2TicksFromMid(poolKey, ticks);
   }
+
+  // stoped here so the function implementation can be added from this function => lockedBalance todo
+  // todo
 }
