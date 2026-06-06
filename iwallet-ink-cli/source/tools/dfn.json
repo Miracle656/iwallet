@@ -1,0 +1,90 @@
+[
+	{
+		"type": "function",
+		"name": "createBalanceManager",
+		"description": "Use createBalanceManagerWithOwner to create a new balance manager with a custom owner. Returns the manager object. The call returns a function that takes a Transaction object.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"address": {
+					"type": "string",
+					"description": "The address of the owner of the balance manager which is the address for the AI agent."
+				}
+			},
+			"required": ["address"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "depositIntoManager",
+		"description": "Use depositIntoManager to deposit funds into a balance manager. The call returns a function that takes a Transaction object.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"managerKey": {
+					"type": "string",
+					"description": "Deposits a specified amount of funds or tokens into the protocol's manager account or treasury."
+				},
+				"coinKey": {
+					"type": "string",
+					"description": "The coin key of the token to deposit."
+				},
+				"amount": {
+					"type": "number",
+					"description": "The amount of tokens to deposit."
+				}
+			},
+			"required": ["managerKey", "coinKey", "amount"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "withdrawFund",
+		"description": "Use withdrawFund to withdraw funds from a balance manager. The call returns a function that takes a Transaction object.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"managerKey": {
+					"type": "string",
+					"description": "String that identifies the balance manager."
+				},
+				"coinKey": {
+					"type": "string",
+					"description": "String that identifies the coin to withdraw."
+				},
+				"amount": {
+					"type": "number",
+					"description": "Number representing the amount to withdraw."
+				}
+			},
+			"required": ["managerKey", "coinKey", "amount"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "withdrawAllDeep",
+		"description": "Use withdrawAllDeep to withdraw all funds of a specific coin type from a balance manager. The call returns a function that takes a Transaction object.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"managerKey": {
+					"type": "string",
+					"description": "String that identifies the balance manager."
+				},
+				"coinKey": {
+					"type": "string",
+					"description": "String that identifies the coin to withdraw."
+				}
+			},
+			"required": ["managerKey", "coinKey"],
+			"additionalProperties": false
+		},
+		"strict": true
+	}
+]
