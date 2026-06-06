@@ -86,5 +86,382 @@
 			"additionalProperties": false
 		},
 		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "mintAndUseTradeCap",
+		"description": "creating capability from delegate trading on deepbook",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"managerKey": {
+					"type": "string",
+					"description": "String that identifies the balance manager."
+				},
+				"traderAddress": {
+					"type": "string",
+					"description": "String that identifies the trader's address."
+				}
+			},
+			"required": ["managerKey", "traderAddress"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "mintDepositCap",
+		"description": "Use mintDepositCap to deposit funds into a balance manager using a depositCap. The call returns a function that takes a Transaction object.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"managerKey": {
+					"type": "string",
+					"description": "String that identifies the balance manager."
+				},
+				"coinKey": {
+					"type": "string",
+					"description": "String that identifies the coin to withdraw."
+				},
+				"amount": {
+					"type": "string",
+					"description": "String that identifies the amount to deposit."
+				},
+				"recipient": {
+					"type": "string",
+					"description": "String that identifies the recipient's address."
+				}
+			},
+			"required": ["managerKey", "coinKey", "amount", "recipient"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "account",
+		"description": "Use account to retrieve the account information for a BalanceManager in a pool, which has the following form: parameters - @poolKey: String that identifies the pool to query.@balanceManagerKey: key of the balance manager defined in the SDK.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String that identifies the pool to query."
+				},
+				"balanceManagerKey": {
+					"type": "string",
+					"description": "key of the balance manager defined in the SDK."
+				}
+			},
+			"required": ["poolKey", "balanceManagerKey"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "accountOpenOrders",
+		"description": "Use accountOpenOrders to retrieve open orders for the balance manager and pool with the IDs you provide. The call returns a Promise that contains an array of open order IDs. parameters - poolKey: String that identifies the pool to query.managerKey: String that identifies the balance manager to query.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String that identifies the pool to query."
+				},
+				"managerKey": {
+					"type": "string",
+					"description": "String that identifies the balance manager to query."
+				}
+			},
+			"required": [],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "checkManagerBalance",
+		"description": "Use checkManagerBalance to check the balance manager for a specific coin. The call returns a Promise in the form",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"managerKey": {
+					"type": "string",
+					"description": "String that identifies the balance manager to query."
+				},
+				"coinType": {
+					"type": "string",
+					"description": "String that identifies the coin to query the balance of"
+				}
+			},
+			"required": ["managerKey", "coinType"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "getOrder",
+		"description": "Use getOrder to retrieve an order's information.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String that identifies the pool to query."
+				},
+				"orderId": {
+					"type": "string",
+					"description": "orderId: ID of the order to query."
+				}
+			},
+			"required": ["poolKey", "orderId"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "getQuantityOut",
+		"description": "getQuantityOut to retrieve the output quantities for the base or quote quantity you provide.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String that identifies the pool to query."
+				},
+				"baseQuantity": {
+					"type": "number",
+					"description": "Number that defines the base quantity you want to convert. Set to 0 if using quote quantity."
+				},
+				"quoteQuantity": {
+					"type": "number",
+					"description": "Number that defines the quote quantity you want to convert. Set to 0 if using base quantity."
+				}
+			},
+			"required": ["poolKey", "baseQuantity", "quoteQuantity"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "getLevel2Range",
+		"description": "Use getLevel2Range to retrieve level 2 order book within the boundary price range you provide.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String that identifies the pool to query."
+				},
+				"priceLow": {
+					"type": "number",
+					"description": "Number for lower bound of price range."
+				},
+				"priceHigh": {
+					"type": "number",
+					"description": "Number for upper bound of price range."
+				},
+				"isBid": {
+					"type": "boolean",
+					"description": "Boolean when set to true gets bid orders, else retrieve ask orders."
+				}
+			},
+			"required": ["poolKey", "priceLow", "priceHigh", "isBid"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "getLevel2TicksFromMid",
+		"description": "Use getLevel2TicksFromMid to retrieve level 2 order book ticks from mid-price for a pool with the ID you provide.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String that identifies the pool to query."
+				},
+				"ticks": {
+					"type": "number",
+					"description": "Number of ticks from mid-price."
+				}
+			},
+			"required": ["poolKey", "ticks"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "lockedBalance",
+		"description": "Use lockedBalance to retrieve a BalanceManager locked balance in the pool.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String that identifies the pool to query."
+				},
+				"balanceManagerKey": {
+					"type": "string",
+					"description": "key of the balance manager defined in the SDK."
+				}
+			},
+			"required": ["poolKey", "balanceManagerKey"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "poolTradeParams",
+		"description": "Use poolTradeParams to retrieve the trade params for the pool, which has the following form { takerFee: , makerFee: , stakeRequired: }",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String that identifies the pool to query."
+				}
+			},
+			"required": ["poolKey"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "vaultBalances",
+		"description": "Use vaultBalances to get the vault balances for a pool with the ID you provide.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String that identifies the pool to query."
+				}
+			},
+			"required": ["poolKey"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "getPoolIdByAssets",
+		"description": "Use getPoolIdByAssets to retrieve the pool ID for the asset types you provide.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"baseType": {
+					"type": "string",
+					"description": "String of the type of base asset."
+				},
+				"quoteType": {
+					"type": "string",
+					"description": "String of the type of quote asset."
+				}
+			},
+			"required": ["baseType", "quoteType"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "midPrice",
+		"description": "Use midPrice to retrieve the mid price for a pool with the ID that you provide.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String that identifies the pool to query."
+				}
+			},
+			"required": ["poolKey"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "whitelisted",
+		"description": "Use whitelisted to check if the pool with the ID you provide is whitelisted. The call returns a Promise as a boolean indicating whether the pool is whitelisted.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String that identifies the pool to query."
+				}
+			},
+			"required": ["poolKey"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "poolBookParams",
+		"description": "Use poolBookParams to retrieve the book parameters for a pool, including tick size, lot size, and min size. The call returns a Promise with the book parameters.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String that identifies the pool to query."
+				}
+			},
+			"required": ["poolKey"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "getOrders",
+		"description": "Use getOrders to retrieve multiple orders from a pool. The call returns a Promise with an array of order information.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String that identifies the pool to query."
+				},
+				"orderIds": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"description": "Array of strings representing the order IDs to retrieve."
+				}
+			},
+			"required": ["poolKey", "orderIds"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "getPoolDeepPrice",
+		"description": "Use getPoolDeepPrice to get the DEEP price conversion for a pool. The call returns a Promise with the DEEP price information.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String that identifies the pool to query."
+				}
+			},
+			"required": ["poolKey"],
+			"additionalProperties": false
+		},
+		"strict": true
 	}
 ]
