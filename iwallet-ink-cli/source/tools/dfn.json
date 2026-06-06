@@ -463,5 +463,191 @@
 			"additionalProperties": false
 		},
 		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "addDeepPricePoint",
+		"description": "Use addDeepPricePoint to add a DEEP price point for a target pool using a reference pool. The call returns a function that takes a Transaction object.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"targetPoolKey": {
+					"type": "string",
+					"description": "String that identifies the target pool to add the DEEP price point to."
+				},
+				"referencePoolKey": {
+					"type": "string",
+					"description": "String that identifies the reference pool to use for the DEEP price point."
+				}
+			},
+			"required": ["targetPoolKey", "referencePoolKey"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "updatePoolAllowedVersions",
+		"description": "Use updatePoolAllowedVersions to update the allowed package versions for a pool. The call returns a function that takes a Transaction object.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String that identifies the pool to update."
+				}
+			},
+			"required": ["poolKey"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "createPermissionlessPool",
+		"description": "Use createPermissionlessPool to create a new permissionless pool. The call returns a function that takes a Transaction object.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"baseCoinKey": {
+					"type": "string",
+					"description": "String that identifies the base coin."
+				},
+				"quoteCoinKey": {
+					"type": "string",
+					"description": "String that identifies the quote coin."
+				},
+				"tickSize": {
+					"type": "number",
+					"description": "Number representing the tick size."
+				},
+				"lotSize": {
+					"type": "number",
+					"description": "Number representing the lot size."
+				},
+				"minSize": {
+					"type": "number",
+					"description": "Number representing the minimum order size."
+				},
+				"deepCoin": {
+					"type": "string",
+					"description": "Optional TransactionArgument for DEEP token payment."
+				}
+			},
+			"required": [
+				"baseCoinKey",
+				"quoteCoinKey",
+				"tickSize",
+				"lotSize",
+				"minSize"
+			],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "getBalanceManagerIds",
+		"description": "Use getBalanceManagerIds to get all balance manager IDs for a specific owner.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"owner": {
+					"type": "string",
+					"description": "String representing the owner address."
+				}
+			},
+			"required": ["owner"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "mintReferral",
+		"description": "Use mintReferral to create a new referral for a pool with a specified multiplier. The multiplier determines what percentage of trading fees are allocated to the referrer. The call returns a function that takes a Transaction object.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String that identifies the pool."
+				},
+				"multiplier": {
+					"type": "number",
+					"description": "Number representing the referral multiplier (such as 0.1 for 10%)."
+				}
+			},
+			"required": ["poolKey", "multiplier"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "updateReferralMultiplier",
+		"description": "Use updateReferralMultiplier to update the multiplier for an existing referral. Only the referral owner can update the multiplier. The call returns a function that takes a Transaction object.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String that identifies the pool."
+				},
+				"referral": {
+					"type": "string",
+					"description": "String representing the referral ID."
+				},
+				"multiplier": {
+					"type": "number",
+					"description": "Number representing the referral multiplier (such as 0.1 for 10%)."
+				}
+			},
+			"required": ["poolKey", "referral", "multiplier"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "claimReferralRewards",
+		"description": "Use claimReferralRewards to claim accumulated referral fees. Returns an object with baseRewards, quoteRewards, and deepRewards. The call returns a function that takes a Transaction object.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String that identifies the pool."
+				},
+				"referral": {
+					"type": "string",
+					"description": "String representing the referral ID."
+				}
+			},
+			"required": [],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "getReferralBalances",
+		"description": "Use getReferralBalances to retrieve the referral balances for a given pool and referral. Returns an object with baseRewards, quoteRewards, and deepRewards.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String that identifies the pool."
+				},
+				"referral": {
+					"type": "string",
+					"description": "String representing the referral ID."
+				}
+			},
+			"required": ["poolKey", "referral"],
+			"additionalProperties": false
+		},
+		"strict": true
 	}
 ]
