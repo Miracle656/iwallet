@@ -1,4 +1,4 @@
-import { MemWal } from '@mysten-incubation/memwal';
+import { MemWal } from "@mysten-incubation/memwal";
 
 /**
  * Persistent, encrypted agent memory on Walrus via MemWal.
@@ -13,8 +13,9 @@ import { MemWal } from '@mysten-incubation/memwal';
 
 const KEY = process.env.MEMWAL_KEY;
 const ACCOUNT = process.env.MEMWAL_ACCOUNT_ID;
-const SERVER = process.env.MEMWAL_SERVER_URL ?? 'https://relayer.staging.memwal.ai';
-const NAMESPACE = process.env.MEMWAL_NAMESPACE ?? 'iwallet-agent';
+const SERVER =
+  process.env.MEMWAL_SERVER_URL ?? "https://relayer.staging.memwal.ai";
+const NAMESPACE = process.env.MEMWAL_NAMESPACE ?? "iwallet-agent";
 
 export function memwalEnabled(): boolean {
   return !!(KEY && ACCOUNT);
@@ -58,19 +59,22 @@ export async function rememberBet(b: BetMemory): Promise<void> {
   try {
     await c.remember(text);
   } catch (e) {
-    console.warn('[memwal] remember failed:', (e as Error).message);
+    console.warn("[memwal] remember failed:", (e as Error).message);
   }
 }
 
 /** Recall memories relevant to a query; returns the memory texts (best-first). */
-export async function recallContext(query: string, limit = 5): Promise<string[]> {
+export async function recallContext(
+  query: string,
+  limit = 5,
+): Promise<string[]> {
   const c = getClient();
   if (!c) return [];
   try {
     const res = await c.recall(query, limit);
     return (res.results ?? []).map((r) => r.text);
   } catch (e) {
-    console.warn('[memwal] recall failed:', (e as Error).message);
+    console.warn("[memwal] recall failed:", (e as Error).message);
     return [];
   }
 }

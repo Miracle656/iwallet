@@ -8,6 +8,11 @@ import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import dotenv from "dotenv";
 dotenv.config();
 
+const client = new SuiGrpcClient({
+  network: "testnet",
+  baseUrl: "https://fullnode.testnet.sui.io:443",
+});
+
 let keypair = Ed25519Keypair.fromSecretKey(process.env.SPONSOR_PRIVATE_KEY!);
 
 const app = new Hono();
@@ -27,10 +32,7 @@ app.use("*", async (c, next) => {
 app.post("/sponsor/setup", async (c) => {
   const { txBytes } = await c.req.json();
   let tx = Transaction.from(txBytes);
-  const client = new SuiGrpcClient({
-    network: "testnet",
-    baseUrl: "https://fullnode.testnet.sui.io:443",
-  });
+
   const result = await sponsorAndExecute(tx, keypair, client);
   return c.json({ success: true, digest: result.Transaction });
 });
@@ -39,10 +41,6 @@ app.post("/sponsor/setup", async (c) => {
 app.post("/agent/execute", async (c) => {
   const { txBytes, receipt } = await c.req.json();
   let tx = Transaction.from(txBytes);
-  const client = new SuiGrpcClient({
-    network: "testnet",
-    baseUrl: "https://fullnode.testnet.sui.io:443",
-  });
 
   // 1. Execute the trade via Gas Station
   const result = await sponsorAndExecute(tx, keypair, client);

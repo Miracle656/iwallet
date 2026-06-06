@@ -14,6 +14,8 @@ import {
   BaseQuantityOut,
   QuantityOut,
   QuoteQuantityOut,
+  Level2Range,
+  Level2TicksFromMid,
 } from "../types";
 dotenv.config();
 
@@ -247,5 +249,56 @@ export class DeepBookService {
       baseQuantity,
       quoteQuantity,
     );
+  }
+
+  /*
+  Use getLevel2Range to retrieve level 2 order book within the boundary price range you provide.
+  The call returns a Promise in the form:
+    {
+      prices: Array<number>,
+      quantities: Array<number>
+    }
+    Parameters
+
+    poolKey: String that identifies the pool to query.
+    priceLow: Number for lower bound of price range.
+    priceHigh: Number for upper bound of price range.
+    isBid: Boolean when set to true gets bid orders, else retrieve ask orders.
+  */
+  async getLevel2Range(
+    poolKey: string,
+    priceLow: number | bigint,
+    priceHigh: number | bigint,
+    isBid: boolean,
+  ): Promise<Level2Range> {
+    return await this.grpcClient.deepbook.getLevel2Range(
+      poolKey,
+      priceLow,
+      priceHigh,
+      isBid,
+    );
+  }
+
+  /*
+  Use getLevel2TicksFromMid to retrieve level 2 order book ticks from mid-price for a pool with the ID you provide.
+  The call returns a Promise in the form:
+  {
+    bid_prices: Array<number>,
+    bid_quantities: Array<number>,
+    ask_prices: Array<number>,
+    ask_quantities: Array<number>
+  }
+
+    Parameters
+
+    poolKey: String that identifies the pool to query.
+    ticks: Number of ticks from mid-price.
+  */
+
+  async getLevel2TicksFromMid(
+    poolKey: string,
+    ticks: number,
+  ): Promise<Level2TicksFromMid> {
+    return await this.grpcClient.deepbook.getLevel2TicksFromMid(poolKey, ticks);
   }
 }
