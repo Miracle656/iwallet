@@ -364,7 +364,7 @@ export async function getPoolDeepPrice(
 	return await grpcClient.deepbook.getPoolDeepPrice(poolKey);
 }
 
-export async function addDeepPricePoint(
+export function addDeepPricePoint(
 	targetPoolKey: string,
 	referencePoolKey: string,
 ) {
@@ -374,11 +374,11 @@ export async function addDeepPricePoint(
 	);
 }
 
-export async function updatePoolAllowedVersions(poolKey: string) {
+export function updatePoolAllowedVersions(poolKey: string) {
 	return grpcClient.deepbook.deepBook.updatePoolAllowedVersions(poolKey);
 }
 
-export async function createPermissionlessPool(
+export function createPermissionlessPool(
 	baseCoinKey: string,
 	quoteCoinKey: string,
 	tickSize: number,
@@ -396,15 +396,15 @@ export async function createPermissionlessPool(
 	});
 }
 
-export async function getBalanceManagerIds(owner: string) {
+export function getBalanceManagerIds(owner: string) {
 	return grpcClient.deepbook.deepBook.getBalanceManagerIds(owner);
 }
 
-export async function mintRefferal(poolKey: string, multiplier: number) {
+export function mintRefferal(poolKey: string, multiplier: number) {
 	return grpcClient.deepbook.deepBook.mintReferral(poolKey, multiplier);
 }
 
-export async function updateReferralMultiplier(
+export function updateReferralMultiplier(
 	poolKey: string,
 	referral: string,
 	multiplier: number,
@@ -416,8 +416,15 @@ export async function updateReferralMultiplier(
 	);
 }
 
-export async function claimReferralRewards(poolKey: string, referral: string) {
+export function claimReferralRewards(poolKey: string, referral: string) {
 	return grpcClient.deepbook.deepBook.claimPoolReferralRewards(
+		poolKey,
+		referral,
+	);
+}
+
+export function getReferralBalances(poolKey: string, referral: string) {
+	return grpcClient.deepbook.deepBook.getPoolReferralBalances(
 		poolKey,
 		referral,
 	);
