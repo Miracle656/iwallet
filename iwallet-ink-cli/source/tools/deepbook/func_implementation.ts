@@ -6,9 +6,7 @@ import {deepbook} from '@mysten/deepbook-v3';
 import dotenv from 'dotenv';
 import {
 	AccountInfo,
-	BaseQuantityOut,
 	QuantityOut,
-	QuoteQuantityOut,
 	Level2Range,
 	Level2TicksFromMid,
 	PoolTradeParams,
@@ -17,7 +15,6 @@ import {
 	PoolDeepPrice,
 	OrderType,
 	SelfMatchingOptions,
-	SwapParams,
 } from '../../types/index.js';
 
 dotenv.config();
