@@ -15,6 +15,9 @@ import {
 	VaultBalances,
 	PoolBookParams,
 	PoolDeepPrice,
+	OrderType,
+	SelfMatchingOptions,
+	SwapParams,
 } from '../../types/index.js';
 
 dotenv.config();
@@ -427,5 +430,116 @@ export function getReferralBalances(poolKey: string, referral: string) {
 	return grpcClient.deepbook.deepBook.getPoolReferralBalances(
 		poolKey,
 		referral,
+	);
+}
+// start from here to implement the schema
+export function placeLimitOrder(
+	poolKey: string,
+	balanceManagerKey: string,
+	clientOrderId: string,
+	price: number | bigint,
+	quantity: number | bigint,
+	isBid: boolean,
+	expiration?: number | bigint,
+	orderType?: OrderType,
+	selfMatchingOption?: SelfMatchingOptions,
+	payWithDeep?: boolean,
+) {
+	return grpcClient.deepbook.deepBook.placeLimitOrder({
+		poolKey,
+		balanceManagerKey,
+		clientOrderId,
+		price,
+		quantity,
+		isBid,
+		expiration,
+		orderType,
+		selfMatchingOption,
+		payWithDeep,
+	});
+}
+
+export function placeMarketOrder(
+	poolKey: string,
+	balanceManagerKey: string,
+	clientOrderId: string,
+	quantity: number | bigint,
+	isBid: boolean,
+	selfMatchingOption?: SelfMatchingOptions,
+	payWithDeep?: boolean,
+) {
+	return grpcClient.deepbook.deepBook.placeMarketOrder({
+		poolKey,
+		balanceManagerKey,
+		clientOrderId,
+		quantity,
+		isBid,
+		selfMatchingOption,
+		payWithDeep,
+	});
+}
+
+export function cancelOrder(
+	poolKey: string,
+	balanceManagerKey: string,
+	orderId: string,
+) {
+	return grpcClient.deepbook.deepBook.cancelOrder(
+		poolKey,
+		balanceManagerKey,
+		orderId,
+	);
+}
+
+export function cancelOrders(
+	poolKey: string,
+	balanceManagerKey: string,
+	orderIds: string[],
+) {
+	return grpcClient.deepbook.deepBook.cancelOrders(
+		poolKey,
+		balanceManagerKey,
+		orderIds,
+	);
+}
+
+export function cancelAllOrders(poolKey: string, balanceManagerKey: string) {
+	return grpcClient.deepbook.deepBook.cancelAllOrders(
+		poolKey,
+		balanceManagerKey,
+	);
+}
+
+export function modifyOrder(
+	poolKey: string,
+	balanceManagerKey: string,
+	orderId: string,
+	newQuantity: number,
+) {
+	return grpcClient.deepbook.deepBook.modifyOrder(
+		poolKey,
+		balanceManagerKey,
+		orderId,
+		newQuantity,
+	);
+}
+
+export function withdrawSettledAmounts(
+	poolKey: string,
+	balanceManagerKey: string,
+) {
+	return grpcClient.deepbook.deepBook.withdrawSettledAmounts(
+		poolKey,
+		balanceManagerKey,
+	);
+}
+
+export function withdrawSettledAmountsPermissionless(
+	poolKey: string,
+	balanceManagerKey: string,
+) {
+	return grpcClient.deepbook.deepBook.withdrawSettledAmountsPermissionless(
+		poolKey,
+		balanceManagerKey,
 	);
 }
