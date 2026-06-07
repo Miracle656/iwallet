@@ -641,5 +641,65 @@
 			"additionalProperties": false
 		},
 		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "placeLimitOrder",
+		"description": "Use placeLimitOrder to place limit orders. The call returns a function that takes a Transaction object.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String that identifies the pool."
+				},
+				"balanceManagerKey": {
+					"type": "string",
+					"description": "String that identifies the balance manager."
+				},
+				"clientOrderId": {
+					"type": "string",
+					"description": "String that identifies the client order."
+				},
+				"price": {
+					"type": "number",
+					"description": "Number representing the price of the order."
+				},
+				"quantity": {
+					"type": "number",
+					"description": "Number representing the quantity of the order."
+				},
+				"isBid": {
+					"type": "boolean",
+					"description": "Boolean indicating whether the order is a bid or ask."
+				},
+				"expiration": {
+					"type": "number",
+					"description": "Number representing the expiration time of the order."
+				},
+				"orderType": {
+					"type": "string",
+					"enum": [
+						"NO_RESTRICTION",
+						"IMMEDIATE_OR_CANCEL",
+						"FILL_OR_KILL",
+						"POST_ONLY"
+					],
+					"description": "String representing the order type."
+				},
+				"selfMatchingOption": {
+					"type": "string",
+					"enum": ["SELF_MATCHING_ALLOWED", "CANCEL_TAKER", "CANCEL_MAKER"],
+					"description": "String representing the self-matching option."
+				},
+				"payWithDeep": {
+					"type": "boolean",
+					"description": "Boolean indicating whether to pay with Deep."
+				}
+			},
+			"required": [],
+			"additionalProperties": false
+		},
+		"strict": true
 	}
 ]
