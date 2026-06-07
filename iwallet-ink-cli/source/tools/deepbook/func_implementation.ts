@@ -1,5 +1,5 @@
 import {SuiGrpcClient} from '@mysten/sui/grpc';
-import {Transaction} from '@mysten/sui/transactions';
+import {Transaction, TransactionObjectArgument} from '@mysten/sui/transactions';
 import {Ed25519Keypair} from '@mysten/sui/keypairs/ed25519';
 import {deepbook} from '@mysten/deepbook-v3';
 
@@ -13,6 +13,8 @@ import {
 	Level2TicksFromMid,
 	PoolTradeParams,
 	VaultBalances,
+	PoolBookParams,
+	PoolDeepPrice,
 } from '../../types/index.js';
 
 dotenv.config();
@@ -322,4 +324,101 @@ export async function getPoolIdByAssets(
 
 export async function midPrice(poolKey: string): Promise<number> {
 	return await grpcClient.deepbook.midPrice(poolKey);
+}
+
+export async function whitelisted(poolKey: string): Promise<boolean> {
+	return await grpcClient.deepbook.whitelisted(poolKey);
+}
+
+export async function poolBookParams(poolKey: string): Promise<PoolBookParams> {
+	return await grpcClient.deepbook.poolBookParams(poolKey);
+}
+
+export async function getOrders(
+	poolKey: string,
+	orderIds: string[],
+): Promise<
+	| {
+			balance_manager_id: string;
+			order_id: string;
+			client_order_id: string;
+			quantity: string;
+			filled_quantity: string;
+			fee_is_deep: boolean;
+			order_deep_price: {
+				asset_is_base: boolean;
+				deep_per_asset: string;
+			};
+			epoch: string;
+			status: number;
+			expire_timestamp: string;
+	  }[]
+	| null
+> {
+	return await grpcClient.deepbook.getOrders(poolKey, orderIds);
+}
+
+export async function getPoolDeepPrice(
+	poolKey: string,
+): Promise<PoolDeepPrice> {
+	return await grpcClient.deepbook.getPoolDeepPrice(poolKey);
+}
+
+export async function addDeepPricePoint(
+	targetPoolKey: string,
+	referencePoolKey: string,
+) {
+	return grpcClient.deepbook.deepBook.addDeepPricePoint(
+		targetPoolKey,
+		referencePoolKey,
+	);
+}
+
+export async function updatePoolAllowedVersions(poolKey: string) {
+	return grpcClient.deepbook.deepBook.updatePoolAllowedVersions(poolKey);
+}
+
+export async function createPermissionlessPool(
+	baseCoinKey: string,
+	quoteCoinKey: string,
+	tickSize: number,
+	lotSize: number,
+	minSize: number,
+	deepCoin: TransactionObjectArgument | undefined,
+) {
+	return grpcClient.deepbook.deepBook.createPermissionlessPool({
+		baseCoinKey,
+		quoteCoinKey,
+		tickSize,
+		lotSize,
+		minSize,
+		deepCoin,
+	});
+}
+
+export async function getBalanceManagerIds(owner: string) {
+	return grpcClient.deepbook.deepBook.getBalanceManagerIds(owner);
+}
+
+export async function mintRefferal(poolKey: string, multiplier: number) {
+	return grpcClient.deepbook.deepBook.mintReferral(poolKey, multiplier);
+}
+
+export async function updateReferralMultiplier(
+	poolKey: string,
+	referral: string,
+	multiplier: number,
+) {
+	return grpcClient.deepbook.deepBook.updatePoolReferralMultiplier(
+		poolKey,
+		referral,
+		multiplier,
+	);
+}
+
+export async function claimReferralRewards(poolKey: string, referral: string) {
+	return grpcClient.deepbook.deepBook.claimPoolReferralRewards(
+		poolKey,
+		referral,
+	);
 }
