@@ -432,7 +432,10 @@ export function getReferralBalances(poolKey: string, referral: string) {
 		referral,
 	);
 }
-// start from here to implement the schema
+/*
+	start from here to implement the schema
+	all Order function
+*/
 export function placeLimitOrder(
 	poolKey: string,
 	balanceManagerKey: string,
@@ -542,4 +545,194 @@ export function withdrawSettledAmountsPermissionless(
 		poolKey,
 		balanceManagerKey,
 	);
+}
+
+/*
+	flash loans functions
+*/
+export function borrowBaseAsset(poolKey: string, borrowAmount: number) {
+	return grpcClient.deepbook.flashLoans.borrowBaseAsset(poolKey, borrowAmount);
+}
+
+export function returnBaseAsset(
+	poolKey: string,
+	borrowAmount: number,
+	baseCoinInput: TransactionObjectArgument,
+	flashLoanId: TransactionObjectArgument,
+) {
+	return grpcClient.deepbook.flashLoans.returnBaseAsset(
+		poolKey,
+		borrowAmount,
+		baseCoinInput,
+		flashLoanId,
+	);
+}
+
+export function borrowQuoteAsset(poolKey: string, borrowAmount: number) {
+	return grpcClient.deepbook.flashLoans.borrowQuoteAsset(poolKey, borrowAmount);
+}
+
+export function returnQuoteAsset(
+	poolKey: string,
+	borrowAmount: number,
+	quoteCoinInput: TransactionObjectArgument,
+	flashLoanId: TransactionObjectArgument,
+) {
+	return grpcClient.deepbook.flashLoans.returnQuoteAsset(
+		poolKey,
+		borrowAmount,
+		quoteCoinInput,
+		flashLoanId,
+	);
+}
+
+/*
+	Swap functions
+*/
+export function swapExactBaseForQuote(
+	poolKey: string,
+	amount: number | bigint,
+	deepAmount: number | bigint,
+	minOut: number | bigint,
+	deepCoin?: TransactionObjectArgument,
+	baseCoin?: TransactionObjectArgument,
+	quoteCoin?: TransactionObjectArgument,
+) {
+	return grpcClient.deepbook.deepBook.swapExactBaseForQuote({
+		poolKey,
+		amount,
+		deepAmount,
+		minOut,
+		deepCoin,
+		baseCoin,
+		quoteCoin,
+	});
+}
+
+export function swapExactQuoteForBase(
+	poolKey: string,
+	amount: number | bigint,
+	deepAmount: number | bigint,
+	minOut: number | bigint,
+	deepCoin?: TransactionObjectArgument,
+	baseCoin?: TransactionObjectArgument,
+	quoteCoin?: TransactionObjectArgument,
+) {
+	return grpcClient.deepbook.deepBook.swapExactQuoteForBase({
+		poolKey,
+		amount,
+		deepAmount,
+		minOut,
+		deepCoin,
+		baseCoin,
+		quoteCoin,
+	});
+}
+
+export function swapExactQuantity(
+	poolKey: string,
+	amount: number,
+	deepAmount: number,
+	minOut: number,
+	isBaseToCoin: boolean,
+	baseCoin?: TransactionObjectArgument,
+	quoteCoin?: TransactionObjectArgument,
+	deepCoin?: TransactionObjectArgument,
+) {
+	return grpcClient.deepbook.deepBook.swapExactQuantity({
+		poolKey,
+		amount,
+		deepAmount,
+		minOut,
+		isBaseToCoin,
+		baseCoin,
+		quoteCoin,
+		deepCoin,
+	});
+}
+
+export function swapExactQuantityWithManager(
+	poolKey: string,
+	balanceManagerKey: string,
+	amount: number,
+	minOut: number,
+	isBaseToCoin: boolean,
+	tradeCap: string,
+	depositCap: string,
+	withdrawCap: string,
+	baseCoin?: TransactionObjectArgument,
+	quoteCoin?: TransactionObjectArgument,
+) {
+	return grpcClient.deepbook.deepBook.swapExactQuantityWithManager({
+		poolKey,
+		balanceManagerKey,
+		amount,
+		minOut,
+		isBaseToCoin,
+		tradeCap,
+		depositCap,
+		withdrawCap,
+		baseCoin,
+		quoteCoin,
+	});
+}
+
+/*
+Staking and governance functions
+*/
+
+export function stake(
+	poolKey: string,
+	balanceManager: string,
+	stakeAmount: number,
+) {
+	return grpcClient.deepbook.governance.stake(
+		poolKey,
+		balanceManager,
+		stakeAmount,
+	);
+}
+
+export function unstake(
+	poolKey: string,
+	balanceManager: string,
+	stakeAmount: number,
+) {
+	return grpcClient.deepbook.governance.stake(
+		poolKey,
+		balanceManager,
+		stakeAmount,
+	);
+}
+
+export function submitProposal(
+	poolKey: string,
+	balanceManagerKey: string,
+	takerFee: number | bigint,
+	makerFee: number | bigint,
+	stakeRequired: number | bigint,
+) {
+	return grpcClient.deepbook.governance.submitProposal({
+		poolKey,
+		balanceManagerKey,
+		takerFee,
+		makerFee,
+		stakeRequired,
+	});
+}
+
+export function vote(
+	poolKey: string,
+	balanceManagerKey: string,
+	proposal_id: string,
+) {
+	return grpcClient.deepbook.governance.vote(
+		poolKey,
+		balanceManagerKey,
+		proposal_id,
+	);
+}
+
+export function claimRebates(poolKey: string, balanceManagerKey: string) {
+	return grpcClient.deepbook.deepBook.claimRebates(poolKey, balanceManagerKey);
 }
