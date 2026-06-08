@@ -110,6 +110,32 @@ Set `POLICY_BUDGET_MIST` low (e.g. `1500000000` = 1.5 SUI) and run `npm run trad
 Once cumulative `amount_spent + amount` would exceed the cap, the withdrawal aborts with
 `EBudgetExceeded` — the agent cannot spend past its mandate even though its keys still work.
 
+## Watch it in the UI (agent dashboard)
+
+The agent pushes every action to the backend feed; the frontend renders it in two
+places: a per-iWallet **Agent Trades** tab (profile page) and a global **/agents**
+all-agents feed. Success, policy-rejection (budget/expiry/revoked), and failures all
+show up — so the budget-ceiling and revocation demos are visible live, not just in the terminal.
+
+```
+agent/.env:
+  BACKEND_URL=http://localhost:3000      # the gas-station/feed backend
+  BACKEND_API_KEY=<API_SECRET>           # matches backend's API_SECRET
+
+backend/.env:
+  API_SECRET=<shared secret>             # gates POST /trades + sponsor/agent routes
+
+frontend/.env.local:
+  NEXT_PUBLIC_BACKEND_URL=http://localhost:3000   # public GET /trades feed
+```
+
+Run the backend (`cd backend && npm install && npm run dev`), the frontend, then
+`npm run trade` — trades stream into `/agents` and the iWallet's Agent Trades tab
+within a few seconds. The read endpoints (`GET /trades`, `GET /trades/identity/:id`)
+are public + CORS-enabled; writes stay behind the API key. The store is an in-memory
+ring buffer (resets on restart). For the deployed Vercel site to show live data, the
+backend must be reachable (host it or tunnel, e.g. cloudflared/ngrok).
+
 ## Notes / hardening
 
 - **Two-transaction flow:** withdrawal (TX1) and deposit+order (TX2) are separate. The budget,

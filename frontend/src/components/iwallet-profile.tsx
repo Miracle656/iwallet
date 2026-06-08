@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { HashText } from "@/components/hash-text";
+import { AgentTradeFeed } from "@/components/agent-trade-feed";
 import type { ActivityItem, CoinHolding, IdentityProfile, PolicyView } from "@/lib/sui-client";
 import { SUI_NETWORK } from "@/lib/sui-config";
 import {
@@ -13,7 +14,7 @@ import {
   HiOutlineWallet,
 } from "react-icons/hi2";
 
-const tabs = ["Portfolio", "Policy", "Activity"] as const;
+const tabs = ["Portfolio", "Policy", "Agent Trades", "Activity"] as const;
 
 export function IWalletProfile({
   profile,
@@ -96,6 +97,7 @@ export function IWalletProfile({
         <div className="mt-5">
           {tab === "Portfolio" && <PortfolioTab coins={profile.coins} />}
           {tab === "Policy" && <PolicyTab policy={profile.policy} />}
+          {tab === "Agent Trades" && <AgentTradeFeed identityId={profile.objectId} />}
           {tab === "Activity" && <ActivityTab activity={activity} />}
         </div>
       </section>
