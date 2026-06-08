@@ -15,7 +15,7 @@ export default async function FundIWalletPage({ params }: { params: Promise<{ id
     >
       <FundIWalletPanel wallet={wallet} />
       <div>
-        <Link href={`/iwallets/${wallet.id}`} className="text-sm font-medium text-[#fbff6c] hover:text-[#f7ff8f]">Back to iWallet dashboard</Link>
+        <Link href={`/iwallets/${wallet.id}`} className="text-sm font-medium text-[#298dff] hover:text-[#5aa9ff]">Back to iWallet dashboard</Link>
       </div>
     </AppShell>
   );

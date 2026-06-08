@@ -69,7 +69,7 @@ export function AgentTradeFeed({
     return (
       <div className="py-10 text-center">
         <p className="inline-flex items-center gap-2 text-sm text-[#92979d]">
-          <HiOutlineSignal className="text-[#fbff6c]" /> Waiting for the agent to trade…
+          <HiOutlineSignal className="text-[#298dff]" /> Waiting for the agent to trade…
         </p>
         <p className="mt-1 text-xs text-[#6f747a]">Run <code>npm run trade</code> in the agent.</p>
       </div>
@@ -107,7 +107,7 @@ function TradeRow({ t, showOwner }: { t: Trade; showOwner: boolean }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <span
-            className={`grid h-9 w-9 place-items-center rounded-full bg-[#222328] ${isBid ? "text-emerald-300" : "text-[#fbff6c]"}`}
+            className={`grid h-9 w-9 place-items-center rounded-full bg-[#222328] ${isBid ? "text-emerald-300" : "text-[#298dff]"}`}
           >
             {isBid ? <HiOutlineArrowTrendingUp /> : <HiOutlineArrowTrendingDown />}
           </span>
@@ -130,7 +130,7 @@ function TradeRow({ t, showOwner }: { t: Trade; showOwner: boolean }) {
               href={`https://suiscan.xyz/${SUI_NETWORK}/tx/${t.orderDigest}`}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 font-mono text-[#fbff6c] hover:underline"
+              className="inline-flex items-center gap-1 font-mono text-[#298dff] hover:underline"
             >
               <HiOutlineBolt /> order {t.orderDigest.slice(0, 8)}…
             </a>

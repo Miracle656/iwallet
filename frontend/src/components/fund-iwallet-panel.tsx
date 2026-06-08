@@ -5,14 +5,14 @@ export function FundIWalletPanel({ wallet }: { wallet: IWallet }) {
   return (
     <section className="rounded-[2.4rem] border border-white/10 bg-[#131416] p-5 sm:p-7">
       <div className="flex items-baseline gap-5">
-        <span className="inline-flex items-center gap-2 text-2xl font-semibold text-[#e5eef1]"><HiOutlineBanknotes className="text-[#fbff6c]" />Fund</span>
+        <span className="inline-flex items-center gap-2 text-2xl font-semibold text-[#e5eef1]"><HiOutlineBanknotes className="text-[#298dff]" />Fund</span>
         <span className="text-2xl text-[#6f747a]">Preview</span>
       </div>
 
       <div className="mt-7 flex flex-col gap-3 lg:flex-row">
         <div className="w-full rounded-[1.9rem] border border-white/10 p-5 lg:flex-1">
           <div className="flex items-center justify-between gap-3">
-            <span className="inline-flex items-center gap-2 text-sm text-[#92979d]"><HiOutlineWallet className="text-[#fbff6c]" />From</span>
+            <span className="inline-flex items-center gap-2 text-sm text-[#92979d]"><HiOutlineWallet className="text-[#298dff]" />From</span>
             <span className="rounded-full bg-[#222328] px-4 py-2 font-mono text-xs text-[#e5eef1]">0x8a42...19fd</span>
           </div>
           <div className="mt-8 flex gap-5">
@@ -23,7 +23,7 @@ export function FundIWalletPanel({ wallet }: { wallet: IWallet }) {
 
         <div className="w-full rounded-[1.9rem] border border-white/10 p-5 lg:flex-1">
           <div className="flex items-center justify-between gap-3">
-            <span className="inline-flex items-center gap-2 text-sm text-[#92979d]"><HiOutlineGlobeAlt className="text-[#fbff6c]" />To</span>
+            <span className="inline-flex items-center gap-2 text-sm text-[#92979d]"><HiOutlineGlobeAlt className="text-[#298dff]" />To</span>
             <span className="rounded-full bg-[#222328] px-4 py-2 text-xs text-[#e5eef1]">{wallet.name}</span>
           </div>
           <div className="mt-8 flex gap-5">
@@ -43,7 +43,7 @@ export function FundIWalletPanel({ wallet }: { wallet: IWallet }) {
       </div>
 
       <div className="mt-7 flex justify-end">
-        <button className="inline-flex items-center gap-2 rounded-full bg-[#fbff6c] px-8 py-4 text-sm font-semibold text-[#131416] transition hover:bg-[#f7ff8f]">Fund iWallet <HiOutlineArrowRight /></button>
+        <button className="inline-flex items-center gap-2 rounded-full bg-[#298dff] px-8 py-4 text-sm font-semibold text-[#131416] transition hover:bg-[#5aa9ff]">Fund iWallet <HiOutlineArrowRight /></button>
       </div>
     </section>
   );

@@ -6,11 +6,11 @@ export function PolicyControlsPanel({ wallet }: { wallet: IWallet }) {
     <section className="rounded-[1.8rem] border border-white/10 bg-[#131416] p-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div>
-          <p className="inline-flex items-center gap-2 text-sm font-medium text-[#92979d]"><HiOutlineLockClosed className="text-[#fbff6c]" />Spending rules</p>
+          <p className="inline-flex items-center gap-2 text-sm font-medium text-[#92979d]"><HiOutlineLockClosed className="text-[#298dff]" />Spending rules</p>
           <h2 className="mt-2 text-2xl font-semibold text-[#e5eef1]">Policy controls for this iWallet</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[#92979d]">Policy controls are secondary in the MVP, but they remain attached to the iWallet rather than the agent.</p>
         </div>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#fbff6c]/35 bg-[#fbff6c]/10 px-3 py-1.5 text-xs font-medium text-[#fbff6c]"><HiOutlineShieldCheck />Move enforced</span>
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#298dff]/35 bg-[#298dff]/10 px-3 py-1.5 text-xs font-medium text-[#298dff]"><HiOutlineShieldCheck />Move enforced</span>
       </div>
       <div className="mt-6 flex flex-col gap-4 md:flex-row md:flex-wrap">
         <Rule label="Max per transaction" value={wallet.policy.maxPerTransaction} />

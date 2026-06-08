@@ -6,7 +6,7 @@ export function WalletBadge({ name, objectId, size = "md" }: { name: string; obj
 
   return (
     <div className="flex items-center gap-3">
-      <div className={`${box} grid place-items-center rounded-2xl border border-white/10 bg-[#222328] text-lg text-[#fbff6c]`}>
+      <div className={`${box} grid place-items-center rounded-2xl border border-white/10 bg-[#222328] text-lg text-[#298dff]`}>
         <HiOutlineWallet />
       </div>
       <div className="min-w-0">

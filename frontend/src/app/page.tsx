@@ -22,7 +22,7 @@ export default function Home() {
                 <span className="text-2xl font-semibold">iWallet</span>
                 <span className="text-2xl text-[#6f747a]">Agent</span>
               </div>
-              <Link href="/dashboard" data-hover-trigger className="inline-flex items-center gap-2 rounded-full bg-[#fbff6c] px-5 py-2.5 text-sm font-semibold text-[#131416] hover:bg-[#f7ff8f]">
+              <Link href="/dashboard" data-hover-trigger className="inline-flex items-center gap-2 rounded-full bg-[#298dff] px-5 py-2.5 text-sm font-semibold text-[#131416] hover:bg-[#5aa9ff]">
                 <AnimatedHoverText>Launch App</AnimatedHoverText> <HiOutlineArrowRight />
               </Link>
             </div>
@@ -48,7 +48,7 @@ export default function Home() {
                 <p><span className="text-[#e5eef1]">Object</span> <HashText value={wallet.objectId} chars={7} /></p>
                 <p className="mt-2">Last digest <HashText value={latest.digest ?? "pending"} chars={7} /></p>
               </div>
-              <Link href="/iwallets/demo" data-hover-trigger className="inline-flex items-center justify-center gap-2 rounded-full bg-[#fbff6c] px-8 py-4 text-center text-sm font-semibold text-[#131416] hover:bg-[#f7ff8f]">
+              <Link href="/iwallets/demo" data-hover-trigger className="inline-flex items-center justify-center gap-2 rounded-full bg-[#298dff] px-8 py-4 text-center text-sm font-semibold text-[#131416] hover:bg-[#5aa9ff]">
                 <AnimatedHoverText>View iWallet</AnimatedHoverText> <HiOutlineArrowRight />
               </Link>
             </div>
@@ -64,7 +64,7 @@ function Panel({ eyebrow, title, meta, children }: { eyebrow: string; title: str
     <div className="w-full rounded-[1.8rem] border border-white/10 p-5 lg:flex-1">
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm text-[#92979d]">{eyebrow}</span>
-        <span className="inline-flex items-center gap-2 rounded-full bg-[#222328] px-4 py-2 font-mono text-xs text-[#e5eef1]"><HiOutlineCheckBadge className="text-[#fbff6c]" />{meta}</span>
+        <span className="inline-flex items-center gap-2 rounded-full bg-[#222328] px-4 py-2 font-mono text-xs text-[#e5eef1]"><HiOutlineCheckBadge className="text-[#298dff]" />{meta}</span>
       </div>
       <p className="mt-6 text-lg font-medium text-[#e5eef1]">{title}</p>
       <div className="mt-5 flex flex-col gap-5 sm:flex-row">{children}</div>

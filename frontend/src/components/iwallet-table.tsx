@@ -32,8 +32,8 @@ export function IWalletTable({ wallets }: { wallets: IWallet[] }) {
                 <td className="px-4 py-4 text-[#92979d]">{wallet.lastTransactionAt ?? "No transactions"}</td>
                 <td className="px-4 py-4">
                   <div className="flex gap-2">
-                    <Link href={`/iwallets/${wallet.id}`} className="rounded-full border border-white/10 bg-[#222328] px-3 py-1.5 text-xs font-medium text-[#e5eef1] hover:border-[#fbff6c]/50">View</Link>
-                    <Link href={`/iwallets/${wallet.id}/fund`} className="rounded-full bg-[#fbff6c] px-3 py-1.5 text-xs font-semibold text-[#131416] hover:bg-[#f7ff8f]">Fund</Link>
+                    <Link href={`/iwallets/${wallet.id}`} className="rounded-full border border-white/10 bg-[#222328] px-3 py-1.5 text-xs font-medium text-[#e5eef1] hover:border-[#298dff]/50">View</Link>
+                    <Link href={`/iwallets/${wallet.id}/fund`} className="rounded-full bg-[#298dff] px-3 py-1.5 text-xs font-semibold text-[#131416] hover:bg-[#5aa9ff]">Fund</Link>
                   </div>
                 </td>
               </tr>

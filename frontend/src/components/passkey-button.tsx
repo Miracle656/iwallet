@@ -9,7 +9,7 @@ import {
 import { HiOutlineFingerPrint } from "react-icons/hi2";
 
 const buttonClass =
-  "inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#222328] px-4 py-2 text-sm font-medium text-[#e5eef1] transition hover:border-[#fbff6c]/50 hover:text-[#fbff6c] disabled:opacity-50";
+  "inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#222328] px-4 py-2 text-sm font-medium text-[#e5eef1] transition hover:border-[#298dff]/50 hover:text-[#298dff] disabled:opacity-50";
 
 function shortAddress(address: string): string {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
@@ -44,7 +44,7 @@ export function PasskeyButton() {
   if (owner) {
     return (
       <button onClick={signOut} className={buttonClass} title="Sign out of passkey">
-        <HiOutlineFingerPrint className="text-base text-[#fbff6c]" />
+        <HiOutlineFingerPrint className="text-base text-[#298dff]" />
         {shortAddress(owner)}
       </button>
     );
