@@ -194,10 +194,10 @@ export const createSteps = [
 ];
 
 export const identityVisuals = [
-  { label: "Ledger", code: "IW-1", accent: "border-[#fbff6c]/40 bg-[#fbff6c]/10 text-[#fbff6c]" },
-  { label: "Vault", code: "IW-2", accent: "border-white/10 bg-[#222328] text-[#e5eef1]" },
+  { label: "Ledger", code: "IW-1", accent: "border-accent/40 bg-accent/10 text-accent" },
+  { label: "Vault", code: "IW-2", accent: "border-border bg-elevated text-ink" },
   { label: "Relay", code: "IW-3", accent: "border-orange-300/35 bg-orange-300/10 text-orange-100" },
-  { label: "Sentinel", code: "IW-4", accent: "border-white/10 bg-[#18191c] text-[#b9c2c6]" },
+  { label: "Sentinel", code: "IW-4", accent: "border-border bg-surface text-muted" },
 ];
 
 export function getWallet(id: string) {

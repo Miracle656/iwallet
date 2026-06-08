@@ -107,3 +107,49 @@ export function fmtVolume(v?: number): string {
   if (sui >= 1) return `${sui.toFixed(1)} SUI`;
   return `${(v / 1e6).toFixed(1)}M MIST`;
 }
+
+function seededRandom(seed: string): () => number {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return () => {
+    h = Math.imul(h ^ (h >>> 16), 2246822507) >>> 0;
+    h = Math.imul(h ^ (h >>> 13), 3266489909) >>> 0;
+    h = (h ^ (h >>> 16)) >>> 0;
+    return h / 0xffffffff;
+  };
+}
+
+/**
+ * Deterministic synthetic implied-probability history for a market, ending
+ * at the current odds. Seeded by marketId so the chart is stable across
+ * refreshes. Replace with real odds-tick history once captured server-side.
+ */
+export function mockOddsHistory(
+  marketId: string,
+  currentHomeOdds: number,
+  points = 48,
+  hoursBack = 24,
+): Array<{ time: number; value: number }> {
+  const rand = seededRandom(marketId);
+  const currentImplied = (1 / currentHomeOdds) * 100;
+  const drift = (rand() - 0.5) * 25;
+  const startImplied = Math.max(8, Math.min(92, currentImplied - drift));
+
+  const now = Math.floor(Date.now() / 1000);
+  const stepSec = (hoursBack * 3600) / points;
+  const noiseFreq = 1 + rand() * 4;
+
+  return Array.from({ length: points }, (_, i) => {
+    const t = i / (points - 1);
+    const base = startImplied + (currentImplied - startImplied) * t;
+    const noise = (rand() - 0.5) * 5 * Math.sin(t * noiseFreq * Math.PI);
+    const value = Math.max(2, Math.min(98, base + noise));
+    return {
+      time: now - (points - 1 - i) * stepSec,
+      value: parseFloat(value.toFixed(2)),
+    };
+  });
+}
