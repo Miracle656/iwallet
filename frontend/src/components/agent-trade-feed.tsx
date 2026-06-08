@@ -86,7 +86,7 @@ export function AgentTradeFeed({
 }
 
 const STATUS: Record<Trade["status"], { dot: string; label: string; cls: string }> = {
-  success: { dot: "bg-emerald-300", label: "Filled order", cls: "border-emerald-300/25 text-emerald-200" },
+  success: { dot: "bg-emerald-300", label: "Order placed", cls: "border-emerald-300/25 text-emerald-200" },
   rejected: { dot: "bg-orange-300", label: "Policy blocked", cls: "border-orange-300/25 text-orange-200" },
   failed: { dot: "bg-red-300", label: "Failed", cls: "border-red-300/25 text-red-200" },
 };
