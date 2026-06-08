@@ -15,7 +15,17 @@ const client = new SuiGrpcClient({
   baseUrl: "https://fullnode.testnet.sui.io:443",
 });
 
-let keypair = Ed25519Keypair.fromSecretKey(process.env.SPONSOR_PRIVATE_KEY!);
+// Lazy: the trade feed doesn't need a sponsor key, so the server boots without
+// it. Only the gas-station routes require it.
+let keypair: Ed25519Keypair | null = null;
+function getSponsorKeypair(): Ed25519Keypair {
+  if (!keypair) {
+    const pk = process.env.SPONSOR_PRIVATE_KEY;
+    if (!pk) throw new Error("SPONSOR_PRIVATE_KEY not set — gas-station routes disabled");
+    keypair = Ed25519Keypair.fromSecretKey(pk);
+  }
+  return keypair;
+}
 
 const app = new Hono();
 
@@ -42,7 +52,7 @@ app.post("/sponsor/setup", async (c) => {
   const { txBytes } = await c.req.json();
   let tx = Transaction.from(txBytes);
 
-  const result = await sponsorAndExecute(tx, keypair, client);
+  const result = await sponsorAndExecute(tx, getSponsorKeypair(), client);
   return c.json({ success: true, digest: result.Transaction });
 });
 
@@ -52,7 +62,7 @@ app.post("/agent/execute", async (c) => {
   let tx = Transaction.from(txBytes);
 
   // 1. Execute the trade via Gas Station
-  const result = await sponsorAndExecute(tx, keypair, client);
+  const result = await sponsorAndExecute(tx, getSponsorKeypair(), client);
 
   // 2. Log receipt to Walrus (The fused audit trail)
   const blobId = await logTradeToMemwal(receipt);
