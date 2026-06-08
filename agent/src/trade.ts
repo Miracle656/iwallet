@@ -95,7 +95,13 @@ export async function runTradeTick(): Promise<TradeTickResult> {
   // 4. Policy-gated withdrawal from the iWallet vault. The released coin (the
   //    order's base size) lands in the agent wallet; recipient = the whitelisted
   //    BalanceManager so the spend is bound to DeepBook on-chain.
-  const amountMist = BigInt(Math.ceil(result.quantity * 1e9));
+  // Deposit a buffer above the order size: placing an ask locks the base
+  // amount + fees, so the BalanceManager needs more than `quantity` or DeepBook
+  // aborts EBalanceManagerBalanceTooLow (code 3). We withdraw the full deposit
+  // from the vault so the trade stays fully vault-funded.
+  const depositBuffer = envNum('TRADE_DEPOSIT_BUFFER', 0.3);
+  const depositAmount = result.quantity + depositBuffer;
+  const amountMist = BigInt(Math.ceil(depositAmount * 1e9));
   const owner = signer.toSuiAddress();
   const identityId = process.env.IIDENTITY_OBJECT_ID ?? '';
   const rationale = `Autonomous resting ${result.side} within on-chain budget; mid=${mid ?? 'n/a'}.`;
@@ -118,7 +124,7 @@ export async function runTradeTick(): Promise<TradeTickResult> {
   // 5. Deposit + place the real DeepBook order.
   const placed = await trader.depositAndPlaceLimitOrder({
     coinKey: BASE_COIN_KEY,
-    depositAmount: result.quantity,
+    depositAmount,
     price: result.price,
     quantity: result.quantity,
     isBid,
