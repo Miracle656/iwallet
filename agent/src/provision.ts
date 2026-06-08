@@ -65,12 +65,22 @@ async function main(): Promise<void> {
     signer,
     options: { showObjectChanges: true },
   });
-  const created = (r1.objectChanges ?? []).find((c: { objectType?: string }) =>
+  const created = (r1.objectChanges ?? []).find((c: any) =>
     String(c.objectType).includes('::prototype::IIdentity<'),
   ) as { objectId?: string } | undefined;
   const identityId = created?.objectId;
   if (!identityId) throw new Error(`IIdentity not created (tx ${r1.digest})`);
   console.log(`[provision] IIdentity created: ${identityId} (tx ${r1.digest})`);
+
+  // The new contract mints an IWalletOwner capability to the creator (= agent).
+  // withdraw_with_proof now takes `&IWalletOwner`, so the agent must hold + pass
+  // this. Capture it for the .env (IWALLET_OWNER_ID).
+  const ownerCap = (r1.objectChanges ?? []).find((c: any) =>
+    String(c.objectType).includes('::prototype::IWalletOwner'),
+  ) as { objectId?: string } | undefined;
+  const ownerCapId = ownerCap?.objectId;
+  if (!ownerCapId) throw new Error(`IWalletOwner cap not minted (tx ${r1.digest})`);
+  console.log(`[provision] IWalletOwner cap: ${ownerCapId}`);
 
   // 2. set_policy(budget_cap, allow_recipients, expiration_ms) — owner only
   const budgetCap = BigInt(process.env.POLICY_BUDGET_MIST ?? '500000000'); // 0.5 SUI
@@ -97,6 +107,9 @@ async function main(): Promise<void> {
   console.log(`\n✓ New IIdentity under the new package: ${identityId}`);
   console.log(`  Fund it by sending SUI to ${identityId}`);
   console.log(`  Show it in the frontend: set NEXT_PUBLIC_SEED_IDENTITY_IDS=${identityId}`);
+  console.log('\n  Add to agent/.env for the DeepBook trade loop:');
+  console.log(`    IIDENTITY_OBJECT_ID=${identityId}`);
+  console.log(`    IWALLET_OWNER_ID=${ownerCapId}`);
 }
 
 main().catch((err) => {
