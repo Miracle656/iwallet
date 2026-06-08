@@ -116,7 +116,7 @@ export function HomeHeroCycle() {
     <div className="w-full text-center">
       <div className="relative mx-auto flex w-full flex-wrap justify-center gap-2">
         <span
-          className="pointer-events-none absolute top-0 h-full rounded-full border border-white/10 transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
+          className="pointer-events-none absolute top-0 h-full rounded-full border border-border transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
           style={{ left: indicator.left, width: indicator.width }}
         />
         {steps.map((step, index) => (
@@ -126,7 +126,7 @@ export function HomeHeroCycle() {
               tabRefs.current[index] = node;
             }}
             onClick={() => goTo(index)}
-            className={`relative z-10 cursor-pointer rounded-full border border-transparent px-5 py-3 text-sm transition-colors ${index === active ? "text-[#e5eef1]" : "text-[#6f747a]"}`}
+            className={`relative z-10 cursor-pointer rounded-full border border-transparent px-5 py-3 text-sm transition-colors ${index === active ? "text-ink" : "text-dim"}`}
           >
             <span className="mr-2 font-mono text-xs">{index + 1}</span>
             {index === active ? step.label : null}
@@ -154,7 +154,7 @@ export function HomeHeroCycle() {
           </h1>
         ) : null}
       </div>
-      <p className="mx-auto mt-4 max-w-xl text-base leading-7 text-[#92979d]">
+      <p className="mx-auto mt-4 max-w-xl text-base leading-7 text-muted">
         Create, fund, and monitor iWallets without exposing your private key.
       </p>
     </div>

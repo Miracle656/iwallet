@@ -93,8 +93,14 @@ public fun set_policy<T>(
     let policy = AgentPolicy {
         budget_cap,
         amount_spent: 0,
+        // TODO(George): wire daily_limit as a set_policy param + enforce in
+        // withdraw_with_proof. Defaulted here only so the contract compiles.
+        daily_limit: budget_cap,
+        spent_today: 0,
+        last_reset_timestamp: 0,
         allow_recipients,
         expiration_ms,
+        revoked: false,
     };
 
     // Lock the policy into the vault

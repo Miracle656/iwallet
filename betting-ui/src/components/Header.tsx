@@ -24,7 +24,7 @@ export default function Header() {
           <a className="hover:text-ink" href="#">Agents</a>
         </nav>
 
-        <button className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90">
+        <button className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accentInk hover:opacity-90">
           Connect
         </button>
       </div>
