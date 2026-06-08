@@ -2,17 +2,50 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: 'Satoshi-Variable';
+  src: url('/fonts/Satoshi-Variable.woff2') format('woff2');
+  font-weight: 300 900;
+  font-display: swap;
+  font-style: normal;
+}
+
+:root {
+  --background: #101113;
+  --foreground: #e5eef1;
+  --surface: #131416;
+  --surface-raised: #222328;
+  --accent: #fbff6c;
+  --muted: #92979d;
+  --line: rgba(229, 238, 241, 0.1);
+}
+
 html, body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  font-family: 'Satoshi-Variable', 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
-  background-color: #F7F8FA;
-  color: #0E1217;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+::selection {
+  background: rgba(251, 255, 108, 0.55);
+  color: #131416;
+}
+
+a, button, [role="button"] {
+  cursor: pointer;
+}
+
+button:disabled, [aria-disabled="true"] {
+  cursor: not-allowed;
 }
 
 /* Subtle scroll for the agent feed */
 .feed-scroll::-webkit-scrollbar { width: 6px; }
 .feed-scroll::-webkit-scrollbar-thumb {
-  background: #D9DEE4;
+  background: #2a2c30;
   border-radius: 999px;
+}
+.feed-scroll::-webkit-scrollbar-track {
+  background: transparent;
 }
