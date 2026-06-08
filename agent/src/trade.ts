@@ -3,6 +3,7 @@ import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { DeepBookTrader, type Network } from './deepbook.js';
 import { VaultWithdrawer } from './vault.js';
 import { rememberBet, recallContext } from './memwal.js';
+import { postTrade } from './report.js';
 
 /**
  * Autonomous DeepBook trade tick (Sui Overflow Sub-track 2).
@@ -95,12 +96,23 @@ export async function runTradeTick(): Promise<TradeTickResult> {
   //    order's base size) lands in the agent wallet; recipient = the whitelisted
   //    BalanceManager so the spend is bound to DeepBook on-chain.
   const amountMist = BigInt(Math.ceil(result.quantity * 1e9));
+  const owner = signer.toSuiAddress();
+  const identityId = process.env.IIDENTITY_OBJECT_ID ?? '';
+  const rationale = `Autonomous resting ${result.side} within on-chain budget; mid=${mid ?? 'n/a'}.`;
+
   const vault = new VaultWithdrawer(signer, network);
   const wd = await vault.withdraw(amountMist, bmId);
   result.withdrawDigest = wd.digest;
   if (wd.status !== 'success') {
     result.notes.push(`withdraw_with_proof failed (${wd.status}): ${wd.error ?? 'unknown'}`);
-    return result; // policy rejected (budget/expiry/recipient/revoked) — stop the tick
+    // Surface the policy rejection (budget/expiry/recipient/revoked) in the feed.
+    await postTrade({
+      identityId, owner, pool: POOL_KEY, side: result.side,
+      price: result.price, quantity: result.quantity, amountMist: amountMist.toString(),
+      midPrice: mid, withdrawDigest: wd.digest, status: 'rejected',
+      reason: wd.error ?? wd.status, rationale, memoriesUsed: result.memoriesUsed.length,
+    });
+    return result; // policy rejected — stop the tick
   }
 
   // 5. Deposit + place the real DeepBook order.
@@ -115,6 +127,13 @@ export async function runTradeTick(): Promise<TradeTickResult> {
   result.orderDigest = placed.digest;
   if (placed.status !== 'success') {
     result.notes.push(`DeepBook order failed (${placed.status}): ${placed.error ?? 'unknown'}`);
+    await postTrade({
+      identityId, owner, pool: POOL_KEY, side: result.side,
+      price: result.price, quantity: result.quantity, amountMist: amountMist.toString(),
+      midPrice: mid, withdrawDigest: wd.digest, orderDigest: placed.digest,
+      status: 'failed', reason: placed.error ?? placed.status, rationale,
+      memoriesUsed: result.memoriesUsed.length,
+    });
     return result;
   }
 
@@ -126,9 +145,17 @@ export async function runTradeTick(): Promise<TradeTickResult> {
     outcome: result.side,
     odds: result.price,
     stake: result.quantity,
-    rationale: `Autonomous resting ${result.side} within on-chain budget; mid=${mid ?? 'n/a'}.`,
+    rationale,
     digest: placed.digest,
     marketId: bmId,
+  });
+
+  // Push the successful trade to the dashboard feed.
+  await postTrade({
+    identityId, owner, pool: POOL_KEY, side: result.side,
+    price: result.price, quantity: result.quantity, amountMist: amountMist.toString(),
+    midPrice: mid, withdrawDigest: wd.digest, orderDigest: placed.digest,
+    status: 'success', rationale, memoriesUsed: result.memoriesUsed.length,
   });
 
   return result;
