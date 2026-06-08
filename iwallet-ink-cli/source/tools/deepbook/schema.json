@@ -697,7 +697,660 @@
 					"description": "Boolean indicating whether to pay with Deep."
 				}
 			},
-			"required": [],
+			"required": [
+				"targetPoolKey",
+				"poolKey",
+				"balanceManagerKey",
+				"clientOrderId",
+				"price",
+				"quantity",
+				"isBid",
+				"expiration",
+				"orderType",
+				"selfMatchingOption",
+				"payWithDeep"
+			],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "placeMarketOrder",
+		"description": "Use placeMarketOrder to place market orders. The call returns a function that takes a Transaction object.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String representing the pool key for the market order."
+				},
+				"balanceManagerKey": {
+					"type": "string",
+					"description": "String representing the balance manager key for the market order."
+				},
+				"clientOrderId": {
+					"type": "string",
+					"description": "String representing the client order ID for the market order."
+				},
+				"quantity": {
+					"type": "number",
+					"description": "String representing the quantity for the market order."
+				},
+				"isBid": {
+					"type": "boolean",
+					"description": "Boolean indicating whether the order is a bid or ask."
+				},
+				"selfMatchingOption": {
+					"type": "string",
+					"enum": ["SELF_MATCHING_ALLOWED", "CANCEL_TAKER", "CANCEL_MAKER"],
+					"description": "String representing the self-matching option."
+				},
+				"payWithDeep": {
+					"type": "boolean",
+					"description": "Boolean indicating whether to pay with Deep."
+				}
+			},
+			"required": [
+				"address",
+				"poolKey",
+				"balanceManagerKey",
+				"clientOrderId",
+				"quantity",
+				"isBid",
+				"selfMatchingOption",
+				"payWithDeep"
+			],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "cancelOrder",
+		"description": "Use cancelOrder to cancel an existing order that is identified by the orderId that you provide. The call returns a function that takes a Transaction object.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "boolean",
+					"description": "Boolean indicating whether the order is a bid or ask."
+				},
+				"balanceManagerKey": {
+					"type": "string",
+					"description": "String representing the order ID to cancel."
+				},
+				"orderId": {
+					"type": "string",
+					"description": "String representing the order ID to cancel."
+				}
+			},
+			"required": ["poolKey", "balanceManagerKey", "orderId"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "cancelOrders",
+		"description": "Use cancelOrders to cancel multiple orders atomically by providing an array of order IDs. The call returns a function that takes a Transaction object.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String representing the pool key."
+				},
+				"balanceManagerKey": {
+					"type": "string",
+					"description": "String representing the balance manager key."
+				},
+				"orderIds": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"description": "Array of strings representing the order IDs to cancel."
+				}
+			},
+			"required": ["poolKey", "balanceManagerKey", "orderIds"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "cancelAllOrders",
+		"description": "Use cancelAllOrders to cancel every order for the balance manager whose key you provide. The call returns a function that takes a Transaction object.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String representing the pool key."
+				},
+				"balanceManagerKey": {
+					"type": "string",
+					"description": "String representing the balance manager key."
+				}
+			},
+			"required": ["poolKey", "balanceManagerKey"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "modifyOrder",
+		"description": "Use modifyOrder to modify an existing order by changing its quantity. The new quantity must be less than the original quantity and more than the filled quantity. The call returns a function that takes a Transaction object.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String representing the pool key."
+				},
+				"balanceManagerKey": {
+					"type": "string",
+					"description": "String representing the balance manager key."
+				},
+				"orderId": {
+					"type": "string",
+					"description": "String representing the order ID to modify."
+				},
+				"newQuantity": {
+					"type": "number",
+					"description": "String representing the new price for the order."
+				}
+			},
+			"required": ["poolKey", "balanceManagerKey", "orderId", "newQuantity"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "withdrawSettledAmounts",
+		"description": "Use withdrawSettledAmounts to withdraw all settled amounts for a balance manager in a specific pool. The call returns a function that takes a Transaction object.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String representing the pool key."
+				},
+				"balanceManagerKey": {
+					"type": "string",
+					"description": "String representing the balance manager key."
+				}
+			},
+			"required": ["poolKey", "balanceManagerKey"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "withdrawSettledAmountsPermissionless",
+		"description": "Use withdrawSettledAmountsPermissionless to withdraw settled amounts permissionlessly for any balance manager. This can be called by anyone and does not require a trade proof. The call returns a function that takes a Transaction object.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String representing the pool key."
+				},
+				"balanceManagerKey": {
+					"type": "string",
+					"description": "String representing the balance manager key."
+				}
+			},
+			"required": ["poolKey", "balanceManagerKey"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "borrowBaseAsset",
+		"description": "Use borrowBaseAsset to borrow a base asset from the pool identified by the poolKey value you provide. The call returns a function that takes a Transaction object",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String representing the pool key."
+				},
+				"borrowAmount": {
+					"type": "number",
+					"description": "Number that represents the amount to borrow from the pool."
+				}
+			},
+			"required": ["poolKey", "borrowAmount"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "returnBaseAsset",
+		"description": "Use returnBaseAsset to return the base asset to the pool identified by the poolKey value you provide. The call returns a function that takes a Transaction object.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String representing the pool key."
+				},
+				"borrowAmount": {
+					"type": "number",
+					"description": "Number that represents the amount to borrow from the pool."
+				},
+				"baseCoinInput": {
+					"type": "object",
+					"description": "Coin object representing the base asset to be returned.",
+					"properties": {}
+				},
+				"flashLoan": {
+					"type": "object",
+					"description": "Flash loan object representing the loan to be settled."
+				}
+			},
+			"required": ["poolKey", "borrowAmount", "baseCoinInput", "flashLoan"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "borrowQuoteAsset",
+		"description": "Use borrowQuoteAsset to borrow a quote asset from the pool identified by the poolKey value you provide. The call returns a function that takes a Transaction object.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String representing the pool key."
+				},
+				"borrowAmount": {
+					"type": "number",
+					"description": "Number that represents the amount to borrow from the pool."
+				}
+			},
+			"required": ["poolKey", "borrowAmount"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "returnQuoteAsset",
+		"description": "Use returnQuoteAsset to return a quote asset to the pool identified by the poolKey you provide. The call returns a function that takes a Transaction object.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String representing the pool key."
+				},
+				"borrowAmount": {
+					"type": "number",
+					"description": "Number that represents the amount to borrow from the pool."
+				},
+				"quoteCoinInput": {
+					"type": "object",
+					"description": "Coin object representing the quote asset to be returned.",
+					"properties": {}
+				},
+				"flashLoan": {
+					"type": "object",
+					"description": "Number that represents the amount to return to the pool.",
+					"properties": {}
+				}
+			},
+			"required": ["poolKey", "borrowAmount", "quoteCoinInput", "flashLoan"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "swapExactBaseForQuote",
+		"description": "Use swapExactBaseForQuote to swap exact base amount for quote amount. The call returns a function that takes a Transaction object.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String representing the pool key."
+				},
+				"amount": {
+					"type": "number",
+					"description": "Number that represents the amount to swap from the base asset to the quote asset."
+				},
+				"deepAmount": {
+					"type": "number",
+					"description": "Number that represents the amount to swap from the base asset to the quote asset."
+				},
+				"minOut": {
+					"type": "number",
+					"description": "Number that represents the minimum amount of quote asset to receive."
+				},
+
+				"deepCoin": {
+					"type": "object",
+					"description": "The DEEP coin object used to pay for trading fees or provide utility, formatted as a TransactionObjectArgument.",
+					"properties": {}
+				},
+				"baseCoin": {
+					"type": "object",
+					"description": "The base asset of the trading pair (the coin being bought or sold), formatted as a TransactionObjectArgument.",
+					"properties": {}
+				},
+				"quoteCoin": {
+					"type": "object",
+					"description": "The quote asset of the trading pair (the coin used to price the base asset), formatted as a TransactionObjectArgument.",
+					"properties": {}
+				}
+			},
+			"required": [
+				"poolKey",
+				"amount",
+				"deepAmount",
+				"minOut",
+				"deepCoin",
+				"baseCoin",
+				"quoteCoin"
+			],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "swapExactQuoteForBase",
+		"description": "Use swapExactQuoteForBase to swap exact quote amount for base amount. The call returns a function that takes a Transaction object.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "String representing the pool key.",
+					"description": ""
+				},
+				"amount": {
+					"type": "number",
+					"description": "Number that represents the amount to swap from the base asset to the quote asset."
+				},
+				"deepAmount": {
+					"type": "number",
+					"description": "Number that represents the amount to swap from the base asset to the quote asset."
+				},
+				"minOut": {
+					"type": "number",
+					"description": "Number that represents the minimum amount of quote asset to receive."
+				},
+				"deepCoin": {
+					"type": "object",
+					"description": "The DEEP coin object used to pay for trading fees or provide utility, formatted as a TransactionObjectArgument.",
+					"properties": {}
+				},
+				"baseCoin": {
+					"type": "object",
+					"description": "The base asset of the trading pair (the coin being bought or sold), formatted as a TransactionObjectArgument.",
+					"properties": {}
+				},
+				"quoteCoin": {
+					"type": "object",
+					"description": "The quote asset of the trading pair (the coin used to price the base asset), formatted as a TransactionObjectArgument.",
+					"properties": {}
+				}
+			},
+			"required": [
+				"poolKey",
+				"amount",
+				"deepAmount",
+				"minOut",
+				"deepCoin",
+				"baseCoin",
+				"quoteCoin"
+			],
+			"additionalProperties": false
+		}
+	},
+	{
+		"type": "function",
+		"name": "swapExactQuantity",
+		"description": "Use swapExactQuantity to swap an exact quantity in either direction (base to quote or quote to base) without using a balance manager. The call returns a function that takes a Transaction object.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String that identifies the pool."
+				},
+				"amount": {
+					"type": "number",
+					"description": "Number that represents the amount to swap from the base asset to the quote asset."
+				},
+				"deepAmount": {
+					"type": "number",
+					"description": "Number that represents the amount of DEEP coin to use for trading fees or utility."
+				},
+				"minOut": {
+					"type": "number",
+					"description": "Number that represents the minimum amount of quote asset to receive."
+				},
+				"isBaseToCoin": {
+					"type": "boolean",
+					"description": "Boolean indicating swap direction (true = base to quote)."
+				},
+				"baseCoin": {
+					"type": "object",
+					"description": "Optional TransactionArgument for base coin input.",
+					"properties": {}
+				},
+				"quoteCoin": {
+					"type": "object",
+					"description": " Optional TransactionArgument for quote coin input.",
+					"properties": {}
+				},
+				"deepCoin": {
+					"type": "object",
+					"description": "Optional TransactionArgument for DEEP coin input.",
+					"properties": {}
+				}
+			},
+			"required": ["poolKey", "amount", "deepAmount", "minOut", "isBaseToCoin"],
+			"additionalProperties": false
+		}
+	},
+	{
+		"type": "function",
+		"name": "swapExactQuantityWithManager",
+		"description": "Use swapExactQuantityWithManager to swap an exact quantity using a balance manager. The call returns a function that takes a Transaction object.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String that represents the pool key for the liquidity pool to use for the swap."
+				},
+				"balanceManagerKey": {
+					"type": "string",
+					"description": "String that identifies the balance manager."
+				},
+				"amount": {
+					"type": "number",
+					"description": "Number representing the amount to swap."
+				},
+				"minOut": {
+					"type": "number",
+					"description": "Number representing the minimum amount of quote coin to receive."
+				},
+				"isBaseToCoin": {
+					"type": "boolean",
+					"description": "Boolean indicating whether the swap is base to coin or coin to base."
+				},
+				"tradeCap": {
+					"type": "object",
+					"description": "Optional TransactionArgument for trade capability.",
+					"properties": {}
+				},
+				"depositCap": {
+					"type": "object",
+					"description": "Optional TransactionArgument for deposit capability.",
+					"properties": {}
+				},
+				"withdrawCap": {
+					"type": "object",
+					"description": "Optional TransactionArgument for withdraw",
+					"properties": {}
+				},
+				"baseCoin": {
+					"type": "object",
+					"description": "Optional TransactionArgument for base coin input.",
+					"properties": {}
+				},
+				"quoteCoin": {
+					"type": "object",
+					"description": "Optional TransactionArgument for quote coin input.",
+					"properties": {}
+				}
+			},
+			"required": [
+				"poolKey",
+				"balanceManagerKey",
+				"amount",
+				"minOut",
+				"isBaseToCoin"
+			],
+			"additionalProperties": false
+		}
+	},
+	{
+		"type": "function",
+		"name": "stake",
+		"description": "Use stake to stake an amount you specify into a specific pool. The call returns a Transaction object.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "Number representing the amount to stake."
+				},
+				"balanceManagerKey": {
+					"type": "string",
+					"description": "String that identifies the balance manager."
+				},
+				"stakeAmount": {
+					"type": "object",
+					"description": "Number representing the amount to stake.",
+					"properties": {}
+				}
+			},
+			"required": ["poolKey", "balanceManagerKey", "stakeAmount"]
+		}
+	},
+	{
+		"type": "function",
+		"name": "unstake",
+		"description": "Use unstake to unstake from a particular pool. The call returns a Transaction object.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String that identifies the pool."
+				},
+				"balanceManagerKey": {
+					"type": "string",
+					"description": "String that identifies the balance manager."
+				}
+			},
+			"required": []
+		}
+	},
+	{
+		"type": "function",
+		"name": "submitProposal",
+		"description": "Use submitProposal to submit a governance proposal for a specific liquidity pool. The call returns a Transaction object.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String representing the unique identifier of the target DeepBook liquidity pool for this proposal."
+				},
+				"balanceManagerKey": {
+					"type": "string",
+					"description": "String representing the unique identifier of the Balance Manager submitting the proposal."
+				},
+				"takerFee": {
+					"type": "number",
+					"description": "Number representing the proposed fee charged to takers (orders that remove liquidity), typically expressed in basis points or a specific multiplier."
+				},
+				"makerFee": {
+					"type": "number",
+					"description": "Number representing the proposed fee charged to makers (orders that add liquidity), typically expressed in basis points or a specific multiplier."
+				},
+				"stakeRequired": {
+					"type": "number",
+					"description": "Number representing the proposed minimum DEEP token stake required to participate or gain maker privileges in the pool."
+				}
+			},
+			"required": [
+				"poolKey",
+				"balanceManagerKey",
+				"takerFee",
+				"makerFee",
+				"stakeRequired"
+			],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "vote",
+		"description": "Use vote to vote on a proposal. The call returns a Transaction object.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String that identifies the pool."
+				},
+				"balanceManagerKey": {
+					"type": "string",
+					"description": "String that identifies the balance manager."
+				},
+				"proposal_id": {
+					"type": "string",
+					"description": "String that identifies the proposal to vote on."
+				}
+			},
+			"required": ["poolKey", "balanceManagerKey", "proposal_id"],
+			"additionalProperties": false
+		},
+		"strict": true
+	},
+	{
+		"type": "function",
+		"name": "claimRebates",
+		"description": "Use claimRebates to claim maker/taker rebates for a balance manager in a specific pool. The call returns a function that takes a Transaction object.",
+		"parameters": {
+			"type": "object",
+			"properties": {
+				"poolKey": {
+					"type": "string",
+					"description": "String that identifies the pool."
+				},
+				"balanceManagerKey": {
+					"type": "string",
+					"description": "String that identifies the balance manager."
+				}
+			},
+			"required": ["poolKey", "balanceManagerKey"],
 			"additionalProperties": false
 		},
 		"strict": true
