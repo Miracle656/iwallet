@@ -8,6 +8,7 @@
 
 export type TradeReport = {
   identityId: string;
+  agentName?: string;
   owner?: string;
   pool: string;
   side: 'ask' | 'bid';

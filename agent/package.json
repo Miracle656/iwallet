@@ -13,6 +13,7 @@
     "setup:deepbook": "tsx src/setup-deepbook.ts",
     "set-policy": "tsx src/set-policy.ts",
     "trade": "tsx src/trade.ts",
+    "trade:loop": "tsx src/trade-loop.ts",
     "revoke": "tsx src/revoke.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit"
