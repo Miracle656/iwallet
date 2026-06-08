@@ -3,17 +3,17 @@ import { HiOutlineArrowRight, HiOutlineBanknotes, HiOutlineGlobeAlt, HiOutlineWa
 
 export function FundIWalletPanel({ wallet }: { wallet: IWallet }) {
   return (
-    <section className="rounded-[2.4rem] border border-white/10 bg-[#131416] p-5 sm:p-7">
+    <section className="rounded-[2.4rem] border border-border bg-surface p-5 sm:p-7">
       <div className="flex items-baseline gap-5">
-        <span className="inline-flex items-center gap-2 text-2xl font-semibold text-[#e5eef1]"><HiOutlineBanknotes className="text-[#298dff]" />Fund</span>
-        <span className="text-2xl text-[#6f747a]">Preview</span>
+        <span className="inline-flex items-center gap-2 text-2xl font-semibold text-ink"><HiOutlineBanknotes className="text-accent" />Fund</span>
+        <span className="text-2xl text-dim">Preview</span>
       </div>
 
       <div className="mt-7 flex flex-col gap-3 lg:flex-row">
-        <div className="w-full rounded-[1.9rem] border border-white/10 p-5 lg:flex-1">
+        <div className="w-full rounded-[1.9rem] border border-border p-5 lg:flex-1">
           <div className="flex items-center justify-between gap-3">
-            <span className="inline-flex items-center gap-2 text-sm text-[#92979d]"><HiOutlineWallet className="text-[#298dff]" />From</span>
-            <span className="rounded-full bg-[#222328] px-4 py-2 font-mono text-xs text-[#e5eef1]">0x8a42...19fd</span>
+            <span className="inline-flex items-center gap-2 text-sm text-muted"><HiOutlineWallet className="text-accent" />From</span>
+            <span className="rounded-full bg-elevated px-4 py-2 font-mono text-xs text-ink">0x8a42...19fd</span>
           </div>
           <div className="mt-8 flex gap-5">
             <Field label="Token" value="SUI" />
@@ -21,10 +21,10 @@ export function FundIWalletPanel({ wallet }: { wallet: IWallet }) {
           </div>
         </div>
 
-        <div className="w-full rounded-[1.9rem] border border-white/10 p-5 lg:flex-1">
+        <div className="w-full rounded-[1.9rem] border border-border p-5 lg:flex-1">
           <div className="flex items-center justify-between gap-3">
-            <span className="inline-flex items-center gap-2 text-sm text-[#92979d]"><HiOutlineGlobeAlt className="text-[#298dff]" />To</span>
-            <span className="rounded-full bg-[#222328] px-4 py-2 text-xs text-[#e5eef1]">{wallet.name}</span>
+            <span className="inline-flex items-center gap-2 text-sm text-muted"><HiOutlineGlobeAlt className="text-accent" />To</span>
+            <span className="rounded-full bg-elevated px-4 py-2 text-xs text-ink">{wallet.name}</span>
           </div>
           <div className="mt-8 flex gap-5">
             <Field label="iWallet" value="Connected" />
@@ -33,17 +33,17 @@ export function FundIWalletPanel({ wallet }: { wallet: IWallet }) {
         </div>
       </div>
 
-      <div className="mt-3 rounded-[1.9rem] border border-white/10 p-5">
+      <div className="mt-3 rounded-[1.9rem] border border-border p-5">
         <div className="flex items-center justify-between text-sm">
-          <span className="text-[#e5eef1]">Amount</span>
-          <span className="text-[#92979d]">Mock action</span>
+          <span className="text-ink">Amount</span>
+          <span className="text-muted">Mock action</span>
         </div>
-        <p className="mt-8 text-right text-6xl font-light tracking-[-0.06em] text-[#e5eef1]">25<span className="text-[#6f747a]">.00</span></p>
-        <p className="mt-3 text-right text-sm text-[#92979d]">SUI added to controlled agent spending</p>
+        <p className="mt-8 text-right text-6xl font-light tracking-[-0.06em] text-ink">25<span className="text-dim">.00</span></p>
+        <p className="mt-3 text-right text-sm text-muted">SUI added to controlled agent spending</p>
       </div>
 
       <div className="mt-7 flex justify-end">
-        <button className="inline-flex items-center gap-2 rounded-full bg-[#298dff] px-8 py-4 text-sm font-semibold text-[#131416] transition hover:bg-[#5aa9ff]">Fund iWallet <HiOutlineArrowRight /></button>
+        <button className="inline-flex items-center gap-2 rounded-full bg-accent px-8 py-4 text-sm font-semibold text-on-accent transition hover:bg-accent-soft">Fund iWallet <HiOutlineArrowRight /></button>
       </div>
     </section>
   );
@@ -52,8 +52,8 @@ export function FundIWalletPanel({ wallet }: { wallet: IWallet }) {
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-sm text-[#6f747a]">{label}</p>
-      <p className="mt-3 text-lg text-[#e5eef1]">{value}</p>
+      <p className="text-sm text-dim">{label}</p>
+      <p className="mt-3 text-lg text-ink">{value}</p>
     </div>
   );
 }

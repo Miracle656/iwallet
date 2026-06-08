@@ -12,11 +12,11 @@ export default async function IWalletDetailPage({ params }: { params: Promise<{ 
   if (!profile) {
     return (
       <AppShell eyebrow="iWallet" title="Not found" description="This identity object could not be read from Sui.">
-        <section className="rounded-[2.4rem] border border-white/10 bg-[#131416] p-7">
-          <p className="text-sm text-[#92979d]">
-            No <code className="text-[#e5eef1]">IIdentity</code> object exists at <HashText value={id} chars={10} /> on the configured network.
+        <section className="rounded-[2.4rem] border border-border bg-surface p-7">
+          <p className="text-sm text-muted">
+            No <code className="text-ink">IIdentity</code> object exists at <HashText value={id} chars={10} /> on the configured network.
           </p>
-          <Link href="/iwallets" data-hover-trigger className="mt-5 inline-flex rounded-full bg-[#222328] px-5 py-2.5 text-sm font-semibold text-[#e5eef1] hover:text-[#298dff]">
+          <Link href="/iwallets" data-hover-trigger className="mt-5 inline-flex rounded-full bg-elevated px-5 py-2.5 text-sm font-semibold text-ink hover:text-accent">
             <AnimatedHoverText>Back to iWallets</AnimatedHoverText>
           </Link>
         </section>

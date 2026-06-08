@@ -8,7 +8,7 @@ export default function AgentsPage() {
       title="Agent trading feed"
       description="Every autonomous DeepBook action across all iWallets — policy-gated withdrawals, real orders, and the rejections when an agent hits its ceiling or gets revoked."
     >
-      <section className="rounded-[2.4rem] border border-white/10 bg-[#131416] p-5 sm:p-7">
+      <section className="rounded-[2.4rem] border border-border bg-surface p-5 sm:p-7">
         <AgentTradeFeed />
       </section>
     </AppShell>

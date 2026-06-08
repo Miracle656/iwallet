@@ -4,7 +4,7 @@ import { ConnectModal, useCurrentAccount, useDisconnectWallet } from "@mysten/da
 import { HiOutlineWallet } from "react-icons/hi2";
 
 const buttonClass =
-  "inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#222328] px-4 py-2 text-sm font-medium text-[#e5eef1] transition hover:border-[#298dff]/50 hover:text-[#298dff]";
+  "inline-flex items-center gap-2 rounded-full border border-border bg-elevated px-4 py-2 text-sm font-medium text-ink transition hover:border-accent/50 hover:text-accent";
 
 function shortAddress(address: string): string {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;

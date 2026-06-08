@@ -38,20 +38,20 @@ export function MarketHeader({
   }, []);
 
   return (
-    <div className="flex flex-wrap items-center gap-5 border-b border-white/10 px-5 py-4">
+    <div className="flex flex-wrap items-center gap-5 border-b border-border px-5 py-4">
       <div ref={ref} className="relative">
         <button
           onClick={() => setOpen((v) => !v)}
-          className="flex items-center gap-2 rounded-xl border border-white/10 bg-[#101113] px-3 py-2 text-sm font-semibold text-[#e5eef1] hover:border-[#298dff]/40"
+          className="flex items-center gap-2 rounded-xl border border-border bg-canvas px-3 py-2 text-sm font-semibold text-ink hover:border-accent/40"
         >
-          <span className="grid h-7 w-7 place-items-center rounded-full bg-[#222328] text-[#298dff]">
+          <span className="grid h-7 w-7 place-items-center rounded-full bg-elevated text-accent">
             <HiOutlineChartBar />
           </span>
           {pool.label}
-          <HiChevronDown className="text-[#6f747a]" />
+          <HiChevronDown className="text-dim" />
         </button>
         {open && (
-          <div className="absolute left-0 top-full z-20 mt-2 w-56 overflow-hidden rounded-xl border border-white/10 bg-[#16171a] shadow-xl">
+          <div className="absolute left-0 top-full z-20 mt-2 w-56 overflow-hidden rounded-xl border border-border bg-elevated shadow-xl">
             {POOLS.map((p) => (
               <button
                 key={p.key}
@@ -59,7 +59,7 @@ export function MarketHeader({
                   onSelect(p);
                   setOpen(false);
                 }}
-                className={`flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition hover:bg-[#222328] ${p.key === pool.key ? "text-[#298dff]" : "text-[#e5eef1]"}`}
+                className={`flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition hover:bg-elevated ${p.key === pool.key ? "text-accent" : "text-ink"}`}
               >
                 {p.label}
               </button>
@@ -69,10 +69,10 @@ export function MarketHeader({
       </div>
 
       <div>
-        <p className="text-xs uppercase tracking-[0.14em] text-[#6f747a]">Mid price</p>
-        <p className="font-mono text-2xl font-light tracking-[-0.02em] text-[#e5eef1]">
+        <p className="text-xs uppercase tracking-[0.14em] text-dim">Mid price</p>
+        <p className="font-mono text-2xl font-light tracking-[-0.02em] text-ink">
           {mid != null ? mid.toFixed(5) : "—"}
-          <span className="ml-1 text-sm text-[#6f747a]">{pool.quote}</span>
+          <span className="ml-1 text-sm text-dim">{pool.quote}</span>
         </p>
       </div>
     </div>

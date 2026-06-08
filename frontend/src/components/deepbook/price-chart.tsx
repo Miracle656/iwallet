@@ -90,7 +90,7 @@ export function PriceChart({ pool, pollMs = 3000 }: { pool: Pool; pollMs?: numbe
   return (
     <div className="relative h-full w-full">
       {mid == null && (
-        <p className="absolute inset-0 grid place-items-center text-sm text-[#6f747a]">
+        <p className="absolute inset-0 grid place-items-center text-sm text-dim">
           Waiting for price…
         </p>
       )}

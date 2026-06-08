@@ -16,9 +16,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-    >
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Apply saved theme before paint. Default is dark (no class). */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){try{if(localStorage.getItem('theme')==='light'){document.documentElement.classList.add('light')}}catch(e){}})()",
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col">
         <Providers>
           <Navbar />

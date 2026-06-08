@@ -48,9 +48,40 @@ export function TradePanel({ pool, onChange }: { pool: Pool; onChange?: () => vo
 
   const refreshBm = useCallback(async () => {
     if (!account) return;
+    // Prefer the locally remembered BM (createAndShareBalanceManager doesn't
+    // register with the DeepBook registry, so getBalanceManagerIds misses it).
+    const stored = localStorage.getItem(`iwallet:bm:${account.address}`);
+    if (stored) {
+      setBmId(stored);
+      return;
+    }
     const ids = await fetchBalanceManagerIds(account.address);
-    setBmId(ids[0] ?? null);
+    if (ids[0]) {
+      localStorage.setItem(`iwallet:bm:${account.address}`, ids[0]);
+      setBmId(ids[0]);
+    }
   }, [account]);
+
+  async function createBm() {
+    if (!account) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await signAndExecute({ transaction: buildCreateBalanceManagerTx(account.address) });
+      const changes = (res as { objectChanges?: { type?: string; objectType?: string; objectId?: string }[] }).objectChanges ?? [];
+      const bm = changes.find(
+        (c) => c.type === "created" && String(c.objectType).includes("BalanceManager"),
+      );
+      if (!bm?.objectId) throw new Error("BalanceManager id not found in tx");
+      localStorage.setItem(`iwallet:bm:${account.address}`, bm.objectId);
+      setBmId(bm.objectId);
+      setMsg({ kind: "ok", text: `BalanceManager created — ${bm.objectId.slice(0, 10)}…` });
+    } catch (e) {
+      setMsg({ kind: "err", text: e instanceof Error ? e.message : "failed" });
+    } finally {
+      setBusy(false);
+    }
+  }
 
   const refreshBalances = useCallback(async () => {
     if (!bmId) return;
@@ -114,8 +145,8 @@ export function TradePanel({ pool, onChange }: { pool: Pool; onChange?: () => vo
         />
         <button
           disabled={busy}
-          onClick={() => submit(buildCreateBalanceManagerTx(account.address), "BalanceManager created")}
-          className="mt-4 w-full rounded-xl bg-[#298dff] py-3 text-sm font-semibold text-[#131416] hover:bg-[#5aa9ff] disabled:opacity-40"
+          onClick={createBm}
+          className="mt-4 w-full rounded-xl bg-accent py-3 text-sm font-semibold text-white hover:bg-accent-soft disabled:opacity-40"
         >
           {busy ? "Creating…" : "Create BalanceManager"}
         </button>
@@ -161,9 +192,9 @@ export function TradePanel({ pool, onChange }: { pool: Pool; onChange?: () => vo
   return (
     <Card>
       {/* BalanceManager funds */}
-      <div className="rounded-[1.25rem] border border-white/10 p-4">
+      <div className="rounded-[1.25rem] border border-border p-4">
         <div className="flex items-center justify-between">
-          <p className="text-xs uppercase tracking-[0.14em] text-[#6f747a]">BalanceManager</p>
+          <p className="text-xs uppercase tracking-[0.14em] text-dim">BalanceManager</p>
           <HashText value={bmId} chars={5} />
         </div>
         <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
@@ -174,7 +205,7 @@ export function TradePanel({ pool, onChange }: { pool: Pool; onChange?: () => vo
           <select
             value={depositCoin}
             onChange={(e) => setDepositCoin(e.target.value)}
-            className="rounded-lg border border-white/10 bg-[#101113] px-2 py-1.5 text-xs text-[#e5eef1] outline-none"
+            className="rounded-lg border border-border bg-canvas px-2 py-1.5 text-xs text-ink outline-none"
           >
             <option value={pool.base}>{pool.base}</option>
             <option value={pool.quote}>{pool.quote}</option>
@@ -184,19 +215,19 @@ export function TradePanel({ pool, onChange }: { pool: Pool; onChange?: () => vo
             onChange={(e) => setDepositAmt(e.target.value)}
             inputMode="decimal"
             placeholder="0.0"
-            className="w-full rounded-lg border border-white/10 bg-[#101113] px-3 py-1.5 text-xs text-[#e5eef1] outline-none focus:border-[#298dff]/40"
+            className="w-full rounded-lg border border-border bg-canvas px-3 py-1.5 text-xs text-ink outline-none focus:border-accent/40"
           />
           <button
             disabled={busy}
             onClick={() => submit(buildDepositTx(account.address, bmId, depositCoin, num(depositAmt)), "Deposited")}
-            className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-medium text-[#e5eef1] hover:border-[#298dff]/40 disabled:opacity-40"
+            className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-ink hover:border-accent/40 disabled:opacity-40"
           >
             Deposit
           </button>
           <button
             disabled={busy}
             onClick={() => submit(buildWithdrawTx(account.address, bmId, depositCoin, num(depositAmt)), "Withdrew")}
-            className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-medium text-[#e5eef1] hover:border-[#298dff]/40 disabled:opacity-40"
+            className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-ink hover:border-accent/40 disabled:opacity-40"
           >
             Withdraw
           </button>
@@ -207,13 +238,13 @@ export function TradePanel({ pool, onChange }: { pool: Pool; onChange?: () => vo
       <div className="mt-4 grid grid-cols-2 gap-2">
         <button
           onClick={() => setSide("buy")}
-          className={`rounded-xl py-2.5 text-sm font-semibold transition ${side === "buy" ? "bg-emerald-400/20 text-emerald-200" : "border border-white/10 text-[#92979d]"}`}
+          className={`rounded-xl py-2.5 text-sm font-semibold transition ${side === "buy" ? "bg-emerald-400/20 text-emerald-200" : "border border-border text-muted"}`}
         >
           Buy {pool.base}
         </button>
         <button
           onClick={() => setSide("sell")}
-          className={`rounded-xl py-2.5 text-sm font-semibold transition ${side === "sell" ? "bg-red-400/20 text-red-200" : "border border-white/10 text-[#92979d]"}`}
+          className={`rounded-xl py-2.5 text-sm font-semibold transition ${side === "sell" ? "bg-red-400/20 text-red-200" : "border border-border text-muted"}`}
         >
           Sell {pool.base}
         </button>
@@ -224,7 +255,7 @@ export function TradePanel({ pool, onChange }: { pool: Pool; onChange?: () => vo
           <button
             key={t}
             onClick={() => setOrderType(t)}
-            className={`uppercase tracking-[0.1em] ${orderType === t ? "text-[#298dff]" : "text-[#6f747a] hover:text-[#e5eef1]"}`}
+            className={`uppercase tracking-[0.1em] ${orderType === t ? "text-accent" : "text-dim hover:text-ink"}`}
           >
             {t}
           </button>
@@ -232,13 +263,13 @@ export function TradePanel({ pool, onChange }: { pool: Pool; onChange?: () => vo
       </div>
 
       {orderType === "limit" && (
-        <Field label={`Price (${pool.quote})`} action={<button onClick={useMid} className="text-[10px] text-[#298dff] hover:underline">MID</button>}>
+        <Field label={`Price (${pool.quote})`} action={<button onClick={useMid} className="text-[10px] text-accent hover:underline">MID</button>}>
           <input
             value={price}
             onChange={(e) => setPrice(e.target.value)}
             inputMode="decimal"
             placeholder="0.0"
-            className="w-full bg-transparent text-right font-mono text-sm text-[#e5eef1] outline-none"
+            className="w-full bg-transparent text-right font-mono text-sm text-ink outline-none"
           />
         </Field>
       )}
@@ -249,7 +280,7 @@ export function TradePanel({ pool, onChange }: { pool: Pool; onChange?: () => vo
           onChange={(e) => setAmount(e.target.value)}
           inputMode="decimal"
           placeholder="0.0"
-          className="w-full bg-transparent text-right font-mono text-sm text-[#e5eef1] outline-none"
+          className="w-full bg-transparent text-right font-mono text-sm text-ink outline-none"
         />
       </Field>
 
@@ -261,7 +292,7 @@ export function TradePanel({ pool, onChange }: { pool: Pool; onChange?: () => vo
         {busy ? "Submitting…" : `${side === "buy" ? "Buy" : "Sell"} ${pool.base}`}
       </button>
 
-      <p className="mt-2 text-center text-[11px] text-[#6f747a]">
+      <p className="mt-2 text-center text-[11px] text-dim">
         Pays fees in the input token (no DEEP required).
       </p>
       {msg && <Msg msg={msg} />}
@@ -270,26 +301,26 @@ export function TradePanel({ pool, onChange }: { pool: Pool; onChange?: () => vo
 }
 
 function Card({ children }: { children: React.ReactNode }) {
-  return <div className="rounded-[1.6rem] border border-white/10 bg-[#131416] p-4">{children}</div>;
+  return <div className="rounded-[1.6rem] border border-border bg-surface p-4">{children}</div>;
 }
 
 function Empty({ icon, title, hint }: { icon: React.ReactNode; title: string; hint: string }) {
   return (
     <div className="py-6 text-center">
-      <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-[#222328] text-2xl text-[#298dff]">
+      <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-elevated text-2xl text-accent">
         {icon}
       </span>
-      <p className="mt-3 text-sm font-medium text-[#e5eef1]">{title}</p>
-      <p className="mt-1 text-xs text-[#92979d]">{hint}</p>
+      <p className="mt-3 text-sm font-medium text-ink">{title}</p>
+      <p className="mt-1 text-xs text-muted">{hint}</p>
     </div>
   );
 }
 
 function Bal({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg bg-[#101113] px-3 py-2">
-      <p className="text-[11px] text-[#6f747a]">{label}</p>
-      <p className="font-mono text-sm text-[#e5eef1]">{value.toLocaleString()}</p>
+    <div className="rounded-lg bg-canvas px-3 py-2">
+      <p className="text-[11px] text-dim">{label}</p>
+      <p className="font-mono text-sm text-ink">{value.toLocaleString()}</p>
     </div>
   );
 }
@@ -304,9 +335,9 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mt-3 rounded-xl border border-white/10 bg-[#101113] px-3 py-2.5">
+    <div className="mt-3 rounded-xl border border-border bg-canvas px-3 py-2.5">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] text-[#6f747a]">{label}</span>
+        <span className="text-[11px] text-dim">{label}</span>
         {action}
       </div>
       <div className="mt-1">{children}</div>
