@@ -10,27 +10,39 @@
   font-style: normal;
 }
 
-:root {
-  --background: #101113;
-  --foreground: #e5eef1;
-  --surface: #131416;
-  --surface-raised: #222328;
-  --accent: #298dff;
-  --muted: #92979d;
-  --line: rgba(229, 238, 241, 0.1);
+/*
+ * Palette as runtime CSS variables. Utilities (bg-surface, text-accent,
+ * bg-accent/10, border-border, …) reference these via var(), so the .light
+ * class swaps the whole app to light mode. DEFAULT (no class) = DARK, identical
+ * to the original look. Accent is Sui Blue 500.
+ */
+@theme {
+  --color-accent: #298dff;
+  --color-accent-soft: #5aa9ff;
+  --color-on-accent: #ffffff;
+  --color-canvas: #101113;
+  --color-surface: #131416;
+  --color-elevated: #222328;
+  --color-border: rgba(255, 255, 255, 0.10);
+  --color-ink: #e5eef1;
+  --color-muted: #92979d;
+  --color-dim: #6f747a;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+.light {
+  --color-canvas: #ffffff;
+  --color-surface: #f4f6fa;
+  --color-elevated: #e7edf4;
+  --color-border: #d8dee7;
+  --color-ink: #0b1220;
+  --color-muted: #5d6675;
+  --color-dim: #8b93a1;
 }
 
 body {
-  background: var(--background);
+  background: var(--color-canvas);
   background-image: none !important;
-  color: var(--foreground);
+  color: var(--color-ink);
   font-family: 'Satoshi-Variable';
 }
 
@@ -64,10 +76,10 @@ button:disabled,
   color: #ffffff;
 }
 
-/* Custom scrollbar — dark track, Sui-blue thumb on hover */
+/* Custom scrollbar — theme-aware track + thumb, Sui-blue on hover */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #2b2e35 transparent;
+  scrollbar-color: var(--color-elevated) transparent;
 }
 
 ::-webkit-scrollbar {
@@ -80,9 +92,9 @@ button:disabled,
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #2b2e35;
+  background: var(--color-elevated);
   border-radius: 9999px;
-  border: 2px solid var(--background);
+  border: 2px solid var(--color-canvas);
 }
 
 ::-webkit-scrollbar-thumb:hover {

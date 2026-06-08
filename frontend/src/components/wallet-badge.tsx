@@ -6,11 +6,11 @@ export function WalletBadge({ name, objectId, size = "md" }: { name: string; obj
 
   return (
     <div className="flex items-center gap-3">
-      <div className={`${box} grid place-items-center rounded-2xl border border-white/10 bg-[#222328] text-lg text-[#298dff]`}>
+      <div className={`${box} grid place-items-center rounded-2xl border border-border bg-elevated text-lg text-accent`}>
         <HiOutlineWallet />
       </div>
       <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-[#e5eef1]">{name}</p>
+        <p className="truncate text-sm font-semibold text-ink">{name}</p>
         <HashText value={objectId} chars={6} />
       </div>
     </div>

@@ -36,22 +36,22 @@ export function OrderBookPanel({ pool, pollMs = 2500 }: { pool: Pool; pollMs?: n
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between px-1 pb-2 text-xs uppercase tracking-[0.14em] text-[#6f747a]">
+      <div className="flex items-center justify-between px-1 pb-2 text-xs uppercase tracking-[0.14em] text-dim">
         <span>Price ({pool.quote})</span>
         <span>Size ({pool.base})</span>
       </div>
 
       {!loaded ? (
-        <p className="py-8 text-center text-sm text-[#6f747a]">Loading book…</p>
+        <p className="py-8 text-center text-sm text-dim">Loading book…</p>
       ) : asks.length === 0 && bids.length === 0 ? (
-        <p className="py-8 text-center text-sm text-[#6f747a]">No resting orders.</p>
+        <p className="py-8 text-center text-sm text-dim">No resting orders.</p>
       ) : (
         <div className="flex flex-col gap-px text-xs">
           {asks.map((a, i) => (
             <Row key={`a${i}`} price={a.price} qty={a.quantity} maxQty={maxQty} side="ask" />
           ))}
-          <div className="flex items-center justify-between px-1 py-1.5 text-[#92979d]">
-            <span className="text-[#6f747a]">Spread</span>
+          <div className="flex items-center justify-between px-1 py-1.5 text-muted">
+            <span className="text-dim">Spread</span>
             <span className="font-mono">{spread != null ? spread.toFixed(5) : "—"}</span>
           </div>
           {bids.map((b, i) => (
@@ -81,7 +81,7 @@ function Row({
     <div className="relative flex items-center justify-between px-1 py-1 font-mono">
       <div className={`absolute inset-y-0 right-0 ${bar}`} style={{ width: `${pct}%` }} />
       <span className={`relative ${text}`}>{price.toFixed(5)}</span>
-      <span className="relative text-[#b9c2c6]">{qty.toLocaleString()}</span>
+      <span className="relative text-muted">{qty.toLocaleString()}</span>
     </div>
   );
 }

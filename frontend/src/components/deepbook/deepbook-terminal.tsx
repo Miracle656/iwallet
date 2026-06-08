@@ -17,31 +17,31 @@ export function DeepBookTerminal() {
   const [pool, setPool] = useState<Pool>(POOLS[0]);
 
   return (
-    <div className="overflow-hidden rounded-[2.4rem] border border-white/10 bg-[#131416]">
+    <div className="overflow-hidden rounded-[2.4rem] border border-border bg-surface">
       <MarketHeader pool={pool} onSelect={setPool} />
 
-      <div className="grid grid-cols-1 gap-px bg-white/5 lg:grid-cols-[1fr_300px_320px]">
+      <div className="grid grid-cols-1 gap-px bg-border lg:grid-cols-[1fr_300px_320px]">
         {/* chart + agent feed */}
-        <div className="flex flex-col gap-px bg-white/5">
-          <div className="h-[340px] bg-[#131416] p-3">
+        <div className="flex flex-col gap-px bg-border">
+          <div className="h-[340px] bg-surface p-3">
             <PriceChart pool={pool} />
           </div>
-          <div className="bg-[#131416] p-5">
+          <div className="bg-surface p-5">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-[#e5eef1]">Agent activity</h3>
-              <span className="text-xs text-[#6f747a]">autonomous trades on this venue</span>
+              <h3 className="text-sm font-semibold text-ink">Agent activity</h3>
+              <span className="text-xs text-dim">autonomous trades on this venue</span>
             </div>
             <AgentTradeFeed limit={20} />
           </div>
         </div>
 
         {/* order book */}
-        <div className="bg-[#131416] p-4">
+        <div className="bg-surface p-4">
           <OrderBookPanel pool={pool} />
         </div>
 
         {/* trade panel */}
-        <div className="bg-[#131416] p-4">
+        <div className="bg-surface p-4">
           <TradePanel pool={pool} />
         </div>
       </div>
