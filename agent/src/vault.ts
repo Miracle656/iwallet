@@ -78,6 +78,31 @@ export class VaultWithdrawer {
   }
 
   /**
+   * The biggest Coin<T> sent to the vault's address but not yet staged.
+   * Returns its object ref for use as a `Receiving` arg, or null if none.
+   */
+  private async largestPendingCoin(): Promise<
+    { objectId: string; version: string; digest: string; balance: bigint } | null
+  > {
+    const res = await this.client.getOwnedObjects({
+      owner: this.identityId,
+      filter: { StructType: `0x2::coin::Coin<${this.coinType}>` },
+      options: { showContent: true },
+    });
+    let best: { objectId: string; version: string; digest: string; balance: bigint } | null = null;
+    for (const o of res.data) {
+      const d = o.data;
+      if (!d) continue;
+      const fields = (d.content as { fields?: { balance?: string } } | undefined)?.fields;
+      const bal = BigInt(fields?.balance ?? '0');
+      if (!best || bal > best.balance) {
+        best = { objectId: d.objectId, version: d.version, digest: d.digest, balance: bal };
+      }
+    }
+    return best;
+  }
+
+  /**
    * Withdraw `amount` MIST, authorising it for `recipient` (must be in the
    * policy's allow_recipients). The released coin lands in the agent's wallet.
    */
@@ -102,13 +127,31 @@ export class VaultWithdrawer {
       }
     }
 
+    // Funding model is transfer-to-object: SUI sent to the vault address sits
+    // as a `Receiving` coin until staged. The contract's receive_coin is
+    // private, so we stage it by passing the largest pending coin as
+    // opt_sent_coin = Some(Receiving) — the contract joins it into the bag
+    // before splitting `amount`. None once nothing is pending (bag already funded).
+    const pending = await this.largestPendingCoin();
+
     const tx = new Transaction();
 
-    // opt_sent_coin = None<Receiving<Coin<T>>> — the vault is already funded.
-    const noneSent = tx.moveCall({
-      target: '0x1::option::none',
-      typeArguments: [TYPE_RECEIVING_COIN(this.coinType)],
-    });
+    const optSent = pending
+      ? tx.moveCall({
+          target: '0x1::option::some',
+          typeArguments: [TYPE_RECEIVING_COIN(this.coinType)],
+          arguments: [
+            tx.receivingRef({
+              objectId: pending.objectId,
+              version: pending.version,
+              digest: pending.digest,
+            }),
+          ],
+        })
+      : tx.moveCall({
+          target: '0x1::option::none',
+          typeArguments: [TYPE_RECEIVING_COIN(this.coinType)],
+        });
 
     const [coin] = tx.moveCall({
       target: `${this.pkg}::prototype::withdraw_with_proof`,
@@ -120,7 +163,7 @@ export class VaultWithdrawer {
         tx.pure.vector('u8', Array.from(publicInputs)),
         tx.pure.vector('u8', Array.from(nonce)),
         tx.pure.u64(amount),
-        noneSent,
+        optSent,
         tx.pure.address(recipient),
         tx.pure.string(this.key),
         tx.object('0x6'), // Clock
