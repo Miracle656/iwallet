@@ -15,7 +15,7 @@
   --foreground: #e5eef1;
   --surface: #131416;
   --surface-raised: #222328;
-  --accent: #fbff6c;
+  --accent: #298dff;
   --muted: #92979d;
   --line: rgba(229, 238, 241, 0.1);
 }
@@ -60,6 +60,35 @@ button:disabled,
 }
 
 ::selection {
-  background: rgba(251, 255, 108, 0.55);
-  color: #131416;
+  background: rgba(41, 141, 255, 0.55);
+  color: #ffffff;
+}
+
+/* Custom scrollbar — dark track, Sui-blue thumb on hover */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2b2e35 transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2b2e35;
+  border-radius: 9999px;
+  border: 2px solid var(--background);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #298dff;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
 }

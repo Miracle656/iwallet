@@ -16,7 +16,7 @@ export default async function IWalletDetailPage({ params }: { params: Promise<{ 
           <p className="text-sm text-[#92979d]">
             No <code className="text-[#e5eef1]">IIdentity</code> object exists at <HashText value={id} chars={10} /> on the configured network.
           </p>
-          <Link href="/iwallets" data-hover-trigger className="mt-5 inline-flex rounded-full bg-[#222328] px-5 py-2.5 text-sm font-semibold text-[#e5eef1] hover:text-[#fbff6c]">
+          <Link href="/iwallets" data-hover-trigger className="mt-5 inline-flex rounded-full bg-[#222328] px-5 py-2.5 text-sm font-semibold text-[#e5eef1] hover:text-[#298dff]">
             <AnimatedHoverText>Back to iWallets</AnimatedHoverText>
           </Link>
         </section>

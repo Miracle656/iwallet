@@ -24,7 +24,7 @@ export function Navbar() {
     <header className="fixed left-0 top-0 z-50 w-full border-b border-white/10 bg-[#101113]">
       <div className="flex w-full items-center justify-between gap-3 px-5 py-4 sm:px-8 lg:px-10">
         <Link href="/" className="flex items-center gap-3" onClick={() => setOpen(false)}>
-          <div className="grid h-10 w-10 place-items-center rounded-2xl border border-white/10 bg-[#222328] text-lg text-[#fbff6c]">
+          <div className="grid h-10 w-10 place-items-center rounded-2xl border border-white/10 bg-[#222328] text-lg text-[#298dff]">
             <HiOutlineWallet />
           </div>
           <p className="text-base font-semibold text-[#e5eef1]">iWallet</p>
@@ -55,7 +55,7 @@ export function Navbar() {
             onClick={() => setOpen((v) => !v)}
             aria-expanded={open}
             aria-label={open ? "Close menu" : "Open menu"}
-            className="grid h-10 w-10 place-items-center rounded-2xl border border-white/10 bg-[#222328] text-[#e5eef1] transition hover:border-[#fbff6c]/40 hover:text-[#fbff6c] lg:hidden"
+            className="grid h-10 w-10 place-items-center rounded-2xl border border-white/10 bg-[#222328] text-[#e5eef1] transition hover:border-[#298dff]/40 hover:text-[#298dff] lg:hidden"
           >
             {open ? <HiOutlineXMark /> : <HiOutlineBars3 />}
           </button>
@@ -71,7 +71,7 @@ export function Navbar() {
                 key={item.href}
                 href={item.href}
                 onClick={() => setOpen(false)}
-                className="rounded-xl px-3 py-3 text-sm font-medium text-[#e5eef1] transition hover:bg-[#222328] hover:text-[#fbff6c]"
+                className="rounded-xl px-3 py-3 text-sm font-medium text-[#e5eef1] transition hover:bg-[#222328] hover:text-[#298dff]"
               >
                 {item.label}
               </Link>

@@ -8,10 +8,10 @@ export function LinkedAgentCard({ wallet }: { wallet: IWallet }) {
     <section className="rounded-[1.8rem] border border-white/10 bg-[#131416] p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="inline-flex items-center gap-2 text-sm font-medium text-[#92979d]"><HiOutlineLink className="text-[#fbff6c]" />Linked agent</p>
+          <p className="inline-flex items-center gap-2 text-sm font-medium text-[#92979d]"><HiOutlineLink className="text-[#298dff]" />Linked agent</p>
           <h2 className="mt-2 text-xl font-semibold text-[#e5eef1]">{agent?.name ?? "No agent linked"}</h2>
         </div>
-        <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium ${agent?.status === "linked" ? "border-[#fbff6c]/35 bg-[#fbff6c]/10 text-[#fbff6c]" : "border-white/10 bg-[#222328] text-[#b9c2c6]"}`}>
+        <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium ${agent?.status === "linked" ? "border-[#298dff]/35 bg-[#298dff]/10 text-[#298dff]" : "border-white/10 bg-[#222328] text-[#b9c2c6]"}`}>
           <HiOutlineShieldCheck /> {agent?.status === "linked" ? "Linked" : "Unlinked"}
         </span>
       </div>

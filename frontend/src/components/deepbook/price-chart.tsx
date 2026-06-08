@@ -40,9 +40,9 @@ export function PriceChart({ pool, pollMs = 3000 }: { pool: Pool; pollMs?: numbe
       autoSize: true,
     });
     const series = chart.addAreaSeries({
-      lineColor: "#fbff6c",
-      topColor: "rgba(251,255,108,0.30)",
-      bottomColor: "rgba(251,255,108,0)",
+      lineColor: "#298dff",
+      topColor: "rgba(41, 141, 255,0.30)",
+      bottomColor: "rgba(41, 141, 255,0)",
       lineWidth: 2,
       priceLineVisible: true,
     });

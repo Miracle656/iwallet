@@ -212,12 +212,12 @@ export function CreateIWalletFlow() {
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-[#101113] px-4 py-2.5 text-sm text-[#e5eef1] outline-none focus:border-[#fbff6c]/50"
+                className="w-full rounded-xl border border-white/10 bg-[#101113] px-4 py-2.5 text-sm text-[#e5eef1] outline-none focus:border-[#298dff]/50"
               />
             </Field>
 
             {ownerSource ? (
-              <div className="rounded-[1.25rem] border border-[#fbff6c]/20 bg-[#fbff6c]/5 p-4">
+              <div className="rounded-[1.25rem] border border-[#298dff]/20 bg-[#298dff]/5 p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="inline-flex items-center gap-2 text-xs text-[#6f747a]">
@@ -226,7 +226,7 @@ export function CreateIWalletFlow() {
                     </p>
                     <p className="mt-2"><HashText value={ownerAddress!} chars={16} /></p>
                   </div>
-                  <button onClick={resetOwner} className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-[#e5eef1] hover:text-[#fbff6c]">
+                  <button onClick={resetOwner} className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-[#e5eef1] hover:text-[#298dff]">
                     Switch
                   </button>
                 </div>
@@ -237,10 +237,10 @@ export function CreateIWalletFlow() {
                   type="button"
                   onClick={pickWallet}
                   disabled={!account}
-                  className="flex flex-col items-start gap-2 rounded-[1.25rem] border border-white/10 bg-[#101113] p-4 text-left transition hover:border-[#fbff6c]/40 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex flex-col items-start gap-2 rounded-[1.25rem] border border-white/10 bg-[#101113] p-4 text-left transition hover:border-[#298dff]/40 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <span className="inline-flex items-center gap-2 text-sm font-medium text-[#e5eef1]">
-                    <HiOutlineWallet className="text-[#fbff6c]" /> Connected wallet
+                    <HiOutlineWallet className="text-[#298dff]" /> Connected wallet
                   </span>
                   <span className="text-xs text-[#92979d]">
                     {account ? <HashText value={account.address} chars={6} /> : "Connect from the navbar first"}
@@ -250,10 +250,10 @@ export function CreateIWalletFlow() {
                   type="button"
                   onClick={pickPasskey}
                   disabled={busyPasskey}
-                  className="flex flex-col items-start gap-2 rounded-[1.25rem] border border-white/10 bg-[#101113] p-4 text-left transition hover:border-[#fbff6c]/40 disabled:opacity-50"
+                  className="flex flex-col items-start gap-2 rounded-[1.25rem] border border-white/10 bg-[#101113] p-4 text-left transition hover:border-[#298dff]/40 disabled:opacity-50"
                 >
                   <span className="inline-flex items-center gap-2 text-sm font-medium text-[#e5eef1]">
-                    <HiOutlineFingerPrint className="text-[#fbff6c]" /> Passkey
+                    <HiOutlineFingerPrint className="text-[#298dff]" /> Passkey
                   </span>
                   <span className="text-xs text-[#92979d]">
                     {busyPasskey ? "Waiting for passkey…" : "Create a new passkey on this device"}
@@ -281,16 +281,16 @@ export function CreateIWalletFlow() {
                   <p className="mt-2"><HashText value={identityHash} chars={16} /></p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <button onClick={onGenerateWitness} data-hover-trigger className="rounded-full border border-white/10 px-5 py-2.5 text-sm font-medium text-[#e5eef1] hover:text-[#fbff6c]">
+                  <button onClick={onGenerateWitness} data-hover-trigger className="rounded-full border border-white/10 px-5 py-2.5 text-sm font-medium text-[#e5eef1] hover:text-[#298dff]">
                     <AnimatedHoverText>Regenerate</AnimatedHoverText>
                   </button>
-                  <button onClick={onDownloadRecovery} data-hover-trigger className="inline-flex items-center gap-2 rounded-full bg-[#222328] px-5 py-2.5 text-sm font-semibold text-[#e5eef1] hover:text-[#fbff6c]">
+                  <button onClick={onDownloadRecovery} data-hover-trigger className="inline-flex items-center gap-2 rounded-full bg-[#222328] px-5 py-2.5 text-sm font-semibold text-[#e5eef1] hover:text-[#298dff]">
                     <HiOutlineShieldCheck /> Download recovery
                   </button>
                 </div>
               </>
             ) : (
-              <button onClick={onGenerateWitness} data-hover-trigger className="inline-flex w-fit items-center gap-2 rounded-full bg-[#fbff6c] px-6 py-3 text-sm font-semibold text-[#131416] hover:bg-[#f7ff8f]">
+              <button onClick={onGenerateWitness} data-hover-trigger className="inline-flex w-fit items-center gap-2 rounded-full bg-[#298dff] px-6 py-3 text-sm font-semibold text-[#131416] hover:bg-[#5aa9ff]">
                 <HiOutlineIdentification /> Generate secret witness
               </button>
             )}
@@ -304,13 +304,13 @@ export function CreateIWalletFlow() {
               the agent can never exceed the budget, send outside the allowed pool, or act past expiry.
             </p>
             <Field label="Budget cap (SUI)">
-              <input value={budget} onChange={(e) => setBudget(e.target.value)} inputMode="decimal" className="w-full rounded-xl border border-white/10 bg-[#101113] px-4 py-2.5 text-sm text-[#e5eef1] outline-none focus:border-[#fbff6c]/50" />
+              <input value={budget} onChange={(e) => setBudget(e.target.value)} inputMode="decimal" className="w-full rounded-xl border border-white/10 bg-[#101113] px-4 py-2.5 text-sm text-[#e5eef1] outline-none focus:border-[#298dff]/50" />
             </Field>
             <Field label="Expires in (days)">
-              <input value={expiryDays} onChange={(e) => setExpiryDays(e.target.value)} inputMode="numeric" className="w-full rounded-xl border border-white/10 bg-[#101113] px-4 py-2.5 text-sm text-[#e5eef1] outline-none focus:border-[#fbff6c]/50" />
+              <input value={expiryDays} onChange={(e) => setExpiryDays(e.target.value)} inputMode="numeric" className="w-full rounded-xl border border-white/10 bg-[#101113] px-4 py-2.5 text-sm text-[#e5eef1] outline-none focus:border-[#298dff]/50" />
             </Field>
             <Field label="Allowed recipient (DeepBook pool address — optional)">
-              <input value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="0x… pool id" className="w-full rounded-xl border border-white/10 bg-[#101113] px-4 py-2.5 font-mono text-xs text-[#e5eef1] outline-none placeholder:text-[#6f747a] focus:border-[#fbff6c]/50" />
+              <input value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="0x… pool id" className="w-full rounded-xl border border-white/10 bg-[#101113] px-4 py-2.5 font-mono text-xs text-[#e5eef1] outline-none placeholder:text-[#6f747a] focus:border-[#298dff]/50" />
             </Field>
           </Panel>
         )}
@@ -325,7 +325,7 @@ export function CreateIWalletFlow() {
 
             {!createdId ? (
               <>
-                <div className="rounded-[1.25rem] border border-[#fbff6c]/20 bg-[#fbff6c]/5 p-4 text-sm text-[#fbff6c]">
+                <div className="rounded-[1.25rem] border border-[#298dff]/20 bg-[#298dff]/5 p-4 text-sm text-[#298dff]">
                   Submits <code>create_iidentity</code> + <code>set_policy</code>, signed by your{" "}
                   {ownerSource === "wallet" ? "connected wallet" : "passkey"}. The owner address pays gas
                   (gas-station sponsorship is the next task).
@@ -334,7 +334,7 @@ export function CreateIWalletFlow() {
                   onClick={onCreate}
                   disabled={submitting || !ownerSource}
                   data-hover-trigger
-                  className="inline-flex w-fit items-center gap-2 rounded-full bg-[#fbff6c] px-8 py-4 text-sm font-semibold text-[#131416] hover:bg-[#f7ff8f] disabled:opacity-40"
+                  className="inline-flex w-fit items-center gap-2 rounded-full bg-[#298dff] px-8 py-4 text-sm font-semibold text-[#131416] hover:bg-[#5aa9ff] disabled:opacity-40"
                 >
                   {ownerSource === "wallet" ? <HiOutlineWallet /> : <HiOutlineFingerPrint />}
                   {submitting ? "Signing & submitting…" : "Create iWallet"}
@@ -351,7 +351,7 @@ export function CreateIWalletFlow() {
                 </p>
                 <Link
                   href={`/iwallets/${createdId}`}
-                  className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#fbff6c] px-5 py-2.5 text-sm font-semibold text-[#131416] hover:bg-[#f7ff8f]"
+                  className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#298dff] px-5 py-2.5 text-sm font-semibold text-[#131416] hover:bg-[#5aa9ff]"
                 >
                   View profile <HiOutlineArrowRight />
                 </Link>
@@ -375,7 +375,7 @@ export function CreateIWalletFlow() {
             disabled={!canContinue}
             onClick={() => setStep((v) => Math.min(steps.length - 1, v + 1))}
             data-hover-trigger
-            className="inline-flex items-center gap-2 rounded-full bg-[#fbff6c] px-8 py-4 text-sm font-semibold text-[#131416] hover:bg-[#f7ff8f] disabled:opacity-40"
+            className="inline-flex items-center gap-2 rounded-full bg-[#298dff] px-8 py-4 text-sm font-semibold text-[#131416] hover:bg-[#5aa9ff] disabled:opacity-40"
           >
             <AnimatedHoverText>Continue</AnimatedHoverText> <HiOutlineArrowRight />
           </button>
@@ -389,7 +389,7 @@ function Panel({ icon, title, children }: { icon: React.ReactNode; title: string
   return (
     <section className="rounded-[1.9rem] border border-white/10 p-5">
       <h2 className="inline-flex items-center gap-2 text-xl font-medium text-[#e5eef1]">
-        <span className="text-[#fbff6c]">{icon}</span>
+        <span className="text-[#298dff]">{icon}</span>
         {title}
       </h2>
       <div className="mt-6 flex flex-col gap-5">{children}</div>

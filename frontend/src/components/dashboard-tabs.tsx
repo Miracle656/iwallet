@@ -32,7 +32,7 @@ export function DashboardTabs() {
             </button>
           ))}
         </div>
-        <Link href="/iwallets/create" data-hover-trigger className="inline-flex items-center justify-center gap-2 rounded-full bg-[#fbff6c] px-6 py-3 text-center text-sm font-semibold text-[#131416] hover:bg-[#f7ff8f]">
+        <Link href="/iwallets/create" data-hover-trigger className="inline-flex items-center justify-center gap-2 rounded-full bg-[#298dff] px-6 py-3 text-center text-sm font-semibold text-[#131416] hover:bg-[#5aa9ff]">
           <HiOutlinePlus /> <AnimatedHoverText>Create iWallet</AnimatedHoverText>
         </Link>
       </div>
@@ -76,7 +76,7 @@ function Overview({ primary, totalBalance, linkedAgents }: { primary: typeof iwa
         <div className="w-full rounded-[1.9rem] border border-white/10 bg-[#131416] p-8 lg:flex-[0.95]">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-medium text-[#e5eef1]">Latest processed</h2>
-            <button data-hover-trigger className="text-sm font-medium text-[#fbff6c]"><AnimatedHoverText>Open</AnimatedHoverText></button>
+            <button data-hover-trigger className="text-sm font-medium text-[#298dff]"><AnimatedHoverText>Open</AnimatedHoverText></button>
           </div>
           <TransactionRows limit={4} />
         </div>
@@ -92,7 +92,7 @@ function WalletsPanel() {
         {iwallets.map((wallet) => (
           <Link key={wallet.id} href={`/iwallets/${wallet.id}`} className="group flex flex-col gap-4 border-b border-white/10 py-5 last-of-type:border-none sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
-              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#222328] text-xl text-[#fbff6c]"><HiOutlineWallet /></div>
+              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#222328] text-xl text-[#298dff]"><HiOutlineWallet /></div>
               <div>
                 <p className="text-lg font-medium text-[#e5eef1]">{wallet.name}</p>
                 <HashText value={wallet.objectId} chars={8} />
@@ -138,7 +138,7 @@ function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; 
     <div className="w-full rounded-[1.4rem] border border-white/10 bg-[#131416] p-4 lg:flex-1">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-[#92979d]">{label}</p>
-        <span className="text-lg text-[#fbff6c]">{icon}</span>
+        <span className="text-lg text-[#298dff]">{icon}</span>
       </div>
       <p className="mt-4 text-3xl font-light tracking-[-0.04em] text-[#e5eef1]">{value}</p>
     </div>

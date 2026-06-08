@@ -44,7 +44,7 @@ export function IWalletsTabs() {
             </button>
           ))}
         </div>
-        <Link href="/iwallets/create" data-hover-trigger className="inline-flex items-center justify-center gap-2 rounded-full bg-[#fbff6c] px-6 py-3 text-center text-sm font-semibold text-[#131416] hover:bg-[#f7ff8f]">
+        <Link href="/iwallets/create" data-hover-trigger className="inline-flex items-center justify-center gap-2 rounded-full bg-[#298dff] px-6 py-3 text-center text-sm font-semibold text-[#131416] hover:bg-[#5aa9ff]">
           <HiOutlinePlus /> <AnimatedHoverText>Create iWallet</AnimatedHoverText>
         </Link>
       </div>
@@ -64,7 +64,7 @@ export function IWalletsTabs() {
         {!loading && wallets.map((wallet) => (
           <Link key={wallet.id} href={active === "Owned" ? `/iwallets/${wallet.id}` : `/iwallets/${wallet.id}/fund`} className="group flex flex-col gap-4 border-b border-white/10 py-5 last-of-type:border-none sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
-              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#222328] text-xl text-[#fbff6c]"><HiOutlineWallet /></div>
+              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#222328] text-xl text-[#298dff]"><HiOutlineWallet /></div>
               <div>
                 <p className="text-lg font-medium text-[#e5eef1]">{wallet.name}</p>
                 <HashText value={wallet.objectId} chars={8} />
@@ -76,7 +76,7 @@ export function IWalletsTabs() {
             </div>
             <div className="flex items-center justify-between gap-3 sm:justify-end">
               <WalletStatusBadge status={wallet.status} />
-              <span data-hover-trigger className="inline-flex items-center gap-2 rounded-full bg-[#222328] px-4 py-2 text-sm font-medium text-[#e5eef1] group-hover:text-[#fbff6c]">
+              <span data-hover-trigger className="inline-flex items-center gap-2 rounded-full bg-[#222328] px-4 py-2 text-sm font-medium text-[#e5eef1] group-hover:text-[#298dff]">
                 {active === "Owned" ? <HiOutlineEye /> : <HiOutlineBanknotes />}
                 <AnimatedHoverText>{active === "Owned" ? "View" : "Fund"}</AnimatedHoverText>
               </span>
@@ -91,7 +91,7 @@ export function IWalletsTabs() {
 function Cell({ icon, label, value }: { icon?: React.ReactNode; label: string; value: string }) {
   return (
     <div>
-      <p className="inline-flex items-center gap-1.5 text-xs text-[#6f747a]">{icon ? <span className="text-[#fbff6c]">{icon}</span> : null}{label}</p>
+      <p className="inline-flex items-center gap-1.5 text-xs text-[#6f747a]">{icon ? <span className="text-[#298dff]">{icon}</span> : null}{label}</p>
       <p className="mt-1 truncate text-sm text-[#e5eef1]">{value}</p>
     </div>
   );

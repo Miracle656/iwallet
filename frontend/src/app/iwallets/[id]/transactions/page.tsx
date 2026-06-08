@@ -19,14 +19,14 @@ export default async function IWalletTransactionsPage({ params }: { params: Prom
             <span className="text-2xl text-[#6f747a]">Proofs</span>
             <span className="text-2xl text-[#6f747a]">Walrus</span>
           </div>
-          <Link href={`/iwallets/${wallet.id}`} className="inline-flex items-center gap-2 rounded-full bg-[#222328] px-5 py-2.5 text-sm font-semibold text-[#e5eef1] hover:text-[#fbff6c]"><HiOutlineArrowLeft />Back</Link>
+          <Link href={`/iwallets/${wallet.id}`} className="inline-flex items-center gap-2 rounded-full bg-[#222328] px-5 py-2.5 text-sm font-semibold text-[#e5eef1] hover:text-[#298dff]"><HiOutlineArrowLeft />Back</Link>
         </div>
 
         <div className="mt-7 flex flex-col">
           {transactions.map((tx) => (
             <div key={tx.id} className="flex flex-col gap-4 border-b border-white/10 py-5 last-of-type:border-none sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="inline-flex items-center gap-2 text-lg font-medium text-[#e5eef1]"><HiOutlineDocumentText className="text-[#fbff6c]" />{tx.type.replace("_", " ")}</p>
+                <p className="inline-flex items-center gap-2 text-lg font-medium text-[#e5eef1]"><HiOutlineDocumentText className="text-[#298dff]" />{tx.type.replace("_", " ")}</p>
                 <p className="mt-2 text-sm text-[#92979d]">{tx.target ?? "Wallet operation"}</p>
               </div>
               <div className="text-left sm:text-right">

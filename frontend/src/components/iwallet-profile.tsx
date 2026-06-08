@@ -35,14 +35,14 @@ export function IWalletProfile({
       <section className="rounded-[2.4rem] border border-white/10 bg-[#131416] p-5 sm:p-7">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex items-center gap-4">
-            <div className="grid h-14 w-14 place-items-center rounded-2xl bg-[#222328] text-2xl text-[#fbff6c]">
+            <div className="grid h-14 w-14 place-items-center rounded-2xl bg-[#222328] text-2xl text-[#298dff]">
               <HiOutlineWallet />
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-3">
                 <h1 className="text-2xl font-semibold text-[#e5eef1]">{profile.name}</h1>
                 <span
-                  className={`rounded-full border px-3 py-1.5 text-xs font-medium ${funded ? "border-[#fbff6c]/35 bg-[#fbff6c]/10 text-[#fbff6c]" : "border-orange-300/30 bg-orange-300/10 text-orange-200"}`}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-medium ${funded ? "border-[#298dff]/35 bg-[#298dff]/10 text-[#298dff]" : "border-orange-300/30 bg-orange-300/10 text-orange-200"}`}
                 >
                   {funded ? "Active" : "Unfunded"}
                 </span>
@@ -53,7 +53,7 @@ export function IWalletProfile({
                   href={explorer}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-[#fbff6c] hover:underline"
+                  className="inline-flex items-center gap-1 text-[#298dff] hover:underline"
                 >
                   Suiscan <HiOutlineArrowTopRightOnSquare />
                 </a>
@@ -63,7 +63,7 @@ export function IWalletProfile({
 
           <div className="rounded-[1.9rem] border border-white/10 p-5 text-right">
             <p className="inline-flex items-center gap-2 text-sm text-[#92979d]">
-              <HiOutlineBanknotes className="text-[#fbff6c]" /> SUI Balance
+              <HiOutlineBanknotes className="text-[#298dff]" /> SUI Balance
             </p>
             <p className="mt-1 text-5xl font-light tracking-[-0.04em] text-[#e5eef1]">
               {suiBalance}
@@ -87,7 +87,7 @@ export function IWalletProfile({
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`rounded-full px-4 py-2 text-sm font-medium transition ${t === tab ? "bg-[#fbff6c] text-[#131416]" : "text-[#92979d] hover:text-[#e5eef1]"}`}
+              className={`rounded-full px-4 py-2 text-sm font-medium transition ${t === tab ? "bg-[#298dff] text-[#131416]" : "text-[#92979d] hover:text-[#e5eef1]"}`}
             >
               {t}
             </button>
@@ -138,7 +138,7 @@ function PortfolioTab({ coins }: { coins: CoinHolding[] }) {
             <tr key={c.coinType} className="text-[#b9c2c6]">
               <td className="px-3 py-3 font-medium text-[#e5eef1]">
                 <span className="inline-flex items-center gap-2">
-                  <span className="grid h-7 w-7 place-items-center rounded-full bg-[#222328] text-[#fbff6c]"><HiOutlineCube /></span>
+                  <span className="grid h-7 w-7 place-items-center rounded-full bg-[#222328] text-[#298dff]"><HiOutlineCube /></span>
                   {c.symbol}
                 </span>
               </td>
@@ -171,8 +171,8 @@ function PolicyTab({ policy }: { policy: PolicyView | null }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="rounded-[1.6rem] border border-[#fbff6c]/20 bg-[#fbff6c]/5 p-5">
-        <p className="inline-flex items-center gap-2 text-sm text-[#fbff6c]">
+      <div className="rounded-[1.6rem] border border-[#298dff]/20 bg-[#298dff]/5 p-5">
+        <p className="inline-flex items-center gap-2 text-sm text-[#298dff]">
           <HiOutlineShieldCheck /> Enforced on-chain by AgentPolicy
         </p>
         <p className="mt-1 text-xs text-[#92979d]">
@@ -188,7 +188,7 @@ function PolicyTab({ policy }: { policy: PolicyView | null }) {
           </span>
         </div>
         <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-[#222328]">
-          <div className="h-full rounded-full bg-[#fbff6c]" style={{ width: `${pct}%` }} />
+          <div className="h-full rounded-full bg-[#298dff]" style={{ width: `${pct}%` }} />
         </div>
         <p className="mt-1.5 text-xs text-[#6f747a]">{remaining} SUI remaining</p>
       </div>
@@ -240,7 +240,7 @@ function ActivityTab({ activity }: { activity: ActivityItem[] }) {
               href={`https://suiscan.xyz/${SUI_NETWORK}/tx/${a.digest}`}
               target="_blank"
               rel="noreferrer"
-              className="font-mono text-xs text-[#fbff6c] hover:underline"
+              className="font-mono text-xs text-[#298dff] hover:underline"
             >
               {a.digest.slice(0, 10)}…{a.digest.slice(-6)}
             </a>

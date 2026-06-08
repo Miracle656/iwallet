@@ -1,7 +1,7 @@
 import type { IWalletStatus, ProcessedTransaction } from "@/lib/demo-data";
 
 const walletTone: Record<IWalletStatus, string> = {
-  active: "border-[#fbff6c]/35 bg-[#fbff6c]/10 text-[#fbff6c]",
+  active: "border-[#298dff]/35 bg-[#298dff]/10 text-[#298dff]",
   unfunded: "border-orange-300/30 bg-orange-300/10 text-orange-200",
   frozen: "border-red-300/30 bg-red-300/10 text-red-200",
   unlinked: "border-white/10 bg-[#222328] text-[#b9c2c6]",
@@ -9,7 +9,7 @@ const walletTone: Record<IWalletStatus, string> = {
 
 const transactionTone: Record<ProcessedTransaction["status"], string> = {
   pending: "border-orange-300/30 bg-orange-300/10 text-orange-200",
-  processed: "border-[#fbff6c]/35 bg-[#fbff6c]/10 text-[#fbff6c]",
+  processed: "border-[#298dff]/35 bg-[#298dff]/10 text-[#298dff]",
   verified: "border-emerald-300/30 bg-emerald-300/10 text-emerald-200",
   failed: "border-red-300/30 bg-red-300/10 text-red-200",
 };

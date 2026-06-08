@@ -115,7 +115,7 @@ export function TradePanel({ pool, onChange }: { pool: Pool; onChange?: () => vo
         <button
           disabled={busy}
           onClick={() => submit(buildCreateBalanceManagerTx(account.address), "BalanceManager created")}
-          className="mt-4 w-full rounded-xl bg-[#fbff6c] py-3 text-sm font-semibold text-[#131416] hover:bg-[#f7ff8f] disabled:opacity-40"
+          className="mt-4 w-full rounded-xl bg-[#298dff] py-3 text-sm font-semibold text-[#131416] hover:bg-[#5aa9ff] disabled:opacity-40"
         >
           {busy ? "Creating…" : "Create BalanceManager"}
         </button>
@@ -184,19 +184,19 @@ export function TradePanel({ pool, onChange }: { pool: Pool; onChange?: () => vo
             onChange={(e) => setDepositAmt(e.target.value)}
             inputMode="decimal"
             placeholder="0.0"
-            className="w-full rounded-lg border border-white/10 bg-[#101113] px-3 py-1.5 text-xs text-[#e5eef1] outline-none focus:border-[#fbff6c]/40"
+            className="w-full rounded-lg border border-white/10 bg-[#101113] px-3 py-1.5 text-xs text-[#e5eef1] outline-none focus:border-[#298dff]/40"
           />
           <button
             disabled={busy}
             onClick={() => submit(buildDepositTx(account.address, bmId, depositCoin, num(depositAmt)), "Deposited")}
-            className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-medium text-[#e5eef1] hover:border-[#fbff6c]/40 disabled:opacity-40"
+            className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-medium text-[#e5eef1] hover:border-[#298dff]/40 disabled:opacity-40"
           >
             Deposit
           </button>
           <button
             disabled={busy}
             onClick={() => submit(buildWithdrawTx(account.address, bmId, depositCoin, num(depositAmt)), "Withdrew")}
-            className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-medium text-[#e5eef1] hover:border-[#fbff6c]/40 disabled:opacity-40"
+            className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-medium text-[#e5eef1] hover:border-[#298dff]/40 disabled:opacity-40"
           >
             Withdraw
           </button>
@@ -224,7 +224,7 @@ export function TradePanel({ pool, onChange }: { pool: Pool; onChange?: () => vo
           <button
             key={t}
             onClick={() => setOrderType(t)}
-            className={`uppercase tracking-[0.1em] ${orderType === t ? "text-[#fbff6c]" : "text-[#6f747a] hover:text-[#e5eef1]"}`}
+            className={`uppercase tracking-[0.1em] ${orderType === t ? "text-[#298dff]" : "text-[#6f747a] hover:text-[#e5eef1]"}`}
           >
             {t}
           </button>
@@ -232,7 +232,7 @@ export function TradePanel({ pool, onChange }: { pool: Pool; onChange?: () => vo
       </div>
 
       {orderType === "limit" && (
-        <Field label={`Price (${pool.quote})`} action={<button onClick={useMid} className="text-[10px] text-[#fbff6c] hover:underline">MID</button>}>
+        <Field label={`Price (${pool.quote})`} action={<button onClick={useMid} className="text-[10px] text-[#298dff] hover:underline">MID</button>}>
           <input
             value={price}
             onChange={(e) => setPrice(e.target.value)}
@@ -276,7 +276,7 @@ function Card({ children }: { children: React.ReactNode }) {
 function Empty({ icon, title, hint }: { icon: React.ReactNode; title: string; hint: string }) {
   return (
     <div className="py-6 text-center">
-      <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-[#222328] text-2xl text-[#fbff6c]">
+      <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-[#222328] text-2xl text-[#298dff]">
         {icon}
       </span>
       <p className="mt-3 text-sm font-medium text-[#e5eef1]">{title}</p>

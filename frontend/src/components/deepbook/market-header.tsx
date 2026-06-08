@@ -42,9 +42,9 @@ export function MarketHeader({
       <div ref={ref} className="relative">
         <button
           onClick={() => setOpen((v) => !v)}
-          className="flex items-center gap-2 rounded-xl border border-white/10 bg-[#101113] px-3 py-2 text-sm font-semibold text-[#e5eef1] hover:border-[#fbff6c]/40"
+          className="flex items-center gap-2 rounded-xl border border-white/10 bg-[#101113] px-3 py-2 text-sm font-semibold text-[#e5eef1] hover:border-[#298dff]/40"
         >
-          <span className="grid h-7 w-7 place-items-center rounded-full bg-[#222328] text-[#fbff6c]">
+          <span className="grid h-7 w-7 place-items-center rounded-full bg-[#222328] text-[#298dff]">
             <HiOutlineChartBar />
           </span>
           {pool.label}
@@ -59,7 +59,7 @@ export function MarketHeader({
                   onSelect(p);
                   setOpen(false);
                 }}
-                className={`flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition hover:bg-[#222328] ${p.key === pool.key ? "text-[#fbff6c]" : "text-[#e5eef1]"}`}
+                className={`flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition hover:bg-[#222328] ${p.key === pool.key ? "text-[#298dff]" : "text-[#e5eef1]"}`}
               >
                 {p.label}
               </button>
