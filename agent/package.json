@@ -11,6 +11,7 @@
     "setup:markets": "tsx src/setup-markets.ts",
     "provision": "tsx src/provision.ts",
     "setup:deepbook": "tsx src/setup-deepbook.ts",
+    "set-policy": "tsx src/set-policy.ts",
     "trade": "tsx src/trade.ts",
     "revoke": "tsx src/revoke.ts",
     "build": "tsc",
