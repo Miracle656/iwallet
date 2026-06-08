@@ -29,7 +29,9 @@
   --color-dim: #6f747a;
 }
 
-.light {
+/* :root.light beats the @theme :root defaults regardless of layer order */
+:root.light,
+html.light {
   --color-canvas: #ffffff;
   --color-surface: #f4f6fa;
   --color-elevated: #e7edf4;

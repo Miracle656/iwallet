@@ -42,6 +42,7 @@ export function TradePanel({ pool, onChange }: { pool: Pool; onChange?: () => vo
   const [amount, setAmount] = useState("");
   const [depositAmt, setDepositAmt] = useState("");
   const [depositCoin, setDepositCoin] = useState<string>(pool.base);
+  const [importId, setImportId] = useState("");
 
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
@@ -81,6 +82,18 @@ export function TradePanel({ pool, onChange }: { pool: Pool; onChange?: () => vo
     } finally {
       setBusy(false);
     }
+  }
+
+  function importBm() {
+    if (!account) return;
+    const id = importId.trim();
+    if (!/^0x[0-9a-fA-F]{6,}$/.test(id)) {
+      setMsg({ kind: "err", text: "Enter a valid 0x BalanceManager id" });
+      return;
+    }
+    localStorage.setItem(`iwallet:bm:${account.address}`, id);
+    setBmId(id);
+    setMsg({ kind: "ok", text: "BalanceManager linked" });
   }
 
   const refreshBalances = useCallback(async () => {
@@ -150,6 +163,24 @@ export function TradePanel({ pool, onChange }: { pool: Pool; onChange?: () => vo
         >
           {busy ? "Creating…" : "Create BalanceManager"}
         </button>
+
+        <div className="mt-4 border-t border-border pt-3">
+          <p className="text-center text-xs text-dim">Already have one? Paste its id</p>
+          <div className="mt-2 flex gap-2">
+            <input
+              value={importId}
+              onChange={(e) => setImportId(e.target.value)}
+              placeholder="0x…"
+              className="w-full rounded-lg border border-border bg-canvas px-3 py-2 font-mono text-xs text-ink outline-none focus:border-accent/40"
+            />
+            <button
+              onClick={importBm}
+              className="rounded-lg border border-border px-3 py-2 text-xs font-medium text-ink hover:border-accent/40"
+            >
+              Use
+            </button>
+          </div>
+        </div>
         {msg && <Msg msg={msg} />}
       </Card>
     );
