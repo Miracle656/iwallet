@@ -142,6 +142,58 @@ export class DeepBookTrader {
     };
   }
 
+  /** Deposit `amount` of `coinKey` into the BalanceManager (no order). */
+  async deposit(coinKey: string, amount: number): Promise<PlacedOrder> {
+    if (!this.balanceManagerId) throw new Error('No BALANCE_MANAGER_ID');
+    const tx = new Transaction();
+    tx.add(this.db().balanceManager.depositIntoManager(BM_KEY, coinKey, amount));
+    const res = await this.client.signAndExecuteTransaction({
+      transaction: tx,
+      signer: this.signer,
+      options: { showEffects: true },
+    });
+    return { digest: res.digest, status: res.effects?.status?.status ?? 'unknown', error: res.effects?.status?.error };
+  }
+
+  /** Place a resting limit order using funds already in the BalanceManager (no
+   * vault withdrawal — this is the free, continuous-trading path). */
+  async placeLimitOrder(args: {
+    price: number;
+    quantity: number;
+    isBid: boolean;
+    payWithDeep?: boolean;
+  }): Promise<PlacedOrder> {
+    if (!this.balanceManagerId) throw new Error('No BALANCE_MANAGER_ID');
+    const tx = new Transaction();
+    tx.add(
+      this.db().deepBook.placeLimitOrder({
+        poolKey: this.poolKey,
+        balanceManagerKey: BM_KEY,
+        clientOrderId: String(Date.now()),
+        price: args.price,
+        quantity: args.quantity,
+        isBid: args.isBid,
+        payWithDeep: args.payWithDeep ?? false,
+      }),
+    );
+    const res = await this.client.signAndExecuteTransaction({
+      transaction: tx,
+      signer: this.signer,
+      options: { showEffects: true },
+    });
+    return { digest: res.digest, status: res.effects?.status?.status ?? 'unknown', error: res.effects?.status?.error };
+  }
+
+  /** Numeric BalanceManager balance for a coin key (0 on any read error). */
+  async managerBalanceNum(coinKey: string): Promise<number> {
+    try {
+      const r = (await this.db().checkManagerBalance(BM_KEY, coinKey)) as { balance?: number };
+      return Number(r?.balance ?? 0);
+    } catch {
+      return 0;
+    }
+  }
+
   /** Open orders for the BalanceManager on the configured pool (read-only). */
   async openOrders(): Promise<unknown> {
     return this.db().accountOpenOrders(this.poolKey, BM_KEY);

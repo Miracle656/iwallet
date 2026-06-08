@@ -13,6 +13,7 @@ export type Trade = {
   id: string;
   ts: number;
   identityId: string;
+  agentName?: string;
   owner?: string;
   pool: string;
   side: "ask" | "bid";

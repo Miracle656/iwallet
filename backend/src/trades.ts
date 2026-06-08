@@ -11,6 +11,7 @@ import { z } from "zod";
 
 export const TradeSchema = z.object({
   identityId: z.string(),
+  agentName: z.string().optional(),
   owner: z.string().optional(),
   pool: z.string(),
   side: z.enum(["ask", "bid"]),

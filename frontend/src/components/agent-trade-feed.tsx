@@ -113,6 +113,11 @@ function TradeRow({ t, showOwner }: { t: Trade; showOwner: boolean }) {
           </span>
           <div>
             <p className="text-sm font-medium text-ink">
+              {t.agentName && (
+                <span className="mr-2 rounded-full bg-accent/15 px-2 py-0.5 text-xs font-semibold text-accent">
+                  {t.agentName}
+                </span>
+              )}
               {t.side.toUpperCase()} {t.quantity} on {t.pool}
               <span className="text-dim"> @ {t.price}</span>
             </p>
