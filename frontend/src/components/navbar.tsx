@@ -12,6 +12,7 @@ const nav = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/iwallets", label: "iWallets" },
   { href: "/iwallets/create", label: "Create" },
+  { href: "/trade", label: "Trade" },
   { href: "/agents", label: "Agents" },
   { href: "/iwallets/demo/transactions", label: "Ledger" },
 ];
