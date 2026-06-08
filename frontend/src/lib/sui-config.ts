@@ -13,8 +13,10 @@ export const SUI_NETWORK: SuiNetwork =
 
 export const IWALLET_PACKAGE_ID =
   process.env.NEXT_PUBLIC_IWALLET_PACKAGE_ID ||
-  // Updated 2026-05-25: fresh publish of the AgentPolicy contract.
-  "0x2d90b593a05eedce81d9c66c07ea330efa222fead13eca23437609c31af24740";
+  // Updated 2026-06-08: fresh publish after merging George's upgraded
+  // AgentPolicy (daily_limit/revoked + events, new IWalletOwner cap).
+  // Struct-layout change forced a new package id (no upgrade path).
+  "0x73b685d06ccc1c1144bf10c3a13d9cbe22315a519d2f1f4c21f4255b4bda83d9";
 
 export const STAKE_COIN_TYPE =
   process.env.NEXT_PUBLIC_STAKE_COIN_TYPE || "0x2::sui::SUI";
@@ -30,9 +32,12 @@ export const STAGED_BALANCE_KEY =
  * owner field, so the frontend tracks ownership locally for v1.
  */
 export const SEED_IDENTITY_IDS: string[] = (
-  // Provisioned 2026-05-25 under the new AgentPolicy package (0x2d90…).
+  // Empty after the 2026-06-08 republish: the prior seed (0x88a8…) lives under
+  // the dead 0x2d90 package and can't be read by the new one. Re-provision via
+  // `agent/src/provision.ts` against the new package, then set
+  // NEXT_PUBLIC_SEED_IDENTITY_IDS — or just create one through the UI flow.
   process.env.NEXT_PUBLIC_SEED_IDENTITY_IDS ||
-  "0x88a80b4c68c44e2eb8df5e7d66c3f4c552b6180b4a97650cbc6ebec804806150"
+  ""
 )
   .split(",")
   .map((s) => s.trim())
