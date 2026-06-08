@@ -15,7 +15,6 @@ const nav = [
   { href: "/iwallets/create", label: "Create" },
   { href: "/trade", label: "Trade" },
   { href: "/agents", label: "Agents" },
-  { href: "/iwallets/demo/transactions", label: "Ledger" },
 ];
 
 export function Navbar() {
