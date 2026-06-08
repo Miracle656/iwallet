@@ -10,6 +10,7 @@ use sui::transfer::Receiving;
 use sui::bag;
 use sui::hash::keccak256;
 use sui::bcs;
+use sui::event;
 
 
 // ── Errors ──
@@ -27,15 +28,39 @@ const EInvalidProtocolScope: u64 = 7;
 
 const ENotOwner: u64 = 8;
 
+// Emitted when an agent extracts funds or makes a trade via ZK proof
+public struct AgentExecutionEvent has copy, drop {
+    identity_id: address,
+    nonce: vector<u8>,
+    amount: u64,
+    recipient: address,
+    coin_type: String,
+}
+
+// Emitted when the human owner updates the agent's constraints
+public struct PolicyUpdatedEvent has copy, drop {
+    identity_id: address,
+    budget_cap: u64,
+    expiration_ms: u64,
+}
+
 public struct AgentPolicy has store, drop {
     // Maximum amount the agent is allowed to spend
     budget_cap: u64,
     // Running total of what the agent has extracted
     amount_spent: u64,
+    daily_limit: u64,
+    spent_today: u64,
+    last_reset_timestamp: u64,
     // The ONLY address this agent can send funds to (e.g., DeepBook Pool ID),
     allow_recipients: vector<address>,
     // The exact millisecond timestamp when the agent's keys become useless
     expiration_ms: u64,
+    revoked: bool,
+}
+
+public struct IWalletOwner has key, store {
+    id: UID
 }
 
 
@@ -68,8 +93,14 @@ public fun set_policy<T>(
     let policy = AgentPolicy {
         budget_cap,
         amount_spent: 0,
+        // TODO(George): wire daily_limit as a set_policy param + enforce in
+        // withdraw_with_proof. Defaulted here only so the contract compiles.
+        daily_limit: budget_cap,
+        spent_today: 0,
+        last_reset_timestamp: 0,
         allow_recipients,
         expiration_ms,
+        revoked: false,
     };
 
     // Lock the policy into the vault
@@ -78,13 +109,16 @@ public fun set_policy<T>(
         let _ = option::extract(&mut identity.active_policy);
     };
     option::fill(&mut identity.active_policy, policy);
+
+    event::emit(PolicyUpdatedEvent {
+        identity_id: identity.id.uid_to_address(),
+        budget_cap,
+        expiration_ms,
+    });
 }
 
 
 
-entry fun get_iidentity<T>(identity: &IIdentity<T>): address {
-    identity.id.uid_to_address()
-}
 
 
 // ── Create the agent identity ──
@@ -111,7 +145,15 @@ entry fun create_iidentity<T>(
         owner: ctx.sender()
     };
 
+    let iwallet_owner = createIWalletOwner(ctx);
+
+    transfer::public_transfer(iwallet_owner, ctx.sender());
     transfer::public_share_object(identity);
+}
+
+fun createIWalletOwner(ctx: &mut TxContext): IWalletOwner
+{
+    IWalletOwner { id: object::new(ctx) }
 }
 
 
@@ -149,6 +191,7 @@ fun receive_coin<T>(
 
 public fun withdraw_with_proof<T>(
     identity: &mut IIdentity<T>,
+    _: &IWalletOwner,
     proof_bytes: vector<u8>,
     // Only pass the 2 required public inputs [identity_hash, intent_hash]
     public_inputs_bytes: vector<u8>,
@@ -234,6 +277,14 @@ public fun withdraw_with_proof<T>(
     // Withdraw the requested amount
     let withdrawn = balance::split<T>(identity.staged_balances.borrow_mut(key), amount);
     let out_coin = coin::from_balance<T>(withdrawn, ctx);
+
+    event::emit(AgentExecutionEvent {
+        identity_id: identity.id.uid_to_address(),
+        nonce,
+        amount,
+        recipient,
+        coin_type: key, // Using your balance key string as the coin identifier
+    });
     out_coin
 }
 
