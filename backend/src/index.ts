@@ -29,7 +29,7 @@ function getSponsorKeypair(): Ed25519Keypair {
 
 const app = new Hono();
 
-const port = 3000;
+const port = Number(process.env.PORT) || 3000;
 
 // CORS so the deployed frontend can read the public trade feed.
 app.use("*", cors());
