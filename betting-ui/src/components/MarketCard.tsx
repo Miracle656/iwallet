@@ -1,5 +1,7 @@
+import { useMemo } from 'react';
 import type { Market } from '../lib/types';
-import { fmtVolume, impliedPct, sportIcon } from '../lib/markets';
+import { fmtVolume, impliedPct, mockOddsHistory, sportIcon } from '../lib/markets';
+import OddsChart from './OddsChart';
 
 function closesIn(ms?: number): string {
   if (!ms) return '';
@@ -11,6 +13,15 @@ function closesIn(ms?: number): string {
 }
 
 export default function MarketCard({ m }: { m: Market }) {
+  const history = useMemo(() => mockOddsHistory(m.id, m.homeOdds), [m.id, m.homeOdds]);
+  const tone = useMemo<'up' | 'down' | 'neutral'>(() => {
+    if (history.length < 2) return 'neutral';
+    const delta = history[history.length - 1].value - history[0].value;
+    if (delta > 1.5) return 'up';
+    if (delta < -1.5) return 'down';
+    return 'neutral';
+  }, [history]);
+
   return (
     <div className="group flex flex-col rounded-2xl border border-line bg-card p-4 shadow-card transition hover:shadow-cardHover">
       <div className="flex items-start gap-3">
@@ -39,7 +50,15 @@ export default function MarketCard({ m }: { m: Market }) {
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-2">
+      <div className="mt-3">
+        <div className="flex items-center justify-between text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span>{m.home.split(' ')[0]} implied · 24h</span>
+          <span className="tabular-nums">{impliedPct(m.homeOdds)}%</span>
+        </div>
+        <OddsChart data={history} tone={tone} height={48} />
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-2">
         <Outcome label={m.home} odds={m.homeOdds} side="home" />
         <Outcome label={m.away} odds={m.awayOdds} side="away" />
       </div>

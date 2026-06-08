@@ -1,0 +1,22 @@
+# Render Blueprint — deploys the I-Wallet backend (Hono trade-feed + gas station).
+# Render reads this file automatically when you create a Blueprint from the repo.
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: iwallet-backend
+    runtime: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /trades
+    envVars:
+      # Shared secret that gates POST /trades + the sponsor routes. Must match
+      # the agent's BACKEND_API_KEY. Set it yourself in the dashboard.
+      - key: API_SECRET
+        sync: false
+      # Only needed if you use the gas-station routes; the feed doesn't need it.
+      - key: SPONSOR_PRIVATE_KEY
+        sync: false
+      - key: NODE_VERSION
+        value: "20"
