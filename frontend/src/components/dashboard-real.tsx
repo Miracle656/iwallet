@@ -14,6 +14,7 @@ import {
   getLocalIdentityIds,
   removeLocalIdentityId,
 } from "@/lib/local-identities";
+import { RestoreFromFile } from "@/components/restore-from-file";
 import {
   HiOutlineArrowRight,
   HiOutlineBanknotes,
@@ -173,6 +174,9 @@ export function DashboardReal() {
               </button>
             </div>
             {err && <p className="mt-2 text-xs text-red-300">{err}</p>}
+            <div className="mt-4">
+              <RestoreFromFile onRestored={load} />
+            </div>
           </div>
         </div>
       </section>

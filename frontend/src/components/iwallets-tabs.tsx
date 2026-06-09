@@ -10,6 +10,7 @@ import type { IWallet } from "@/lib/demo-data";
 import { discoverOwnedIdentities, getIdentity, listIdentities } from "@/lib/sui-client";
 import { addLocalIdentityId, getLocalIdentityIds } from "@/lib/local-identities";
 import { usePasskeyOwner } from "@/lib/use-passkey-owner";
+import { RestoreFromFile } from "@/components/restore-from-file";
 import { HiOutlineBanknotes, HiOutlineEye, HiOutlineLink, HiOutlinePlus, HiOutlineWallet } from "react-icons/hi2";
 
 const tabs = ["Owned", "Fund"] as const;
@@ -128,6 +129,9 @@ export function IWalletsTabs() {
             </button>
           </div>
           {err && <p className="mt-2 text-xs text-red-300">{err}</p>}
+          <div className="mt-4">
+            <RestoreFromFile onRestored={load} />
+          </div>
         </div>
       </div>
     </section>
