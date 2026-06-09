@@ -8,6 +8,7 @@ import { WalletStatusBadge } from "@/components/status-badge";
 import { AgentTradeFeed } from "@/components/agent-trade-feed";
 import type { IWallet } from "@/lib/demo-data";
 import { listIdentities } from "@/lib/sui-client";
+import { usePasskeyOwner } from "@/lib/use-passkey-owner";
 import {
   addLocalIdentityId,
   getLocalIdentityIds,
@@ -30,16 +31,24 @@ import {
  */
 export function DashboardReal() {
   const account = useCurrentAccount();
-  const [wallets, setWallets] = useState<IWallet[]>([]);
+  const passkey = usePasskeyOwner();
+  const ownerAddress = (account?.address ?? passkey ?? null)?.toLowerCase() ?? null;
+  const [allWallets, setAllWallets] = useState<IWallet[]>([]);
   const [loading, setLoading] = useState(true);
   const [importId, setImportId] = useState("");
   const [err, setErr] = useState<string | null>(null);
 
+  // Show only iWallets owned by the connected owner. Until you connect, show
+  // everything this browser tracks (so import still works).
+  const wallets = ownerAddress
+    ? allWallets.filter((w) => w.owner?.toLowerCase() === ownerAddress)
+    : allWallets;
+
   const load = useCallback(() => {
     setLoading(true);
     listIdentities(getLocalIdentityIds())
-      .then(setWallets)
-      .catch(() => setWallets([]))
+      .then(setAllWallets)
+      .catch(() => setAllWallets([]))
       .finally(() => setLoading(false));
   }, []);
 
@@ -100,7 +109,9 @@ export function DashboardReal() {
             <p className="py-8 text-center text-sm text-muted">Reading iWallets from Sui testnet…</p>
           ) : wallets.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted">
-              No iWallets tracked in this browser yet. Create one, or import an existing id below.
+              {ownerAddress
+                ? "No iWallets owned by the connected address. Create one, or import an existing id below."
+                : "No iWallets tracked in this browser yet. Create one, or import an existing id below."}
             </p>
           ) : (
             <ul className="flex flex-col">

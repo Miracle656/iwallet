@@ -93,6 +93,7 @@ export async function getIdentity(objectId: string): Promise<IWallet | null> {
     const fields = content.fields as Record<string, unknown>;
     const name = (fields.name as string) || "iWallet";
     const identityHash = "0x" + toHex(fields.identity_hash);
+    const owner = typeof fields.owner === "string" ? (fields.owner as string) : undefined;
 
     const balanceMist = await getStagedBalance(objectId);
     const sui = Number(balanceMist) / 1e9;
@@ -101,6 +102,7 @@ export async function getIdentity(objectId: string): Promise<IWallet | null> {
       id: objectId,
       name,
       objectId,
+      owner,
       status: balanceMist > BigInt(0) ? "active" : "unfunded",
       network: "sui-testnet",
       balance: {
