@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { HashText } from "@/components/hash-text";
 import { SUI_NETWORK } from "@/lib/sui-config";
+import { usePoll } from "@/lib/use-poll";
 import {
   backendConfigured,
   fetchGlobalTrades,
@@ -24,7 +25,7 @@ import {
 export function AgentTradeFeed({
   identityId,
   limit = 50,
-  pollMs = 5000,
+  pollMs = 8000,
 }: {
   identityId?: string;
   limit?: number;
@@ -33,28 +34,21 @@ export function AgentTradeFeed({
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loaded, setLoaded] = useState(false);
 
-  useEffect(() => {
-    if (!backendConfigured()) {
-      setLoaded(true);
-      return;
-    }
-    let alive = true;
-    const load = async () => {
-      const data = identityId
-        ? await fetchIdentityTrades(identityId, limit)
-        : await fetchGlobalTrades(limit);
-      if (alive) {
+  usePoll(
+    () => {
+      if (!backendConfigured()) {
+        setLoaded(true);
+        return;
+      }
+      const p = identityId ? fetchIdentityTrades(identityId, limit) : fetchGlobalTrades(limit);
+      p.then((data) => {
         setTrades(data);
         setLoaded(true);
-      }
-    };
-    load();
-    const t = setInterval(load, pollMs);
-    return () => {
-      alive = false;
-      clearInterval(t);
-    };
-  }, [identityId, limit, pollMs]);
+      });
+    },
+    pollMs,
+    [identityId, limit, pollMs],
+  );
 
   if (!backendConfigured()) {
     return (

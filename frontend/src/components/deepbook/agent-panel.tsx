@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { fetchManagerBalance, fetchOpenOrders, type Pool } from "@/lib/deepbook";
+import { usePoll } from "@/lib/use-poll";
 import { HiOutlineCpuChip, HiOutlineLockClosed } from "react-icons/hi2";
 
 /**
@@ -14,32 +15,27 @@ import { HiOutlineCpuChip, HiOutlineLockClosed } from "react-icons/hi2";
  */
 const AGENT_BM = process.env.NEXT_PUBLIC_AGENT_BALANCE_MANAGER_ID ?? "";
 
-export function AgentPanel({ pool, pollMs = 6000 }: { pool: Pool; pollMs?: number }) {
+export function AgentPanel({ pool, pollMs = 8000 }: { pool: Pool; pollMs?: number }) {
   const [base, setBase] = useState<number | null>(null);
   const [quote, setQuote] = useState<number | null>(null);
   const [openOrders, setOpenOrders] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (!AGENT_BM) return;
-    let alive = true;
-    const load = async () => {
-      const [b, q, o] = await Promise.all([
+  usePoll(
+    () => {
+      if (!AGENT_BM) return;
+      Promise.all([
         fetchManagerBalance(AGENT_BM, pool.base),
         fetchManagerBalance(AGENT_BM, pool.quote),
         fetchOpenOrders(pool.key, AGENT_BM),
-      ]);
-      if (!alive) return;
-      setBase(b);
-      setQuote(q);
-      setOpenOrders(o.length);
-    };
-    load();
-    const t = setInterval(load, pollMs);
-    return () => {
-      alive = false;
-      clearInterval(t);
-    };
-  }, [pool.key, pool.base, pool.quote, pollMs]);
+      ]).then(([b, q, o]) => {
+        setBase(b);
+        setQuote(q);
+        setOpenOrders(o.length);
+      });
+    },
+    pollMs,
+    [pool.key, pool.base, pool.quote, pollMs],
+  );
 
   return (
     <div className="flex h-full flex-col gap-4">
