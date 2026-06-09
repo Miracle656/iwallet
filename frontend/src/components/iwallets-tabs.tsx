@@ -2,30 +2,42 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { useCurrentAccount } from "@mysten/dapp-kit";
 import { AnimatedHoverText } from "@/components/animated-hover-text";
 import { HashText } from "@/components/hash-text";
 import { WalletStatusBadge } from "@/components/status-badge";
 import type { IWallet } from "@/lib/demo-data";
-import { listIdentities } from "@/lib/sui-client";
+import { discoverOwnedIdentities, listIdentities } from "@/lib/sui-client";
 import { addLocalIdentityId, getLocalIdentityIds } from "@/lib/local-identities";
+import { usePasskeyOwner } from "@/lib/use-passkey-owner";
 import { HiOutlineBanknotes, HiOutlineEye, HiOutlineLink, HiOutlinePlus, HiOutlineWallet } from "react-icons/hi2";
 
 const tabs = ["Owned", "Fund"] as const;
 
 export function IWalletsTabs() {
+  const account = useCurrentAccount();
+  const passkey = usePasskeyOwner();
+  const ownerAddress = account?.address ?? passkey ?? null;
   const [active, setActive] = useState<(typeof tabs)[number]>("Owned");
   const [wallets, setWallets] = useState<IWallet[]>([]);
   const [loading, setLoading] = useState(true);
   const [importId, setImportId] = useState("");
   const [err, setErr] = useState<string | null>(null);
 
-  const load = useCallback(() => {
+  const load = useCallback(async () => {
     setLoading(true);
-    listIdentities(getLocalIdentityIds())
-      .then(setWallets)
-      .catch(() => setWallets([]))
-      .finally(() => setLoading(false));
-  }, []);
+    try {
+      if (ownerAddress) {
+        const discovered = await discoverOwnedIdentities(ownerAddress);
+        discovered.forEach(addLocalIdentityId);
+      }
+      setWallets(await listIdentities(getLocalIdentityIds()));
+    } catch {
+      setWallets([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [ownerAddress]);
 
   useEffect(() => {
     load();

@@ -142,6 +142,37 @@ export async function listIdentities(
   return results.filter((w): w is IWallet => w !== null);
 }
 
+/**
+ * Recover an owner's iWallets from chain (survives a cleared cache): scan the
+ * address's recent transactions for `create_iidentity` calls and collect the
+ * IIdentity objects they created. The owner is the tx sender even for
+ * Enoki-sponsored creates. Covers recent UI-created wallets; older / heavily-
+ * used addresses may need a manual import (until George adds an IdentityCreated
+ * event we can query directly).
+ */
+export async function discoverOwnedIdentities(owner: string): Promise<string[]> {
+  try {
+    const res = await client.queryTransactionBlocks({
+      filter: { FromAddress: owner },
+      options: { showObjectChanges: true },
+      limit: 50,
+      order: "descending",
+    });
+    const ids = new Set<string>();
+    for (const tx of res.data) {
+      for (const c of tx.objectChanges ?? []) {
+        const oc = c as { type?: string; objectType?: string; objectId?: string };
+        if (oc.type === "created" && String(oc.objectType ?? "").includes("::prototype::IIdentity<")) {
+          if (oc.objectId) ids.add(oc.objectId);
+        }
+      }
+    }
+    return Array.from(ids);
+  } catch {
+    return [];
+  }
+}
+
 /** Project an on-chain Option<AgentPolicy> into the UI's policy shape. */
 function parsePolicy(raw: unknown): IWallet["policy"] {
   const none: IWallet["policy"] = {
