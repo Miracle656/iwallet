@@ -327,8 +327,9 @@ export function CreateIWalletFlow() {
               <>
                 <div className="rounded-[1.25rem] border border-accent/20 bg-accent/5 p-4 text-sm text-accent">
                   Submits <code>create_iidentity</code> + <code>set_policy</code>, signed by your{" "}
-                  {ownerSource === "wallet" ? "connected wallet" : "passkey"}. The owner address pays gas
-                  (gas-station sponsorship is the next task).
+                  {ownerSource === "wallet"
+                    ? "connected wallet — which pays a small testnet gas fee."
+                    : "passkey — make sure that address holds a little testnet SUI for gas."}
                 </div>
                 <button
                   onClick={onCreate}
