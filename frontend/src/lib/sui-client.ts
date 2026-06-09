@@ -95,18 +95,28 @@ export async function getIdentity(objectId: string): Promise<IWallet | null> {
     const identityHash = "0x" + toHex(fields.identity_hash);
     const owner = typeof fields.owner === "string" ? (fields.owner as string) : undefined;
 
-    const balanceMist = await getStagedBalance(objectId);
-    const sui = Number(balanceMist) / 1e9;
+    // Total SUI = staged (in the vault bag) + coins sent to the iWallet address
+    // but not yet staged (transfer-to-object funding shows here immediately).
+    const stagedMist = await getStagedBalance(objectId);
+    let addressSui = 0;
+    try {
+      const balances = await client.getAllBalances({ owner: objectId });
+      const sui = balances.find((b) => b.coinType === "0x2::sui::SUI");
+      if (sui) addressSui = Number(BigInt(sui.totalBalance)) / 1e9;
+    } catch {
+      /* ignore */
+    }
+    const total = Number(stagedMist) / 1e9 + addressSui;
 
     return {
       id: objectId,
       name,
       objectId,
       owner,
-      status: balanceMist > BigInt(0) ? "active" : "unfunded",
+      status: total > 0 ? "active" : "unfunded",
       network: "sui-testnet",
       balance: {
-        tokens: [{ symbol: "SUI", amount: sui }],
+        tokens: [{ symbol: "SUI", amount: total }],
       },
       identityHash,
       createdAt: "On-chain",
