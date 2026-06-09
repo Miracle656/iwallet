@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { POOLS, fetchMidPrice, type Pool } from "@/lib/deepbook";
+import { usePoll } from "@/lib/use-poll";
 import { HiChevronDown, HiOutlineChartBar } from "react-icons/hi2";
 
 export function MarketHeader({
@@ -15,19 +16,13 @@ export function MarketHeader({
   const [mid, setMid] = useState<number | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    let alive = true;
-    const tick = async () => {
-      const m = await fetchMidPrice(pool.key);
-      if (alive) setMid(m);
-    };
-    tick();
-    const t = setInterval(tick, 3000);
-    return () => {
-      alive = false;
-      clearInterval(t);
-    };
-  }, [pool.key]);
+  usePoll(
+    () => {
+      fetchMidPrice(pool.key).then(setMid);
+    },
+    6000,
+    [pool.key],
+  );
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
