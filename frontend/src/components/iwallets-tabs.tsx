@@ -7,7 +7,7 @@ import { AnimatedHoverText } from "@/components/animated-hover-text";
 import { HashText } from "@/components/hash-text";
 import { WalletStatusBadge } from "@/components/status-badge";
 import type { IWallet } from "@/lib/demo-data";
-import { discoverOwnedIdentities, listIdentities } from "@/lib/sui-client";
+import { discoverOwnedIdentities, getIdentity, listIdentities } from "@/lib/sui-client";
 import { addLocalIdentityId, getLocalIdentityIds } from "@/lib/local-identities";
 import { usePasskeyOwner } from "@/lib/use-passkey-owner";
 import { HiOutlineBanknotes, HiOutlineEye, HiOutlineLink, HiOutlinePlus, HiOutlineWallet } from "react-icons/hi2";
@@ -43,10 +43,19 @@ export function IWalletsTabs() {
     load();
   }, [load]);
 
-  function onImport() {
+  async function onImport() {
     const id = importId.trim();
     if (!/^0x[0-9a-fA-F]{6,}$/.test(id)) {
       setErr("Enter a valid 0x iWallet object id");
+      return;
+    }
+    const w = await getIdentity(id);
+    if (!w) {
+      setErr("No iWallet found at that id");
+      return;
+    }
+    if (ownerAddress && w.owner && w.owner.toLowerCase() !== ownerAddress.toLowerCase()) {
+      setErr(`That iWallet is owned by ${w.owner.slice(0, 6)}…${w.owner.slice(-4)} — connect that wallet to add it`);
       return;
     }
     setErr(null);

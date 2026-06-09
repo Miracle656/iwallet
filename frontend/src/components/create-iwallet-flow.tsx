@@ -114,6 +114,9 @@ export function CreateIWalletFlow() {
     const body = [
       "# I-Wallet recovery — KEEP SECRET",
       `owner_address=${ownerAddress ?? ""}`,
+      // The iWallet object id (filled once created). With this + the witness you
+      // can fully restore: AGENT_WITNESS_W + IIDENTITY_OBJECT_ID in the agent.
+      `iwallet_id=${createdId ?? ""}`,
       `identity_hash=${identityHash}`,
       `witness_w=${witnessHex}`,
     ].join("\n");
@@ -400,12 +403,24 @@ export function CreateIWalletFlow() {
                 <p className="mt-2 text-xs text-muted">
                   New IIdentity object: <HashText value={createdId} chars={10} />
                 </p>
-                <Link
-                  href={`/iwallets/${createdId}`}
-                  className="mt-3 inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-soft"
-                >
-                  View profile <HiOutlineArrowRight />
-                </Link>
+                <p className="mt-3 text-xs text-emerald-200/80">
+                  Download your recovery file now — it includes this object id + the witness, so you
+                  can restore control later. Keep it secret.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    onClick={onDownloadRecovery}
+                    className="inline-flex items-center gap-2 rounded-full bg-elevated px-5 py-2.5 text-sm font-semibold text-ink hover:text-accent"
+                  >
+                    <HiOutlineShieldCheck /> Download recovery
+                  </button>
+                  <Link
+                    href={`/iwallets/${createdId}`}
+                    className="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-soft"
+                  >
+                    View profile <HiOutlineArrowRight />
+                  </Link>
+                </div>
               </div>
             )}
           </Panel>
