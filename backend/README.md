@@ -16,7 +16,16 @@ routes. Long-running web service — bind to `$PORT`, in-memory feed (resets on 
 |---|---|---|
 | `API_SECRET` | yes | gates writes; must match the agent's `BACKEND_API_KEY` |
 | `PORT` | auto | injected by the host; falls back to 3000 locally |
-| `SPONSOR_PRIVATE_KEY` | no | only for the gas-station routes (lazy-loaded) |
+| `SPONSOR_PRIVATE_KEY` | no | only for the legacy self-managed gas-station routes |
+| `ENOKI_PRIVATE_API_KEY` | for sponsorship | Enoki **private** key — powers `/enoki/sponsor` + `/enoki/execute` (gasless iWallet creation). Never put this in the frontend. |
+| `ENOKI_NETWORK` | no | `testnet` (default) / `mainnet` / `devnet` |
+
+### Enoki sponsored transactions
+`POST /enoki/sponsor` ({ transactionKindBytes, sender, allowedMoveCallTargets }) → `{ bytes, digest }`,
+then `POST /enoki/execute` ({ digest, signature }) → executes (Enoki pays gas). Both are **public**
+(CORS) — abuse is bounded by the move-call allowlist you set per request + in the Enoki portal.
+The portal allowlist must include `0x1::option::none`, `<pkg>::prototype::create_iidentity`, and
+`<pkg>::prototype::set_policy`.
 
 ## Run locally
 ```bash

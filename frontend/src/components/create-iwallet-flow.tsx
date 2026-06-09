@@ -3,13 +3,16 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { PasskeyKeypair } from "@mysten/sui/keypairs/passkey";
-import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
+import { useCurrentAccount, useSignAndExecuteTransaction, useSignTransaction } from "@mysten/dapp-kit";
 import type { Transaction } from "@mysten/sui/transactions";
+import { toBase64, fromBase64 } from "@mysten/sui/utils";
 import { AnimatedHoverText } from "@/components/animated-hover-text";
 import { HashText } from "@/components/hash-text";
 import { addLocalIdentityId } from "@/lib/local-identities";
 import { createPasskeyOwner } from "@/lib/passkey";
 import { buildCreateIdentityTx, buildSetPolicyTx, suiClient } from "@/lib/sui-client";
+import { IWALLET_PACKAGE_ID } from "@/lib/sui-config";
+import { enokiConfigured, executeSponsored, sponsorTransaction } from "@/lib/enoki";
 import { fetchVerificationKeyBytes } from "@/lib/vk";
 import { computeIdentityHash, generateWitness, witnessToHex } from "@/lib/witness";
 import {
@@ -46,6 +49,8 @@ export function CreateIWalletFlow() {
         options: { showObjectChanges: true, showEffects: true },
       }),
   });
+  // sign-only (for the Enoki sponsored path — the backend executes)
+  const { mutateAsync: signTx } = useSignTransaction();
 
   const [ownerSource, setOwnerSource] = useState<OwnerSource | null>(null);
   const [passkey, setPasskey] = useState<PasskeyKeypair | null>(null);
@@ -120,7 +125,8 @@ export function CreateIWalletFlow() {
     URL.revokeObjectURL(url);
   }
 
-  async function submitTx(tx: Transaction): Promise<SubmitResult> {
+  // Direct path: the owner signs AND pays gas.
+  async function submitDirect(tx: Transaction): Promise<SubmitResult> {
     if (ownerSource === "wallet") {
       const res = await signWithWallet({ transaction: tx });
       return res as unknown as SubmitResult;
@@ -135,6 +141,48 @@ export function CreateIWalletFlow() {
     throw new Error("No owner selected");
   }
 
+  // Sponsored path: Enoki pays gas. Owner only signs. allowedMoveCallTargets
+  // scopes what Enoki will sponsor.
+  async function submitSponsored(
+    tx: Transaction,
+    allowedMoveCallTargets: string[],
+  ): Promise<SubmitResult> {
+    if (!ownerAddress) throw new Error("No owner");
+    const kindBytes = await tx.build({ client: suiClient, onlyTransactionKind: true });
+    const { bytes, digest } = await sponsorTransaction({
+      transactionKindBytes: toBase64(kindBytes),
+      sender: ownerAddress,
+      allowedMoveCallTargets,
+    });
+
+    let signature: string;
+    if (ownerSource === "wallet") {
+      ({ signature } = await signTx({ transaction: bytes }));
+    } else if (passkey) {
+      ({ signature } = await passkey.signTransaction(fromBase64(bytes)));
+    } else {
+      throw new Error("No signer");
+    }
+
+    const exec = await executeSponsored(digest, signature);
+    return (await suiClient.waitForTransaction({
+      digest: exec.digest,
+      options: { showObjectChanges: true, showEffects: true },
+    })) as unknown as SubmitResult;
+  }
+
+  // Try sponsored (gasless) first; fall back to owner-pays-gas on any failure.
+  async function submit(tx: Transaction, allowedMoveCallTargets: string[]): Promise<SubmitResult> {
+    if (enokiConfigured()) {
+      try {
+        return await submitSponsored(tx, allowedMoveCallTargets);
+      } catch (e) {
+        console.warn("[create] sponsored failed, falling back to owner-pays-gas:", e);
+      }
+    }
+    return submitDirect(tx);
+  }
+
   async function onCreate() {
     if (!ownerAddress || !identityHashBytes) {
       setError("Owner + identity hash required");
@@ -146,7 +194,10 @@ export function CreateIWalletFlow() {
       const vkBytes = await fetchVerificationKeyBytes();
 
       const tx1 = buildCreateIdentityTx(name, identityHashBytes, vkBytes);
-      const r1 = await submitTx(tx1);
+      const r1 = await submit(tx1, [
+        "0x1::option::none",
+        `${IWALLET_PACKAGE_ID}::prototype::create_iidentity`,
+      ]);
       if (r1.effects?.status?.status !== "success") {
         throw new Error(r1.effects?.status?.error ?? "create_iidentity failed");
       }
@@ -160,7 +211,7 @@ export function CreateIWalletFlow() {
       const expirationMs = BigInt(Date.now() + Math.max(1, Number(expiryDays)) * 86_400_000);
       const allow = recipient.trim() ? [recipient.trim()] : [];
       const tx2 = buildSetPolicyTx(newId, budgetMist, allow, expirationMs);
-      const r2 = await submitTx(tx2);
+      const r2 = await submit(tx2, [`${IWALLET_PACKAGE_ID}::prototype::set_policy`]);
       if (r2.effects?.status?.status !== "success") {
         throw new Error(r2.effects?.status?.error ?? "set_policy failed");
       }
@@ -327,9 +378,10 @@ export function CreateIWalletFlow() {
               <>
                 <div className="rounded-[1.25rem] border border-accent/20 bg-accent/5 p-4 text-sm text-accent">
                   Submits <code>create_iidentity</code> + <code>set_policy</code>, signed by your{" "}
-                  {ownerSource === "wallet"
-                    ? "connected wallet — which pays a small testnet gas fee."
-                    : "passkey — make sure that address holds a little testnet SUI for gas."}
+                  {ownerSource === "wallet" ? "connected wallet" : "passkey"}.{" "}
+                  {enokiConfigured()
+                    ? "Gas is sponsored by Enoki — no SUI needed."
+                    : "The owner pays a small testnet gas fee."}
                 </div>
                 <button
                   onClick={onCreate}
