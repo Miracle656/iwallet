@@ -16,9 +16,14 @@ function shortAddress(address: string): string {
 }
 
 /** Passkey-based owner sign-in (independent of the dapp-kit wallet connect). */
-export function PasskeyButton() {
+export function PasskeyButton({ onOwnerChange }: { onOwnerChange?: (addr: string | null) => void }) {
   const [owner, setOwner] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  function update(addr: string | null) {
+    setOwner(addr);
+    onOwnerChange?.(addr);
+  }
 
   useEffect(() => {
     setOwner(getStoredOwnerAddress());
@@ -28,7 +33,7 @@ export function PasskeyButton() {
     setBusy(true);
     try {
       const { address } = await recoverPasskeyOwner();
-      setOwner(address);
+      update(address);
     } catch {
       // No existing passkey for this domain or cancelled — created via /iwallets/create.
     } finally {
@@ -38,7 +43,7 @@ export function PasskeyButton() {
 
   function signOut() {
     clearStoredOwner();
-    setOwner(null);
+    update(null);
   }
 
   if (owner) {
