@@ -9,6 +9,7 @@ import { IconChip } from "@/components/icon-chip";
 import type { IWallet } from "@/lib/demo-data";
 import { listIdentities } from "@/lib/sui-client";
 import { getLocalIdentityIds } from "@/lib/local-identities";
+import { usePasskeyOwner } from "@/lib/use-passkey-owner";
 import { HiOutlineArrowRight, HiOutlineBolt, HiOutlineCheckBadge } from "react-icons/hi2";
 
 /**
@@ -18,6 +19,8 @@ import { HiOutlineArrowRight, HiOutlineBolt, HiOutlineCheckBadge } from "react-i
  */
 export function HomeHeroCard() {
   const account = useCurrentAccount();
+  const passkey = usePasskeyOwner();
+  const ownerAddress = account?.address ?? passkey ?? null;
   const [wallet, setWallet] = useState<IWallet | null>(null);
 
   useEffect(() => {
@@ -26,12 +29,12 @@ export function HomeHeroCard() {
       .catch(() => setWallet(null));
   }, []);
 
-  const live = !!account && !!wallet;
+  const live = !!ownerAddress && !!wallet;
   const sui = wallet?.balance.tokens.find((t) => t.symbol === "SUI")?.amount ?? 0;
   const name = wallet?.name ?? "Operations iWallet";
   const objectId = wallet?.objectId ?? "0x7f3a2c91b8e4d5f0cafe1138a6b4e92019ad7c33";
   const status = wallet?.status ?? "unfunded";
-  const owner = account ? `${account.address.slice(0, 6)}…${account.address.slice(-4)}` : "Not connected";
+  const owner = ownerAddress ? `${ownerAddress.slice(0, 6)}…${ownerAddress.slice(-4)}` : "Not connected";
   const identityHash = wallet ? `${wallet.identityHash.slice(0, 8)}…` : "0x…example";
   const viewHref = wallet ? `/iwallets/${wallet.id}` : "/iwallets/create";
 
@@ -53,7 +56,7 @@ export function HomeHeroCard() {
       </div>
 
       <div className="mt-7 flex flex-col gap-3 lg:flex-row">
-        <Panel eyebrow="Owner wallet" title={account ? "Connected" : "Connect to preview"} meta={owner}>
+        <Panel eyebrow="Owner" title={ownerAddress ? "Connected" : "Connect to preview"} meta={owner}>
           <Selector label="iWallet" value={name} />
           <Selector label="Network" value="Sui Testnet" />
         </Panel>

@@ -377,11 +377,9 @@ export function CreateIWalletFlow() {
             {!createdId ? (
               <>
                 <div className="rounded-[1.25rem] border border-accent/20 bg-accent/5 p-4 text-sm text-accent">
-                  Submits <code>create_iidentity</code> + <code>set_policy</code>, signed by your{" "}
-                  {ownerSource === "wallet" ? "connected wallet" : "passkey"}.{" "}
-                  {enokiConfigured()
-                    ? "Gas is sponsored by Enoki — no SUI needed."
-                    : "The owner pays a small testnet gas fee."}
+                  Approve with your {ownerSource === "wallet" ? "wallet" : "passkey"} to create the
+                  iWallet on-chain.{" "}
+                  {enokiConfigured() ? "Gas is sponsored — no SUI needed." : "A small gas fee applies."}
                 </div>
                 <button
                   onClick={onCreate}
