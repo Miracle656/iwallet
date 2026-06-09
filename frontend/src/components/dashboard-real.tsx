@@ -7,7 +7,7 @@ import { HashText } from "@/components/hash-text";
 import { WalletStatusBadge } from "@/components/status-badge";
 import { AgentTradeFeed } from "@/components/agent-trade-feed";
 import type { IWallet } from "@/lib/demo-data";
-import { listIdentities } from "@/lib/sui-client";
+import { discoverOwnedIdentities, listIdentities } from "@/lib/sui-client";
 import { usePasskeyOwner } from "@/lib/use-passkey-owner";
 import {
   addLocalIdentityId,
@@ -44,13 +44,21 @@ export function DashboardReal() {
     ? allWallets.filter((w) => w.owner?.toLowerCase() === ownerAddress)
     : allWallets;
 
-  const load = useCallback(() => {
+  const load = useCallback(async () => {
     setLoading(true);
-    listIdentities(getLocalIdentityIds())
-      .then(setAllWallets)
-      .catch(() => setAllWallets([]))
-      .finally(() => setLoading(false));
-  }, []);
+    try {
+      // Recover wallets from chain (survives a cleared cache), then persist.
+      if (ownerAddress) {
+        const discovered = await discoverOwnedIdentities(ownerAddress);
+        discovered.forEach(addLocalIdentityId);
+      }
+      setAllWallets(await listIdentities(getLocalIdentityIds()));
+    } catch {
+      setAllWallets([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [ownerAddress]);
 
   useEffect(() => {
     load();
