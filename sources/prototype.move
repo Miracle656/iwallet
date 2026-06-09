@@ -78,6 +78,11 @@ public struct IIdentity<phantom T> has key, store {
     active_policy: Option<AgentPolicy>
 }
 
+public struct IdentityCreated has copy, drop {
+    id: address,
+    msg: std::string::String,
+}
+
 
 public fun set_policy<T>(
     identity: &mut IIdentity<T>,
@@ -147,8 +152,12 @@ entry fun create_iidentity<T>(
 
     let iwallet_owner = createIWalletOwner(ctx);
 
+    let event_id = identity.id.uid_to_address();
+    let create_identity_event = IdentityCreated { id: event_id, msg: b"identity created".to_string() };
+    event::emit(create_identity_event);
     transfer::public_transfer(iwallet_owner, ctx.sender());
     transfer::public_share_object(identity);
+    // id for event
 }
 
 fun createIWalletOwner(ctx: &mut TxContext): IWalletOwner
