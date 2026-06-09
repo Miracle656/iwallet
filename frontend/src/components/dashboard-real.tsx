@@ -149,10 +149,10 @@ export function DashboardReal() {
         </div>
       </section>
 
-      {/* live agent activity */}
+      {/* live agent activity — scoped to YOUR iWallets only */}
       <section className="rounded-[2.4rem] border border-border bg-surface p-5 sm:p-7">
-        <h2 className="mb-4 text-xl font-semibold text-ink">Agent activity</h2>
-        <AgentTradeFeed limit={10} />
+        <h2 className="mb-4 text-xl font-semibold text-ink">Your agent activity</h2>
+        <AgentTradeFeed limit={20} identityIds={wallets.map((w) => w.objectId)} />
       </section>
     </div>
   );

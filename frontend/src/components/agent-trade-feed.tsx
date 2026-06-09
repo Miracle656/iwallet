@@ -19,20 +19,25 @@ import {
 } from "react-icons/hi2";
 
 /**
- * Live agent-trade feed. Polls the backend every few seconds. Used both
- * filtered to one iWallet (profile tab) and globally (the /agents page).
+ * Live agent-trade feed. Polls the backend every few seconds.
+ *  - `identityId`: one iWallet (profile tab).
+ *  - `identityIds`: only these iWallets (the dashboard — your agents only).
+ *  - neither: the global feed (the /agents page + /trade venue).
  */
 export function AgentTradeFeed({
   identityId,
+  identityIds,
   limit = 50,
   pollMs = 8000,
 }: {
   identityId?: string;
+  identityIds?: string[];
   limit?: number;
   pollMs?: number;
 }) {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const idsKey = identityIds?.join(",") ?? "";
 
   usePoll(
     () => {
@@ -42,12 +47,15 @@ export function AgentTradeFeed({
       }
       const p = identityId ? fetchIdentityTrades(identityId, limit) : fetchGlobalTrades(limit);
       p.then((data) => {
-        setTrades(data);
+        const scoped = identityIds
+          ? data.filter((t) => identityIds.includes(t.identityId))
+          : data;
+        setTrades(scoped);
         setLoaded(true);
       });
     },
     pollMs,
-    [identityId, limit, pollMs],
+    [identityId, idsKey, limit, pollMs],
   );
 
   if (!backendConfigured()) {
