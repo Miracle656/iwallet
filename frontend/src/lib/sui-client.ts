@@ -50,6 +50,17 @@ function toHex(value: unknown): string {
 }
 
 /**
+ * Extract the package id from a full object type string like
+ * `0xabc::prototype::IIdentity<0x2::sui::SUI>`. Per-object move calls must
+ * target the package the object was created under — wallets from older
+ * deployments abort (or silently read 0) against the current package id.
+ */
+function packageIdFromType(objectType?: string | null): string {
+  const m = /^(0x[0-9a-fA-F]+)::/.exec(objectType ?? "");
+  return m?.[1] ?? IWALLET_PACKAGE_ID;
+}
+
+/**
  * Staged balance (in MIST) for a key inside an IIdentity's bag.
  * Calls `prototype::staged_balance` via devInspect — a gas-free read-only
  * simulation. The Move fn aborts when the key is absent, so an unfunded
@@ -58,11 +69,12 @@ function toHex(value: unknown): string {
 export async function getStagedBalance(
   objectId: string,
   key: string = STAGED_BALANCE_KEY,
+  packageId: string = IWALLET_PACKAGE_ID,
 ): Promise<bigint> {
   try {
     const tx = new Transaction();
     tx.moveCall({
-      target: `${IWALLET_PACKAGE_ID}::prototype::staged_balance`,
+      target: `${packageId}::prototype::staged_balance`,
       typeArguments: [STAKE_COIN_TYPE],
       arguments: [tx.object(objectId), tx.pure.string(key)],
     });
@@ -97,7 +109,11 @@ export async function getIdentity(objectId: string): Promise<IWallet | null> {
 
     // Total SUI = staged (in the vault bag) + coins sent to the iWallet address
     // but not yet staged (transfer-to-object funding shows here immediately).
-    const stagedMist = await getStagedBalance(objectId);
+    const stagedMist = await getStagedBalance(
+      objectId,
+      STAGED_BALANCE_KEY,
+      packageIdFromType(res.data?.type),
+    );
     let addressSui = 0;
     try {
       const balances = await client.getAllBalances({ owner: objectId });
@@ -143,14 +159,18 @@ export async function listIdentities(
 }
 
 /**
- * Recover an owner's iWallets from chain (survives a cleared cache): scan the
- * address's recent transactions for `create_iidentity` calls and collect the
- * IIdentity objects they created. The owner is the tx sender even for
- * Enoki-sponsored creates. Covers recent UI-created wallets; older / heavily-
- * used addresses may need a manual import (until George adds an IdentityCreated
- * event we can query directly).
+ * Recover an owner's iWallets from chain (survives a cleared cache), from two
+ * sources merged:
+ *  1. Tx scan — the address's recent transactions, collecting the IIdentity
+ *     objects their `create_iidentity` calls created. The owner is the tx
+ *     sender even for Enoki-sponsored creates. Window: last 50 txs.
+ *  2. IdentityCreated events (current package only — older packages predate
+ *     the event). The event carries just the id, not the owner, so we read
+ *     each candidate object and keep the ones whose `owner` field matches.
  */
 export async function discoverOwnedIdentities(owner: string): Promise<string[]> {
+  const ids = new Set<string>();
+
   try {
     const res = await client.queryTransactionBlocks({
       filter: { FromAddress: owner },
@@ -158,7 +178,6 @@ export async function discoverOwnedIdentities(owner: string): Promise<string[]> 
       limit: 50,
       order: "descending",
     });
-    const ids = new Set<string>();
     for (const tx of res.data) {
       for (const c of tx.objectChanges ?? []) {
         const oc = c as { type?: string; objectType?: string; objectId?: string };
@@ -167,10 +186,41 @@ export async function discoverOwnedIdentities(owner: string): Promise<string[]> 
         }
       }
     }
-    return Array.from(ids);
   } catch {
-    return [];
+    /* fall through to the event scan */
   }
+
+  try {
+    const events = await client.queryEvents({
+      query: {
+        MoveEventType: `${IWALLET_PACKAGE_ID}::prototype::IdentityCreated`,
+      },
+      limit: 50,
+      order: "descending",
+    });
+    const candidates = events.data
+      .map((e) => (e.parsedJson as { id?: string } | null)?.id)
+      .filter((id): id is string => Boolean(id) && !ids.has(id!));
+    if (candidates.length > 0) {
+      const objects = await client.multiGetObjects({
+        ids: candidates,
+        options: { showContent: true },
+      });
+      const target = owner.toLowerCase();
+      for (const obj of objects) {
+        const content = obj.data?.content;
+        if (!content || content.dataType !== "moveObject") continue;
+        const fields = content.fields as Record<string, unknown>;
+        if (typeof fields.owner === "string" && fields.owner.toLowerCase() === target) {
+          if (obj.data?.objectId) ids.add(obj.data.objectId);
+        }
+      }
+    }
+  } catch {
+    /* event scan is best-effort */
+  }
+
+  return Array.from(ids);
 }
 
 /** Project an on-chain Option<AgentPolicy> into the UI's policy shape. */
@@ -319,7 +369,11 @@ export async function getProfile(objectId: string): Promise<IdentityProfile | nu
     const identityHash = "0x" + toHex(fields.identity_hash);
     const owner = typeof fields.owner === "string" ? (fields.owner as string) : null;
 
-    const stagedBalanceMist = await getStagedBalance(objectId);
+    const stagedBalanceMist = await getStagedBalance(
+      objectId,
+      STAGED_BALANCE_KEY,
+      packageIdFromType(res.data?.type),
+    );
 
     // Coins sent to the shared object's address (George's funding model:
     // transfer straight to the object id).

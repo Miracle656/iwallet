@@ -3,7 +3,12 @@ import { cors } from "hono/cors";
 import { serve } from "@hono/node-server";
 import { sponsorAndExecute } from "./sponsor.js";
 import { logTradeToMemwal } from "./logger.js"; // You'll create this next
-import { addTrade, listTrades, listTradesByIdentity, TradeSchema } from "./trades.js";
+import {
+  addTrade,
+  listTrades,
+  listTradesByIdentity,
+  TradeSchema,
+} from "./trades.js";
 import { Transaction } from "@mysten/sui/transactions";
 import { SuiGrpcClient } from "@mysten/sui/grpc";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
@@ -22,7 +27,10 @@ let keypair: Ed25519Keypair | null = null;
 function getSponsorKeypair(): Ed25519Keypair {
   if (!keypair) {
     const pk = process.env.SPONSOR_PRIVATE_KEY;
-    if (!pk) throw new Error("SPONSOR_PRIVATE_KEY not set — gas-station routes disabled");
+    if (!pk)
+      throw new Error(
+        "SPONSOR_PRIVATE_KEY not set — gas-station routes disabled",
+      );
     keypair = Ed25519Keypair.fromSecretKey(pk);
   }
   return keypair;
@@ -56,7 +64,7 @@ app.use("/sponsor/*", requireApiKey);
 app.use("/agent/*", requireApiKey);
 
 // Route: Create Identity
-app.post("/sponsor/setup", async (c) => {
+app.post("/sponsor/setup", async (c: any) => {
   const { txBytes } = await c.req.json();
   let tx = Transaction.from(txBytes);
 
