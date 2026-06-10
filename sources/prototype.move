@@ -135,7 +135,7 @@ entry fun create_iidentity<T>(
     vk_bytes: vector<u8>, // Groth16 verifying key bytes from trusted setup
     active_policy: Option<AgentPolicy>,
     ctx: &mut TxContext
-) {
+): address {
     // Prepare the verifying key once at creation — stored in the object
     let pvk = groth16::prepare_verifying_key(&groth16::bn254(), &vk_bytes);
 
@@ -153,11 +153,13 @@ entry fun create_iidentity<T>(
     let iwallet_owner = createIWalletOwner(ctx);
 
     let event_id = identity.id.uid_to_address();
+    let identity_addr = identity.id.uid_to_address();
     let create_identity_event = IdentityCreated { id: event_id, msg: b"identity created".to_string() };
-    event::emit(create_identity_event);
     transfer::public_transfer(iwallet_owner, ctx.sender());
     transfer::public_share_object(identity);
+    event::emit(create_identity_event);
     // id for event
+    identity_addr
 }
 
 fun createIWalletOwner(ctx: &mut TxContext): IWalletOwner
