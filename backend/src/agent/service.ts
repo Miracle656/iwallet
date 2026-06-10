@@ -72,6 +72,7 @@ export class AgentService {
         agentName: name,
         iWalletId: createdObjects[0], // The ID of the shared identity object
         digest: result.digest,
+        secret_w: secret, // 🔥 Pass it back to the caller
       };
     } catch (e) {
       console.log(e);
