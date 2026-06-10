@@ -13,6 +13,7 @@ import { Transaction } from "@mysten/sui/transactions";
 import { SuiGrpcClient } from "@mysten/sui/grpc";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import dotenv from "dotenv";
+import { agent } from "./agent/controller.ts";
 dotenv.config();
 
 const client = new SuiGrpcClient({
@@ -106,6 +107,8 @@ app.get("/trades/identity/:id", (c) => {
   const limit = Number(c.req.query("limit") ?? 50);
   return c.json({ trades: listTradesByIdentity(c.req.param("id"), limit) });
 });
+
+app.route("/v1/agent", agent);
 
 serve(
   {
