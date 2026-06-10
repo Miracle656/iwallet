@@ -12,6 +12,7 @@
     "@mysten/deepbook-v3": "^1.4.1",
     "@mysten/sui": "^2.17.0",
     "@mysten/suins": "^1.1.4",
+    "circomlibjs": "^0.1.7",
     "dotenv": "^17.4.2",
     "hono": "^4.12.25"
   },
