@@ -20,18 +20,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "npm"
-          cache-dependency-path: backend/package-lock.json
+          cache: "pnpm"
+          cache-dependency-path: backend/pnpm-lock.yaml
 
       - name: Install Dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
-      - name: Build
-        run: npm run dev --if-present
-        env:
-          SPONSOR_PRIVATE_KEY: ${{ secrets.SPONSOR_PRIVATE_KEY }}
-          API_SECRET: ${{ secrets.API_SECRET }}
+      # tsconfig is noEmit, so this is a typecheck — the deploy runs via tsx.
+      - name: Typecheck
+        run: pnpm build

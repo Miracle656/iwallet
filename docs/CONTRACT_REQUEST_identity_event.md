@@ -1,5 +1,13 @@
 # Request for George — emit `IdentityCreated { id, owner }`
 
+> **Status 2026-06-10 — partially landed.** Package `0x0edff0cf…` emits
+> `IdentityCreated { id, msg }` — the id is there but **not the owner**, so the
+> one-query lookup below isn't possible yet. Frontend workaround (shipped in
+> `discoverOwnedIdentities`): query the events for ids, then read each object's
+> `owner` field and filter. Works, but costs N object reads per lookup and only
+> sees the latest 50 creations. Adding `owner` to the event (and ideally an
+> `owner` event-field filter) still makes this one cheap query — request stands.
+
 ## Problem
 `IIdentity` is a **shared** object and there's no event tying it to its creator, so
 the frontend can't answer "show me *my* iWallets" from the chain. Today we track
