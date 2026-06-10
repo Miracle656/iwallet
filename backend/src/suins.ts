@@ -13,8 +13,8 @@ export async function createLeafSubname(
   name: string,
   parentNftId: string,
   targetAddress: string, // th agent address
-) {
-  const transaction = new Transaction();
+  transaction: Transaction,
+): Promise<Transaction> {
   const suinsTransaction = new SuinsTransaction(jsonClient.suins, transaction);
 
   suinsTransaction.createLeafSubName({
@@ -27,4 +27,5 @@ export async function createLeafSubname(
     transaction,
     signer: _keypair,
   });
+  return transaction;
 }
