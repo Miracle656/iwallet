@@ -10,6 +10,7 @@ import { generateAgentIdentity } from "../utils/zk.ts";
 import * as path from "node:path";
 import { jsonClient } from "../lib/sui_client.ts";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
+import { toBase64 } from "@mysten/sui/utils";
 
 dotenv.config();
 
@@ -17,12 +18,8 @@ export class AgentService {
   packageId: string = PACKAGE_ID;
   private _keypair = Ed25519Keypair.fromSecretKey(process.env.PK!);
 
-  async buildCreateAgentTx(name: string, userAddress: string) {
+  async buildCreateAgentTx(name: string, sender: string) {
     try {
-      const nameExist = await this.getNameRecord(name);
-      if (nameExist) {
-        return { message: "Name record already exists" };
-      }
       console.log(`🤖 Building Agent creation PTB for: ${name}...`);
       // 1. Generate Identity Hash (The Vault Lock)
       const { secret, identityHash } = await generateAgentIdentity();
@@ -57,51 +54,41 @@ export class AgentService {
         ],
       });
 
-      const createResult = await jsonClient.signAndExecuteTransaction({
-        transaction: createTX,
-        signer: this._keypair,
-        options: { showObjectChanges: true },
-      });
+      createTX.setSender(sender);
+      const bytes = await createTX.build({ client: jsonClient });
+      const createTxBytes = toBase64(bytes);
 
-      const createdObj = createResult.objectChanges?.find(
-        (c) => c.type === "created" && c.objectType?.includes("IIdentity"),
-      );
-      if (!createdObj || createdObj.type !== "created") {
-        throw new Error("Identity creation failed");
-      }
-
-      const identityAddress = createdObj.objectId;
-
-      const suinsTx = new Transaction();
-
-      // const nameExist = await this.getNameRecord(name);
-
-      // todo create agent suins
-      let resultFromNSCreation = await createLeafSubname(
-        reformedName,
-        SUIN_PARENT_NFT_ID,
-        identityAddress,
-        suinsTx,
-      );
-
-      const result = await jsonClient.signAndExecuteTransaction({
-        transaction: suinsTx,
-        signer: this._keypair,
-        options: {
-          showEffects: true,
-          showEvents: true,
-        },
-      });
-      return { identityAddress, result };
       return {
-        agentName: name,
-        secret_w: secret, // 🔥 Pass it back to the caller
-        // txBytes: txBytes,
+        createIIdentityByte: createTxBytes,
       };
     } catch (e) {
       console.error("❌ Failed to build agent tx:", e);
       throw e;
     }
+  }
+
+  async createAgentName(name: string, identityAddress: string, sender: string) {
+    const nameExist = await this.getNameRecord(name);
+    if (nameExist) {
+      return { message: "Name record already exists" };
+    }
+    const reformedName = name.endsWith("iwallet.sui")
+      ? name
+      : `${name}.iwallet.sui`;
+
+    const suinsTx = new Transaction();
+    let resultFromNSCreation = await createLeafSubname(
+      reformedName,
+      SUIN_PARENT_NFT_ID,
+      identityAddress,
+      suinsTx,
+    );
+    resultFromNSCreation.setSender(sender);
+    const byte = await resultFromNSCreation.build({ client: jsonClient });
+    const suinsTxBytes = toBase64(byte);
+    return {
+      suinsTxBytes: suinsTxBytes,
+    };
   }
 
   async getNameRecord(name: string) {
