@@ -108,6 +108,10 @@ app.get("/trades/identity/:id", (c) => {
   return c.json({ trades: listTradesByIdentity(c.req.param("id"), limit) });
 });
 
+app.get("/health-check", (c) => {
+  return c.json({ status: "ok" });
+});
+
 app.route("/v1/agent", agent);
 
 serve(

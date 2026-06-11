@@ -6,8 +6,8 @@ const agentService = new AgentService();
 
 agent.post("/create", async (c) => {
   const body = await c.req.json();
-  const { name, signer } = body;
-  const result: any = await agentService.buildCreateAgentTx(name, signer);
+  const { name, sender } = body;
+  const result: any = await agentService.buildCreateAgentTx(name, sender);
   return c.json({ message: "Agent created successfully", result });
 });
 

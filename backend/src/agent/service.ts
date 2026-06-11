@@ -35,10 +35,6 @@ export class AgentService {
       const vkBytes = verificationKeyToBytes(vkPath);
 
       // 3. Build the Sui Transaction
-
-      const reformedName = name.endsWith("iwallet.sui")
-        ? name
-        : `${name}.iwallet.sui`;
       // get identity hash and vk bytes from onchain identity
       const createTX = new Transaction();
       createTX.moveCall({
