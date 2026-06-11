@@ -9,14 +9,13 @@ import { verificationKeyToBytes } from "./vk.ts";
 import { generateAgentIdentity } from "../utils/zk.ts";
 import * as path from "node:path";
 import { jsonClient } from "../lib/sui_client.ts";
-import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
+// import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { toBase64 } from "@mysten/sui/utils";
 
 dotenv.config();
 
 export class AgentService {
   packageId: string = PACKAGE_ID;
-  private _keypair = Ed25519Keypair.fromSecretKey(process.env.PK!);
 
   async buildCreateAgentTx(name: string, sender: string) {
     try {
