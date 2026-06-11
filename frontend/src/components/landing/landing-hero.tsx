@@ -36,6 +36,7 @@ export function LandingHero() {
   const introRef = useRef<HTMLDivElement>(null);
   const introCloneRef = useRef<HTMLDivElement>(null);
   const heroRobotRef = useRef<HTMLDivElement>(null);
+  const cardRobotRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLDivElement>(null);
   const slotRef = useRef<HTMLDivElement>(null);
   const sideCardsRef = useRef<Array<HTMLDivElement | null>>([]);
@@ -87,9 +88,40 @@ export function LandingHero() {
       return (m.slot.h * 1.15) / (m.vh * 0.96 * cardScale);
     };
 
+    // Single source of truth for the hero geometry. The inline CSS uses
+    // vw/vh as a first paint, but CSS 100vw includes the scrollbar while the
+    // JS metrics don't — mixing the two drifts every hand-off by ~10px, so
+    // the pixel values are re-set from JS here (and on every ST refresh).
+    const applyGeometry = () => {
+      const m = metrics();
+      gsap.set(focus, {
+        left: m.heroCx - m.outlineW / 2,
+        top: m.heroCy - m.outlineH / 2,
+        width: m.outlineW,
+        height: m.outlineH,
+      });
+      gsap.set(inner, {
+        width: m.vw,
+        height: m.vh,
+        left: m.outlineW / 2 - m.heroCx,
+        top: m.outlineH / 2 - m.heroCy,
+      });
+      const canvasBox = {
+        width: m.vh * 0.9,
+        height: m.vh * 1.1,
+        left: m.heroCx - m.vh * 0.45,
+        top: m.heroCy - m.vh * 0.55,
+      };
+      if (heroRobotRef.current) gsap.set(heroRobotRef.current, canvasBox);
+      if (cardRobotRef.current) gsap.set(cardRobotRef.current, canvasBox);
+    };
+
     const mm = gsap.matchMedia();
 
     mm.add("(prefers-reduced-motion: no-preference)", () => {
+      applyGeometry();
+      ScrollTrigger.addEventListener("refreshInit", applyGeometry);
+
       const tl = gsap.timeline({
         defaults: { ease: "none" },
         scrollTrigger: {
@@ -212,6 +244,7 @@ export function LandingHero() {
       );
 
       return () => {
+        ScrollTrigger.removeEventListener("refreshInit", applyGeometry);
         tl.scrollTrigger?.kill();
         tl.kill();
       };
@@ -219,6 +252,7 @@ export function LandingHero() {
 
     // Reduced motion: land directly on the finished page.
     mm.add("(prefers-reduced-motion: reduce)", () => {
+      applyGeometry();
       const m = metrics();
       const z = zoom(m);
       gsap.set(panel, { clipPath: "inset(0px 0px 0px 0px round 0px)" });
@@ -382,6 +416,7 @@ export function LandingHero() {
             </span>
           </div>
           <div
+            ref={cardRobotRef}
             className="absolute"
             style={{
               width: "90vh",
