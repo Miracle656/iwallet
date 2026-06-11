@@ -1,16 +1,15 @@
 import dotenv from "dotenv";
 import { Transaction } from "@mysten/sui/transactions";
-import { bcs } from "@mysten/sui/bcs";
-import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 
 import { PACKAGE_ID, SUIN_PARENT_NFT_ID } from "../utils/platform_constant.ts";
-import { jsonClient } from "../lib/sui_client.ts";
-import { createLeafSubname } from "../suins.ts";
+import { createLeafSubname, getNameRecord } from "../suins.ts";
 
 // 1. Import your ZK helpers
 import { verificationKeyToBytes } from "./vk.ts";
 import { generateAgentIdentity } from "../utils/zk.ts";
 import * as path from "node:path";
+import { jsonClient } from "../lib/sui_client.ts";
+import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 
 dotenv.config();
 
@@ -18,9 +17,13 @@ export class AgentService {
   packageId: string = PACKAGE_ID;
   private _keypair = Ed25519Keypair.fromSecretKey(process.env.PK!);
 
-  async createAgent(name: string) {
+  async buildCreateAgentTx(name: string, userAddress: string) {
     try {
-      console.log(`🤖 Initializing new Agent: ${name}...`);
+      const nameExist = await this.getNameRecord(name);
+      if (nameExist) {
+        return { message: "Name record already exists" };
+      }
+      console.log(`🤖 Building Agent creation PTB for: ${name}...`);
       // 1. Generate Identity Hash (The Vault Lock)
       const { secret, identityHash } = await generateAgentIdentity();
       console.log(`🔑 WARNING: Save this Agent Secret! -> ${secret}`);
@@ -35,47 +38,82 @@ export class AgentService {
       const vkBytes = verificationKeyToBytes(vkPath);
 
       // 3. Build the Sui Transaction
-      const transaction = new Transaction();
-      const agent = { name };
-      // get identity hash and vk bytes from onchain identity
 
-      const identityAddress = transaction.moveCall({
+      const reformedName = name.endsWith("iwallet.sui")
+        ? name
+        : `${name}.iwallet.sui`;
+      // get identity hash and vk bytes from onchain identity
+      const createTX = new Transaction();
+      createTX.moveCall({
         package: this.packageId,
         module: "prototype",
         function: "create_iidentity",
         typeArguments: ["0x2::sui::SUI"],
         arguments: [
-          transaction.pure.string(name),
-          transaction.pure.vector("u8", identityHash),
-          transaction.pure.vector("u8", vkBytes),
+          createTX.pure.string(name),
+          createTX.pure.vector("u8", identityHash),
+          createTX.pure.vector("u8", vkBytes),
           // transaction.pure(bcs.struct("AgentPolicy", {}).serialize({})),
         ],
       });
-      // todo create agent suins
-      await createLeafSubname(
-        name,
-        SUIN_PARENT_NFT_ID,
-        identityAddress.Result.toString(),
-        transaction,
+
+      const createResult = await jsonClient.signAndExecuteTransaction({
+        transaction: createTX,
+        signer: this._keypair,
+      });
+
+      const createdObj = createResult.objectChanges?.find(
+        (c) => c.type === "created" && c.objectType?.includes("IIdentity"),
       );
+      if (!createdObj || createdObj.type !== "created") {
+        throw new Error("Identity creation failed");
+      }
+
+      const identityAddress = createdObj.objectId;
+
+      const suinsTx = new Transaction();
+
+      // const nameExist = await this.getNameRecord(name);
+
+      // todo create agent suins
+      let resultFromNSCreation = await createLeafSubname(
+        reformedName,
+        SUIN_PARENT_NFT_ID,
+        identityAddress,
+        suinsTx,
+      );
+
       const result = await jsonClient.signAndExecuteTransaction({
-        transaction,
+        transaction: suinsTx,
         signer: this._keypair,
         options: {
           showEffects: true,
           showEvents: true,
         },
       });
-      const createdObjects =
-        result.effects?.created?.map((c) => c.reference.objectId) || [];
+      return { identityAddress, result };
       return {
         agentName: name,
-        iWalletId: createdObjects[0], // The ID of the shared identity object
-        digest: result.digest,
         secret_w: secret, // 🔥 Pass it back to the caller
+        // txBytes: txBytes,
       };
     } catch (e) {
-      console.log(e);
+      console.error("❌ Failed to build agent tx:", e);
+      throw e;
+    }
+  }
+
+  async getNameRecord(name: string) {
+    const reformedName = name.endsWith(".iwallet.sui")
+      ? name
+      : `${name}.iwallet.sui`;
+    try {
+      return await getNameRecord(reformedName);
+    } catch (error: any) {
+      if (error?.message?.includes("does not exist")) {
+        return null;
+      }
+      throw new Error("Failed to get name record: " + error);
     }
   }
 }
