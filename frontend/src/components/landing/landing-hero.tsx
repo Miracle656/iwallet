@@ -4,14 +4,11 @@ import { useLayoutEffect, useRef } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 const RobotCanvas = dynamic(() => import("./robot-canvas"), {
   ssr: false,
   loading: () => <div className="h-full w-full" />,
 });
-
-gsap.registerPlugin(ScrollTrigger);
 
 const SKY_GRADIENT =
   "linear-gradient(to bottom, #8fc1ff 0%, #5ba6fb 55%, #298dff 100%)";
@@ -24,8 +21,9 @@ const SKY_GRADIENT =
  *  - the outlined rectangle is the one region the panel never covers — it
  *    keeps showing the scene (a pixel-aligned replica) and shrinks into the
  *    middle card slot, then the side cards rise in.
- * Pinned via ScrollTrigger (CSS sticky is broken by the global
- * `overflow-x: hidden` on body), scrubbed over 2 extra viewports of scroll.
+ * Snap model: the scroll gesture is the trigger, never the driver. The
+ * first downward gesture on the closed hero plays the timed transition
+ * while the page holds still; an upward gesture at the top reverses it.
  */
 export function LandingHero() {
   const sectionRef = useRef<HTMLElement>(null);
@@ -129,18 +127,15 @@ export function LandingHero() {
       ...sideCards,
     ].filter(Boolean) as HTMLElement[];
 
-    // Scroll depth (px) at which the transition snaps open / closed.
+    // Scroll depth (px) past which the page counts as "opened" on reload.
     const PLAY_AT = 60;
 
     let tl: gsap.core.Timeline | null = null;
-    let pinST: ScrollTrigger | null = null;
-    let playST: ScrollTrigger | null = null;
+    // Binary state machine: the hero is either closed (sky) or open (white
+    // page) — the timeline is only ever travelling between those two.
+    let state: "hero" | "open" = "hero";
 
     const teardown = () => {
-      playST?.kill();
-      pinST?.kill();
-      playST = null;
-      pinST = null;
       tl?.kill();
       tl = null;
       // Wipe every inline value we may have set so the next build measures
@@ -263,24 +258,14 @@ export function LandingHero() {
         1.05,
       );
 
-      // Pin holds the viewport while the animation plays; a tiny separate
-      // trigger decides play/reverse so the page top stays the hero state.
-      pinST = ScrollTrigger.create({
-        trigger: section,
-        start: "top top",
-        end: "+=120%",
-        pin: true,
-      });
-      playST = ScrollTrigger.create({
-        start: PLAY_AT,
-        end: PLAY_AT + 1,
-        onEnter: () => tl?.play(),
-        onLeaveBack: () => tl?.reverse(),
-      });
-
-      // Reload / rebuild while already scrolled past the threshold: land on
-      // the finished state instantly instead of replaying.
-      if (window.scrollY > PLAY_AT) tl.progress(1);
+      // Reload / rebuild while already scrolled down: land on the finished
+      // state instantly instead of replaying.
+      if (window.scrollY > PLAY_AT) {
+        state = "open";
+        tl.progress(1);
+      } else {
+        state = "hero";
+      }
     };
 
     // The layout signature the current timeline was built from. Rebuilding
@@ -331,8 +316,92 @@ export function LandingHero() {
     };
     window.addEventListener("resize", onResize);
 
+    // ── Snap input handling ──
+    // The scroll gesture is the trigger, never the driver. On the closed
+    // hero, the first downward gesture plays the transition while the page
+    // holds still (all scroll input swallowed until it finishes); at the
+    // top of the open page, an upward gesture plays it in reverse.
+    const playOpen = () => {
+      if (tl && state === "hero" && !tl.isActive()) {
+        state = "open";
+        tl.play();
+      }
+    };
+    const playClose = () => {
+      if (tl && state === "open" && !tl.isActive() && window.scrollY <= 1) {
+        state = "hero";
+        tl.reverse();
+      }
+    };
+
+    const onWheel = (e: WheelEvent) => {
+      if (!tl) return;
+      if (tl.isActive()) {
+        e.preventDefault();
+        return;
+      }
+      if (state === "hero" && e.deltaY > 0) {
+        e.preventDefault();
+        playOpen();
+      } else if (state === "open" && e.deltaY < 0 && window.scrollY <= 1) {
+        e.preventDefault();
+        playClose();
+      }
+    };
+
+    let touchStartY = 0;
+    const onTouchStart = (e: TouchEvent) => {
+      touchStartY = e.touches[0]?.clientY ?? 0;
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (!tl) return;
+      if (tl.isActive()) {
+        e.preventDefault();
+        return;
+      }
+      const dy = touchStartY - (e.touches[0]?.clientY ?? 0);
+      if (state === "hero" && dy > 24) {
+        e.preventDefault();
+        playOpen();
+      } else if (state === "open" && dy < -24 && window.scrollY <= 1) {
+        e.preventDefault();
+        playClose();
+      }
+    };
+
+    const onKey = (e: KeyboardEvent) => {
+      if (!tl) return;
+      const scrollKeys = ["ArrowDown", "PageDown", " ", "End"];
+      if (tl.isActive() && [...scrollKeys, "ArrowUp", "PageUp", "Home"].includes(e.key)) {
+        e.preventDefault();
+      } else if (state === "hero" && scrollKeys.includes(e.key)) {
+        e.preventDefault();
+        playOpen();
+      }
+    };
+
+    // Scrollbar drag can't be intercepted — if the page moved while the
+    // hero was closed, jump straight to the open state.
+    const onScroll = () => {
+      if (tl && state === "hero" && !tl.isActive() && window.scrollY > PLAY_AT) {
+        state = "open";
+        tl.progress(1);
+      }
+    };
+
+    window.addEventListener("wheel", onWheel, { passive: false });
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchmove", onTouchMove, { passive: false });
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", onScroll, { passive: true });
+
     return () => {
       disposed = true;
+      window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
       window.clearTimeout(resizeTimer);
       teardown();
