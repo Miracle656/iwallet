@@ -1,49 +1,38 @@
 "use client";
 
-import { Suspense, useEffect, useRef } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
-import { useGLTF } from "@react-three/drei";
-import { Box3, Group, Vector3 } from "three";
+import { Suspense } from "react";
+import { Canvas } from "@react-three/fiber";
+import { Bounds, Clone, useGLTF } from "@react-three/drei";
 
 const MODEL_URL = "/models/sani_robot.glb";
 
 function RobotModel() {
   const { scene } = useGLTF(MODEL_URL);
-  const group = useRef<Group>(null);
-
-  useEffect(() => {
-    // Auto-fit: center the model and scale it into a ~2.6-unit envelope so
-    // the framing survives re-exports of the GLB without hand-tuned numbers.
-    const box = new Box3().setFromObject(scene);
-    const size = box.getSize(new Vector3()).length();
-    const center = box.getCenter(new Vector3());
-    scene.position.sub(center);
-    if (size > 0) group.current?.scale.setScalar(2.6 / size);
-  }, [scene]);
-
-  useFrame((_, delta) => {
-    if (group.current) group.current.rotation.y += delta * 0.35;
-  });
-
-  return (
-    <group ref={group}>
-      <primitive object={scene} />
-    </group>
-  );
+  // Clone so the same cached GLB can appear in several canvases at once.
+  return <Clone object={scene} />;
 }
 
-export default function RobotCanvas() {
+/**
+ * Static (non-rotating) render of the sani robot. `accent` tints the key
+ * light so the duplicates on the side cards read as different colorways of
+ * the same model.
+ */
+export default function RobotCanvas({ accent = "#ffffff" }: { accent?: string }) {
   return (
     <Canvas
-      camera={{ position: [0, 0.25, 3.1], fov: 38 }}
+      frameloop="demand"
+      camera={{ position: [0, 0, 5], fov: 35 }}
       dpr={[1, 2]}
       gl={{ antialias: true, alpha: true }}
     >
-      <ambientLight intensity={0.9} />
-      <directionalLight position={[3, 4, 5]} intensity={1.6} />
-      <directionalLight position={[-4, 2, -3]} intensity={0.5} />
+      <ambientLight intensity={0.85} />
+      <directionalLight color={accent} position={[3, 4, 5]} intensity={1.9} />
+      <directionalLight color="#ffffff" position={[-4, 2, -3]} intensity={0.6} />
       <Suspense fallback={null}>
-        <RobotModel />
+        {/* Bounds frames whatever the GLB's actual size/origin is. */}
+        <Bounds fit clip observe margin={1.15}>
+          <RobotModel />
+        </Bounds>
       </Suspense>
     </Canvas>
   );

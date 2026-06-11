@@ -14,52 +14,58 @@ const RobotCanvas = dynamic(() => import("./robot-canvas"), {
 gsap.registerPlugin(ScrollTrigger);
 
 /**
- * Revolut-style intro: a dark hero with a white rounded rectangle framing the
- * 3D robot. On scroll the rectangle expands into the full white page
- * (clip-path, scrubbed), the robot card "cuts out" of it and settles into the
- * middle slot of a three-card row, then the side cards rise in beside it.
+ * Revolut-style intro. Phase 1 is a full-bleed sky scene: robot standing
+ * center-right, a thin outlined rectangle over it with the balance, headline
+ * on the left. On scroll the scene collapses into the middle card of the
+ * white page (clip-path + FLIP transforms, scrubbed), then the heading and
+ * the two color-tweaked robot cards rise in around it.
  */
 export function LandingHero() {
   const sectionRef = useRef<HTMLElement>(null);
-  const whitePanelRef = useRef<HTMLDivElement>(null);
+  const skyRef = useRef<HTMLDivElement>(null);
+  const canvasWrapRef = useRef<HTMLDivElement>(null);
+  const outlineRef = useRef<HTMLDivElement>(null);
+  const chipsRef = useRef<HTMLDivElement>(null);
   const introRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLDivElement>(null);
-  const robotCardRef = useRef<HTMLDivElement>(null);
+  const slotRef = useRef<HTMLDivElement>(null);
   const sideCardsRef = useRef<Array<HTMLDivElement | null>>([]);
 
   useLayoutEffect(() => {
     const section = sectionRef.current;
-    const panel = whitePanelRef.current;
-    const card = robotCardRef.current;
-    if (!section || !panel || !card) return;
+    const sky = skyRef.current;
+    const slot = slotRef.current;
+    const outline = outlineRef.current;
+    const canvasWrap = canvasWrapRef.current;
+    if (!section || !sky || !slot || !outline || !canvasWrap) return;
 
-    // offset* metrics ignore transforms, so re-measuring on refresh is safe
-    // even mid-animation. The white panel spans the sticky viewport, so these
-    // are effectively viewport coordinates.
+    // Where the scene must land: the placeholder slot in the cards row.
+    // offset* metrics ignore transforms so re-measuring on refresh is safe;
+    // the offsetParent chain ends at the white page layer (inset-0 = viewport).
     const metrics = () => {
-      const vw = panel.clientWidth;
-      const vh = panel.clientHeight;
-      const cardW = card.offsetWidth;
-      const cardH = card.offsetHeight;
-      // Walk offsets up to the panel (the cards row isn't positioned).
+      const vw = sky.clientWidth;
+      const vh = sky.clientHeight;
       let left = 0;
       let top = 0;
-      let node: HTMLElement | null = card;
-      while (node && node !== panel) {
+      let node: HTMLElement | null = slot;
+      while (node && node !== sky.parentElement) {
         left += node.offsetLeft;
         top += node.offsetTop;
         node = node.offsetParent as HTMLElement | null;
       }
-      // The intro rectangle: centered, sitting in the lower half under the
-      // dark hero copy, with a thin white frame around the scaled-up card.
-      const frame = 16;
-      const rectW = Math.min(vw * 0.86, 480);
-      const rectH = Math.min(vh * 0.54, 540);
-      const rectCx = vw / 2;
-      const rectCy = vh * 0.66;
-      const scale = Math.min((rectW - frame * 2) / cardW, (rectH - frame * 2) / cardH);
-      return { vw, vh, cardW, cardH, left, top, rectW, rectH, rectCx, rectCy, scale };
+      const w = slot.offsetWidth;
+      const h = slot.offsetHeight;
+      return { vw, vh, slot: { left, top, w, h, cx: left + w / 2, cy: top + h / 2 } };
     };
+
+    // Hero geometry (must match the inline styles below): both the outline
+    // and the canvas are centered on (55vw, 52vh).
+    const hero = (vw: number, vh: number) => ({
+      cx: vw * 0.55,
+      cy: vh * 0.52,
+      outlineW: vh * 0.54,
+      canvasH: vh * 1.1,
+    });
 
     const mm = gsap.matchMedia();
 
@@ -75,44 +81,80 @@ export function LandingHero() {
         },
       });
 
+      // Headline block exits left.
       tl.fromTo(
         introRef.current,
-        { autoAlpha: 1, y: 0 },
-        { autoAlpha: 0, y: -70, duration: 0.25 },
+        { autoAlpha: 1, x: 0 },
+        { autoAlpha: 0, x: -80, duration: 0.25 },
         0,
       );
 
+      // Sky clips down to exactly the card slot.
       tl.fromTo(
-        panel,
+        sky,
+        { clipPath: "inset(0px 0px 0px 0px round 0px)" },
         {
           clipPath: () => {
             const m = metrics();
-            const l = m.rectCx - m.rectW / 2;
-            const t = m.rectCy - m.rectH / 2;
-            const r = m.vw - (m.rectCx + m.rectW / 2);
-            const b = m.vh - (m.rectCy + m.rectH / 2);
-            return `inset(${t}px ${r}px ${b}px ${l}px round 28px)`;
+            const r = m.vw - (m.slot.left + m.slot.w);
+            const b = m.vh - (m.slot.top + m.slot.h);
+            return `inset(${m.slot.top}px ${r}px ${b}px ${m.slot.left}px round 28px)`;
           },
+          duration: 0.55,
         },
-        { clipPath: "inset(0px 0px 0px 0px round 0px)", duration: 0.5 },
-        0.1,
+        0.08,
       );
 
+      // The robot rides along: shrink + recenter onto the slot.
       tl.fromTo(
-        card,
+        canvasWrap,
+        { x: 0, y: 0, scale: 1 },
         {
           x: () => {
             const m = metrics();
-            return m.rectCx - (m.left + m.cardW / 2);
+            return m.slot.cx - hero(m.vw, m.vh).cx;
           },
           y: () => {
             const m = metrics();
-            return m.rectCy - (m.top + m.cardH / 2);
+            return m.slot.cy - hero(m.vw, m.vh).cy;
           },
-          scale: () => metrics().scale,
+          scale: () => {
+            const m = metrics();
+            return (m.slot.h * 1.18) / hero(m.vw, m.vh).canvasH;
+          },
+          duration: 0.55,
         },
-        { x: 0, y: 0, scale: 1, duration: 0.5 },
-        0.1,
+        0.08,
+      );
+
+      // The outlined rectangle becomes the card frame (same aspect ratio).
+      tl.fromTo(
+        outline,
+        { x: 0, y: 0, scale: 1 },
+        {
+          x: () => {
+            const m = metrics();
+            return m.slot.cx - hero(m.vw, m.vh).cx;
+          },
+          y: () => {
+            const m = metrics();
+            return m.slot.cy - hero(m.vw, m.vh).cy;
+          },
+          scale: () => {
+            const m = metrics();
+            return m.slot.w / hero(m.vw, m.vh).outlineW;
+          },
+          duration: 0.55,
+        },
+        0.08,
+      );
+
+      // The thin border melts away once the clip takes over the card shape.
+      tl.fromTo(
+        outline,
+        { borderColor: "rgba(255,255,255,0.7)" },
+        { borderColor: "rgba(255,255,255,0)", duration: 0.15 },
+        0.5,
       );
 
       tl.fromTo(
@@ -120,6 +162,13 @@ export function LandingHero() {
         { autoAlpha: 0, y: 32 },
         { autoAlpha: 1, y: 0, duration: 0.2 },
         0.55,
+      );
+
+      tl.fromTo(
+        chipsRef.current,
+        { autoAlpha: 0 },
+        { autoAlpha: 1, duration: 0.15 },
+        0.62,
       );
 
       tl.fromTo(
@@ -135,11 +184,29 @@ export function LandingHero() {
       };
     });
 
-    // Reduced motion: skip the choreography, land on the finished page.
+    // Reduced motion: land directly on the finished page.
     mm.add("(prefers-reduced-motion: reduce)", () => {
-      gsap.set(panel, { clipPath: "inset(0px 0px 0px 0px round 0px)" });
+      const m = metrics();
+      const h = hero(m.vw, m.vh);
+      const r = m.vw - (m.slot.left + m.slot.w);
+      const b = m.vh - (m.slot.top + m.slot.h);
+      gsap.set(sky, {
+        clipPath: `inset(${m.slot.top}px ${r}px ${b}px ${m.slot.left}px round 28px)`,
+      });
+      gsap.set(canvasWrap, {
+        x: m.slot.cx - h.cx,
+        y: m.slot.cy - h.cy,
+        scale: (m.slot.h * 1.18) / h.canvasH,
+      });
+      gsap.set(outline, {
+        x: m.slot.cx - h.cx,
+        y: m.slot.cy - h.cy,
+        scale: m.slot.w / h.outlineW,
+        borderColor: "rgba(255,255,255,0)",
+      });
       gsap.set(introRef.current, { autoAlpha: 0 });
-      gsap.set(headingRef.current, { autoAlpha: 1, y: 0 });
+      gsap.set(headingRef.current, { autoAlpha: 1 });
+      gsap.set(chipsRef.current, { autoAlpha: 1 });
       gsap.set(sideCardsRef.current.filter(Boolean), { autoAlpha: 1, y: 0 });
     });
 
@@ -149,34 +216,8 @@ export function LandingHero() {
   return (
     <section ref={sectionRef} className="relative h-[300vh]">
       <div className="sticky top-0 h-screen overflow-hidden">
-        {/* Phase 1 — dark hero */}
-        <div className="absolute inset-0 bg-canvas">
-          <div
-            ref={introRef}
-            className="mx-auto flex max-w-3xl flex-col items-center gap-6 px-6 pt-[16vh] text-center"
-          >
-            <h1 className="text-[clamp(2.2rem,7vw,4.5rem)] font-semibold leading-[1.05] tracking-[-0.045em] text-ink">
-              Your agent&rsquo;s wallet, governed.
-            </h1>
-            <p className="max-w-xl text-base leading-7 text-muted">
-              Give an AI agent its own iWallet — budget-capped, time-boxed,
-              revocable. Every trade proved on-chain.
-            </p>
-            <Link
-              href="/iwallets/create"
-              className="rounded-full bg-ink px-7 py-3.5 text-sm font-medium text-canvas transition-transform hover:scale-[1.03]"
-            >
-              Create your iWallet
-            </Link>
-          </div>
-        </div>
-
-        {/* Phase 2 — the white page the rectangle expands into */}
-        <div
-          ref={whitePanelRef}
-          className="absolute inset-0 bg-[#f5f4f0] text-[#17160f]"
-          style={{ clipPath: "inset(38% 30% 12% 30% round 28px)" }}
-        >
+        {/* Base layer — the white page revealed as the sky collapses */}
+        <div className="absolute inset-0 bg-[#f5f4f0] text-[#17160f]">
           <div className="flex h-full flex-col items-center justify-center gap-9 px-6">
             <div ref={headingRef} className="max-w-2xl text-center opacity-0">
               <h2 className="text-[clamp(1.8rem,4.5vw,3.25rem)] font-semibold leading-[1.08] tracking-[-0.04em]">
@@ -195,100 +236,156 @@ export function LandingHero() {
             </div>
 
             <div className="flex items-end justify-center gap-5">
-              <BalanceCard
+              <RobotBalanceCard
                 ref={(node) => {
                   sideCardsRef.current[0] = node;
                 }}
                 label="Personal · SUI"
                 amount="2.40 SUI"
-                pill="Accounts"
+                accent="#ffb054"
+                gradient="bg-gradient-to-b from-[#e8a94e] to-[#7a4a12]"
                 chipTitle="DeepBook order"
                 chipMeta="Placed · just now"
                 chipAmount="-0.50"
-                className="hidden bg-gradient-to-b from-[#dcecff] to-white sm:flex"
               />
 
-              {/* The cut-out card — starts scaled up inside the intro rectangle */}
-              <div
-                ref={robotCardRef}
-                className="relative flex h-96 w-72 flex-col overflow-hidden rounded-[28px] bg-gradient-to-b from-[#4aa3ff] to-[#10477f] shadow-[0_24px_60px_rgba(16,71,127,0.35)]"
-              >
-                <div className="absolute inset-0">
-                  <RobotCanvas />
-                </div>
-                <div className="relative z-10 flex flex-col items-center gap-1.5 pt-6 text-white">
-                  <span className="text-[11px] uppercase tracking-wide text-white/75">
-                    Agent · iWallet
-                  </span>
-                  <span className="text-3xl font-semibold tracking-tight">6.01 SUI</span>
-                  <span className="rounded-full bg-white px-3.5 py-1 text-xs font-medium text-[#17160f]">
-                    Autonomous
-                  </span>
-                </div>
-                <div className="relative z-10 mt-auto flex justify-center gap-2 pb-5">
-                  <span className="rounded-md bg-black/80 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-white">
-                    ⛓ Policy on-chain
-                  </span>
-                  <span className="rounded-md bg-white px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-[#17160f]">
-                    Replay-safe
-                  </span>
-                </div>
-              </div>
+              {/* Placeholder slot — the sky scene lands exactly here */}
+              <div ref={slotRef} className="h-96 w-72 rounded-[28px]" />
 
-              <BalanceCard
+              <RobotBalanceCard
                 ref={(node) => {
                   sideCardsRef.current[1] = node;
                 }}
                 label="Owner · Passkey"
                 amount="2.35 SUI"
-                pill="Accounts"
+                accent="#b39dff"
+                gradient="bg-gradient-to-b from-[#8f76e8] to-[#33245f]"
                 chipTitle="Revoke policy"
                 chipMeta="One click, any time"
                 chipAmount=""
-                className="hidden bg-gradient-to-b from-[#eceae2] to-white sm:flex"
               />
             </div>
           </div>
+        </div>
+
+        {/* Sky scene — full-bleed, clips down to the slot on scroll */}
+        <div
+          ref={skyRef}
+          className="absolute inset-0 bg-gradient-to-b from-[#8fc1ff] via-[#5ba6fb] to-[#298dff]"
+          style={{ clipPath: "inset(0px 0px 0px 0px round 0px)" }}
+        >
+          {/* Robot — centered on (55vw, 52vh), taller than the viewport so it
+              feels like it's standing in the scene */}
+          <div
+            ref={canvasWrapRef}
+            className="absolute"
+            style={{
+              width: "90vh",
+              height: "110vh",
+              left: "calc(55vw - 45vh)",
+              top: "calc(52vh - 55vh)",
+            }}
+          >
+            <RobotCanvas accent="#cfe6ff" />
+          </div>
+        </div>
+
+        {/* Outlined rectangle — same center as the robot, card aspect ratio */}
+        <div
+          ref={outlineRef}
+          className="pointer-events-none absolute rounded-[28px] border"
+          style={{
+            width: "54vh",
+            height: "72vh",
+            left: "calc(55vw - 27vh)",
+            top: "calc(52vh - 36vh)",
+            borderColor: "rgba(255,255,255,0.7)",
+          }}
+        >
+          <div className="flex flex-col items-center gap-1.5 pt-[7vh] text-white">
+            <span className="text-xs uppercase tracking-wide text-white/80">Agent</span>
+            <span className="text-4xl font-semibold tracking-tight drop-shadow-sm">
+              6.01 SUI
+            </span>
+            <span className="rounded-full bg-white px-4 py-1.5 text-sm font-medium text-[#17160f]">
+              Accounts
+            </span>
+          </div>
+          <div
+            ref={chipsRef}
+            className="absolute inset-x-0 bottom-[4vh] flex justify-center gap-2 opacity-0"
+          >
+            <span className="rounded-md bg-black/80 px-2.5 py-1.5 text-[1.4vh] font-semibold uppercase tracking-wide text-white">
+              ⛓ Policy on-chain
+            </span>
+            <span className="rounded-md bg-white px-2.5 py-1.5 text-[1.4vh] font-semibold uppercase tracking-wide text-[#17160f]">
+              Replay-safe
+            </span>
+          </div>
+        </div>
+
+        {/* Headline — left, over the sky */}
+        <div
+          ref={introRef}
+          className="absolute left-[7vw] top-[26vh] max-w-xl text-white"
+        >
+          <h1 className="text-[clamp(2.4rem,5.5vw,4.5rem)] font-semibold leading-[1.04] tracking-[-0.04em]">
+            Agents &amp; Beyond
+          </h1>
+          <p className="mt-5 max-w-md text-base leading-7 text-white/90">
+            This is your agent&rsquo;s wallet, redefined. Budget-capped,
+            time-boxed, revocable — every trade proved on-chain.
+          </p>
+          <Link
+            href="/iwallets/create"
+            className="mt-7 inline-block rounded-full bg-[#17160f] px-7 py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.03]"
+          >
+            Create your iWallet
+          </Link>
         </div>
       </div>
     </section>
   );
 }
 
-type BalanceCardProps = {
+type RobotBalanceCardProps = {
   ref?: (node: HTMLDivElement | null) => void;
   label: string;
   amount: string;
-  pill: string;
+  accent: string;
+  gradient: string;
   chipTitle: string;
   chipMeta: string;
   chipAmount: string;
-  className?: string;
 };
 
-function BalanceCard({
+/** Side card: a color-tweaked duplicate of the robot behind the balance. */
+function RobotBalanceCard({
   ref,
   label,
   amount,
-  pill,
+  accent,
+  gradient,
   chipTitle,
   chipMeta,
   chipAmount,
-  className = "",
-}: BalanceCardProps) {
+}: RobotBalanceCardProps) {
   return (
     <div
       ref={ref}
-      className={`h-80 w-60 flex-col rounded-[24px] border border-black/5 p-5 opacity-0 shadow-[0_18px_44px_rgba(23,22,15,0.10)] ${className}`}
+      className={`relative hidden h-80 w-60 flex-col overflow-hidden rounded-[24px] opacity-0 shadow-[0_18px_44px_rgba(23,22,15,0.18)] sm:flex ${gradient}`}
     >
-      <div className="flex flex-col items-center gap-1.5 pt-2 text-[#17160f]">
-        <span className="text-[11px] uppercase tracking-wide text-[#5d5b52]">{label}</span>
+      <div className="absolute inset-0">
+        <RobotCanvas accent={accent} />
+      </div>
+      <div className="relative z-10 flex flex-col items-center gap-1.5 pt-6 text-white">
+        <span className="text-[11px] uppercase tracking-wide text-white/80">{label}</span>
         <span className="text-2xl font-semibold tracking-tight">{amount}</span>
-        <span className="rounded-full bg-[#17160f] px-3.5 py-1 text-xs font-medium text-white">
-          {pill}
+        <span className="rounded-full bg-white px-3.5 py-1 text-xs font-medium text-[#17160f]">
+          Accounts
         </span>
       </div>
-      <div className="mt-auto flex items-center gap-2.5 rounded-2xl bg-white px-3 py-2.5 shadow-sm">
+      <div className="relative z-10 mt-auto flex items-center gap-2.5 rounded-2xl bg-white px-3 py-2.5 shadow-sm m-3">
         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/15 text-xs">
           ◎
         </span>
