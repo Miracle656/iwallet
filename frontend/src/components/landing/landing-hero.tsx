@@ -34,6 +34,8 @@ export function LandingHero() {
   const innerRef = useRef<HTMLDivElement>(null);
   const chipsRef = useRef<HTMLDivElement>(null);
   const introRef = useRef<HTMLDivElement>(null);
+  const introCloneRef = useRef<HTMLDivElement>(null);
+  const heroRobotRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLDivElement>(null);
   const slotRef = useRef<HTMLDivElement>(null);
   const sideCardsRef = useRef<Array<HTMLDivElement | null>>([]);
@@ -66,14 +68,23 @@ export function LandingHero() {
       const heroCx = vw * 0.55;
       const heroCy = vh * 0.52;
       const outlineW = vh * 0.54;
+      const outlineH = vh * 0.72;
       return {
         vw,
         vh,
         heroCx,
         heroCy,
         outlineW,
+        outlineH,
         slot: { left, top, w, h, cx: left + w / 2, cy: top + h / 2 },
       };
+    };
+
+    // Counter-zoom factor for the replica: the whole robot (~96vh tall in
+    // replica space) should end up at ~115% of the slot height.
+    const zoom = (m: ReturnType<typeof metrics>) => {
+      const cardScale = m.slot.w / m.outlineW;
+      return (m.slot.h * 1.15) / (m.vh * 0.96 * cardScale);
     };
 
     const mm = gsap.matchMedia();
@@ -92,19 +103,37 @@ export function LandingHero() {
         },
       });
 
-      // Headline exits left.
+      // Headline exits left (backdrop copy + the replica copy, in sync).
       tl.fromTo(
-        introRef.current,
+        [introRef.current, introCloneRef.current].filter(Boolean),
         { autoAlpha: 1, x: 0 },
         { autoAlpha: 0, x: -80, duration: 0.22 },
         0,
       );
 
-      // White panel grows from nothing in the center to the full page.
+      // The backdrop robot bows out early — from here on the only robot you
+      // see is the one inside the cut-out card (no double exposure).
+      tl.fromTo(
+        heroRobotRef.current,
+        { autoAlpha: 1 },
+        { autoAlpha: 0, duration: 0.12 },
+        0.06,
+      );
+
+      // White panel grows out of the card's own rectangle to the full page.
       tl.fromTo(
         panel,
-        { clipPath: "inset(50% 50% 50% 50% round 36px)" },
-        { clipPath: "inset(0% 0% 0% 0% round 0px)", duration: 0.52 },
+        {
+          clipPath: () => {
+            const m = metrics();
+            const t = m.heroCy - m.outlineH / 2;
+            const l = m.heroCx - m.outlineW / 2;
+            const r = m.vw - (m.heroCx + m.outlineW / 2);
+            const b = m.vh - (m.heroCy + m.outlineH / 2);
+            return `inset(${t}px ${r}px ${b}px ${l}px round 28px)`;
+          },
+        },
+        { clipPath: "inset(0px 0px 0px 0px round 0px)", duration: 0.52 },
         0.1,
       );
 
@@ -139,16 +168,21 @@ export function LandingHero() {
       );
 
       // Counter-zoom the replica so the whole robot ends up framed in the
-      // card instead of a torso crop.
+      // card instead of a torso crop. Origin is pinned to the top-left and
+      // compensated with explicit x/y so the robot's center never drifts
+      // (percentage transform-origins drift under the parent's FLIP scale).
       tl.fromTo(
         inner,
-        { scale: 1, transformOrigin: "55% 52%" },
+        { x: 0, y: 0, scale: 1, transformOrigin: "0px 0px" },
         {
-          scale: () => {
+          scale: () => zoom(metrics()),
+          x: () => {
             const m = metrics();
-            const cardScale = m.slot.w / m.outlineW;
-            // robot is ~96vh tall in the replica; target ~115% of slot height
-            return (m.slot.h * 1.15) / (m.vh * 0.96 * cardScale);
+            return (1 - zoom(m)) * m.heroCx;
+          },
+          y: () => {
+            const m = metrics();
+            return (1 - zoom(m)) * m.heroCy;
           },
           duration: 0.52,
         },
@@ -186,19 +220,22 @@ export function LandingHero() {
     // Reduced motion: land directly on the finished page.
     mm.add("(prefers-reduced-motion: reduce)", () => {
       const m = metrics();
-      const cardScale = m.slot.w / m.outlineW;
-      gsap.set(panel, { clipPath: "inset(0% 0% 0% 0% round 0px)" });
+      const z = zoom(m);
+      gsap.set(panel, { clipPath: "inset(0px 0px 0px 0px round 0px)" });
       gsap.set(focus, {
         x: m.slot.cx - m.heroCx,
         y: m.slot.cy - m.heroCy,
-        scale: cardScale,
+        scale: m.slot.w / m.outlineW,
         borderColor: "rgba(255,255,255,0)",
       });
       gsap.set(inner, {
-        scale: (m.slot.h * 1.15) / (m.vh * 0.96 * cardScale),
-        transformOrigin: "55% 52%",
+        scale: z,
+        x: (1 - z) * m.heroCx,
+        y: (1 - z) * m.heroCy,
+        transformOrigin: "0px 0px",
       });
-      gsap.set(introRef.current, { autoAlpha: 0 });
+      gsap.set([introRef.current, introCloneRef.current].filter(Boolean), { autoAlpha: 0 });
+      gsap.set(heroRobotRef.current, { autoAlpha: 0 });
       gsap.set(headingRef.current, { autoAlpha: 1 });
       gsap.set(chipsRef.current, { autoAlpha: 1 });
       gsap.set(sideCardsRef.current.filter(Boolean), { autoAlpha: 1, y: 0 });
@@ -212,6 +249,7 @@ export function LandingHero() {
       {/* 1 — backdrop: full-bleed sky with the robot standing in it */}
       <div className="absolute inset-0" style={{ background: SKY_GRADIENT }}>
         <div
+          ref={heroRobotRef}
           className="absolute"
           style={{
             width: "90vh",
@@ -249,7 +287,7 @@ export function LandingHero() {
         className="absolute inset-0 bg-[#f5f4f0] text-[#17160f]"
         style={{ clipPath: "inset(50% 50% 50% 50% round 36px)" }}
       >
-        <div className="flex h-full flex-col items-center justify-center gap-9 px-6">
+        <div className="flex h-full flex-col items-center justify-center gap-9 px-6 pt-[9vh]">
           <div ref={headingRef} className="max-w-2xl text-center opacity-0">
             <h2 className="text-[clamp(1.8rem,4.5vw,3.25rem)] font-semibold leading-[1.08] tracking-[-0.04em]">
               Set the rules. Watch it trade.
@@ -325,6 +363,24 @@ export function LandingHero() {
             background: SKY_GRADIENT,
           }}
         >
+          {/* headline copy — so the text runs through the rectangle
+              uninterrupted (it sits under the robot, like the reference) */}
+          <div
+            ref={introCloneRef}
+            aria-hidden
+            className="absolute left-[7vw] top-[26vh] max-w-xl text-white"
+          >
+            <h1 className="text-[clamp(2.4rem,5.5vw,4.5rem)] font-semibold leading-[1.04] tracking-[-0.04em]">
+              Agents &amp; Beyond
+            </h1>
+            <p className="mt-5 max-w-md text-base leading-7 text-white/90">
+              This is your agent&rsquo;s wallet, redefined. Budget-capped,
+              time-boxed, revocable — every trade proved on-chain.
+            </p>
+            <span className="mt-7 inline-block rounded-full bg-[#17160f] px-7 py-3.5 text-sm font-medium text-white">
+              Create your iWallet
+            </span>
+          </div>
           <div
             className="absolute"
             style={{
@@ -390,7 +446,8 @@ function RobotBalanceCard({
       ref={ref}
       className={`relative hidden h-80 w-60 flex-col overflow-hidden rounded-[24px] opacity-0 shadow-[0_18px_44px_rgba(23,22,15,0.18)] sm:flex ${gradient}`}
     >
-      <div className="absolute inset-0">
+      {/* robot sits in the lower part of the card so its face clears the text */}
+      <div className="absolute inset-x-0 bottom-[-8%] top-[30%]">
         <RobotCanvas accent={accent} />
       </div>
       <div className="relative z-10 flex flex-col items-center gap-1.5 pt-6 text-white">
