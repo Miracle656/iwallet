@@ -261,21 +261,49 @@ export function LandingHero() {
       );
     };
 
-    build();
+    // The layout signature the current timeline was built from. Rebuilding
+    // is only allowed when this actually changes — never on a timer, never
+    // mid-scrub for free.
+    let lastSig = "";
+    const signature = () => {
+      const m = metrics();
+      return [m.vw, m.vh, m.slot.left, m.slot.top, m.slot.w, m.slot.h].join("|");
+    };
 
-    // Viewport changes invalidate the measured geometry — rebuild cleanly.
+    const buildAndSign = () => {
+      build();
+      lastSig = signature();
+    };
+
+    buildAndSign();
+
+    // Re-measure once everything that can move layout has settled (fonts,
+    // late assets, scrollbar appearing) and on real viewport changes. The
+    // first paint can be measured before fonts/scrollbars settle, which
+    // bakes wrong geometry into the timeline (oversized / off-center card).
     let resizeTimer = 0;
-    const onResize = () => {
+    const maybeRebuild = () => {
       window.clearTimeout(resizeTimer);
       resizeTimer = window.setTimeout(() => {
+        if (signature() === lastSig) return;
         teardown();
-        build();
+        buildAndSign();
       }, 250);
     };
-    window.addEventListener("resize", onResize);
+
+    window.addEventListener("resize", maybeRebuild);
+    if (document.readyState !== "complete") {
+      window.addEventListener("load", maybeRebuild, { once: true });
+    }
+    document.fonts?.ready.then(maybeRebuild).catch(() => {});
+    const ro = new ResizeObserver(maybeRebuild);
+    ro.observe(panel);
+    ro.observe(slot);
 
     return () => {
-      window.removeEventListener("resize", onResize);
+      ro.disconnect();
+      window.removeEventListener("resize", maybeRebuild);
+      window.removeEventListener("load", maybeRebuild);
       window.clearTimeout(resizeTimer);
       teardown();
     };
@@ -324,18 +352,20 @@ export function LandingHero() {
         className="absolute inset-0 bg-[#f5f4f0] text-[#17160f]"
         style={{ clipPath: "inset(50% 50% 50% 50% round 36px)" }}
       >
-        <div className="flex h-full flex-col items-center justify-center gap-9 px-6 pt-[9vh]">
+        {/* pt clears the fixed navbar; card heights are vh-capped so the
+            whole composition fits short viewports without crowding it */}
+        <div className="flex h-full flex-col items-center justify-center gap-7 px-6 pt-[12vh]">
           <div ref={headingRef} className="max-w-2xl text-center opacity-0">
             <h2 className="text-[clamp(1.8rem,4.5vw,3.25rem)] font-semibold leading-[1.08] tracking-[-0.04em]">
               Set the rules. Watch it trade.
             </h2>
-            <p className="mx-auto mt-3 max-w-xl text-base leading-7 text-[#5d5b52]">
+            <p className="mx-auto mt-2 max-w-xl text-base leading-7 text-[#5d5b52]">
               Budgets, expiries and allowed venues are enforced by the
               contract — not by trust.
             </p>
             <Link
               href="/agents"
-              className="mt-6 inline-block rounded-full bg-[#17160f] px-7 py-3.5 text-sm font-medium text-[#f5f4f0] transition-transform hover:scale-[1.03]"
+              className="mt-5 inline-block rounded-full bg-[#17160f] px-7 py-3 text-sm font-medium text-[#f5f4f0] transition-transform hover:scale-[1.03]"
             >
               Watch agents trade
             </Link>
@@ -356,7 +386,7 @@ export function LandingHero() {
             />
 
             {/* Placeholder slot — the focus card lands exactly here */}
-            <div ref={slotRef} className="h-96 w-72 rounded-[28px]" />
+            <div ref={slotRef} className="aspect-[3/4] h-[min(24rem,46vh)] rounded-[28px]" />
 
             <RobotBalanceCard
               ref={(node) => {
@@ -482,7 +512,7 @@ function RobotBalanceCard({
   return (
     <div
       ref={ref}
-      className={`relative hidden h-80 w-60 flex-col overflow-hidden rounded-[24px] opacity-0 shadow-[0_18px_44px_rgba(23,22,15,0.18)] sm:flex ${gradient}`}
+      className={`relative hidden aspect-[3/4] h-[min(20rem,38vh)] flex-col overflow-hidden rounded-[24px] opacity-0 shadow-[0_18px_44px_rgba(23,22,15,0.18)] sm:flex ${gradient}`}
     >
       {/* robot sits in the lower part of the card so its face clears the text */}
       <div className="absolute inset-x-0 bottom-[-8%] top-[30%]">
