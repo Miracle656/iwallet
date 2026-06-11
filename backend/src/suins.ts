@@ -25,9 +25,14 @@ export async function createLeafSubname(
     targetAddress,
   });
 
-  jsonClient.signAndExecuteTransaction({
-    transaction,
-    signer: _keypair,
-  });
   return transaction;
+}
+
+export async function getNameRecord(name: string) {
+  try {
+    const nameRecord = await jsonClient.suins.getNameRecord(name);
+    return nameRecord;
+  } catch (error) {
+    throw new Error("Failed to get name record: " + error);
+  }
 }
