@@ -129,10 +129,18 @@ export function LandingHero() {
       ...sideCards,
     ].filter(Boolean) as HTMLElement[];
 
+    // Scroll depth (px) at which the transition snaps open / closed.
+    const PLAY_AT = 60;
+
     let tl: gsap.core.Timeline | null = null;
+    let pinST: ScrollTrigger | null = null;
+    let playST: ScrollTrigger | null = null;
 
     const teardown = () => {
-      tl?.scrollTrigger?.kill();
+      playST?.kill();
+      pinST?.kill();
+      playST = null;
+      pinST = null;
       tl?.kill();
       tl = null;
       // Wipe every inline value we may have set so the next build measures
@@ -176,22 +184,17 @@ export function LandingHero() {
         return;
       }
 
-      tl = gsap.timeline({
-        defaults: { ease: "none" },
-        scrollTrigger: {
-          trigger: section,
-          start: "top top",
-          end: "+=200%",
-          pin: true,
-          scrub: 0.5,
-        },
-      });
+      // Snap model: the transition is a TIME-based animation played once
+      // when the user crosses a small scroll threshold (and reversed when
+      // they return to the top) — not scrubbed against scroll position.
+      // Durations are seconds.
+      tl = gsap.timeline({ paused: true, defaults: { ease: "power3.inOut" } });
 
       // Headline exits left (backdrop copy + the replica copy, in sync).
       tl.fromTo(
         intros,
         { autoAlpha: 1, x: 0 },
-        { autoAlpha: 0, x: -80, duration: 0.22 },
+        { autoAlpha: 0, x: -80, duration: 0.5 },
         0,
       );
 
@@ -200,32 +203,24 @@ export function LandingHero() {
       tl.fromTo(
         heroRobotRef.current,
         { autoAlpha: 1 },
-        { autoAlpha: 0, duration: 0.12 },
-        0.06,
+        { autoAlpha: 0, duration: 0.3 },
+        0.1,
       );
 
       // White panel grows out of the card's own rectangle to the full page.
       tl.fromTo(
         panel,
         { clipPath: panelClipFrom },
-        { clipPath: "inset(0px 0px 0px 0px round 0px)", duration: 0.52 },
-        0.1,
-      );
-
-      // Its heading fades in while the panel is still growing (Revolut look).
-      tl.fromTo(
-        headingRef.current,
-        { autoAlpha: 0 },
-        { autoAlpha: 1, duration: 0.3 },
-        0.32,
+        { clipPath: "inset(0px 0px 0px 0px round 0px)", duration: 1 },
+        0.15,
       );
 
       // The focus card shrinks from the hero outline into the slot.
       tl.fromTo(
         focus,
         { x: 0, y: 0, scale: 1 },
-        { x: cardX, y: cardY, scale: cardScale, duration: 0.52 },
-        0.1,
+        { x: cardX, y: cardY, scale: cardScale, duration: 1 },
+        0.15,
       );
 
       // Counter-zoom the replica so the whole robot ends up framed in the
@@ -234,31 +229,58 @@ export function LandingHero() {
       tl.fromTo(
         inner,
         { x: 0, y: 0, scale: 1, transformOrigin: "0px 0px" },
-        { x: innerX, y: innerY, scale: z, duration: 0.52 },
-        0.1,
+        { x: innerX, y: innerY, scale: z, duration: 1 },
+        0.15,
       );
 
       // The thin outline melts away as the card takes shape.
       tl.fromTo(
         focus,
         { borderColor: "rgba(255,255,255,0.7)" },
-        { borderColor: "rgba(255,255,255,0)", duration: 0.14 },
-        0.42,
+        { borderColor: "rgba(255,255,255,0)", duration: 0.3 },
+        0.8,
+      );
+
+      // Heading fades in while the panel finishes growing (Revolut look).
+      tl.fromTo(
+        headingRef.current,
+        { autoAlpha: 0, y: 24 },
+        { autoAlpha: 1, y: 0, duration: 0.5, ease: "power2.out" },
+        0.9,
       );
 
       tl.fromTo(
         chipsRef.current,
         { autoAlpha: 0 },
-        { autoAlpha: 1, duration: 0.14 },
-        0.6,
+        { autoAlpha: 1, duration: 0.3, ease: "power2.out" },
+        1.05,
       );
 
       tl.fromTo(
         sideCards,
         { autoAlpha: 0, y: 90 },
-        { autoAlpha: 1, y: 0, duration: 0.22, stagger: 0.08 },
-        0.64,
+        { autoAlpha: 1, y: 0, duration: 0.55, stagger: 0.12, ease: "power3.out" },
+        1.05,
       );
+
+      // Pin holds the viewport while the animation plays; a tiny separate
+      // trigger decides play/reverse so the page top stays the hero state.
+      pinST = ScrollTrigger.create({
+        trigger: section,
+        start: "top top",
+        end: "+=120%",
+        pin: true,
+      });
+      playST = ScrollTrigger.create({
+        start: PLAY_AT,
+        end: PLAY_AT + 1,
+        onEnter: () => tl?.play(),
+        onLeaveBack: () => tl?.reverse(),
+      });
+
+      // Reload / rebuild while already scrolled past the threshold: land on
+      // the finished state instantly instead of replaying.
+      if (window.scrollY > PLAY_AT) tl.progress(1);
     };
 
     // The layout signature the current timeline was built from. Rebuilding
