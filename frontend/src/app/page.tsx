@@ -13,7 +13,7 @@ export default function Home() {
       <LandingHero />
 
       {/* The page continues on the white the hero collapsed into. */}
-      <section className="bg-[#f5f4f0] px-6 pb-28 pt-10 text-[#17160f]">
+      <section className="bg-white px-6 pb-28 pt-10 text-[#17160f]">
         <div className="mx-auto grid max-w-5xl gap-5 sm:grid-cols-3">
           <FeatureBlurb
             title="Create"

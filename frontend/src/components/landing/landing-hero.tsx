@@ -262,9 +262,12 @@ export function LandingHero() {
     };
 
     // The layout signature the current timeline was built from. Rebuilding
-    // is only allowed when this actually changes — never on a timer, never
-    // mid-scrub for free.
+    // after the initial build is only allowed on a real viewport change —
+    // never on a timer or observer that can fire mid-experience (a teardown
+    // while the user sits at the final state visibly breaks the scene).
     let lastSig = "";
+    let built = false;
+    let disposed = false;
     const signature = () => {
       const m = metrics();
       return [m.vw, m.vh, m.slot.left, m.slot.top, m.slot.w, m.slot.h].join("|");
@@ -273,37 +276,42 @@ export function LandingHero() {
     const buildAndSign = () => {
       build();
       lastSig = signature();
+      built = true;
     };
 
-    buildAndSign();
+    // Defer the one and only build until layout has settled (fonts loaded,
+    // window load → scrollbar present), capped at 1.5s. Phase 1 of the hero
+    // is pure CSS, so nothing is missing while we wait — but measuring too
+    // early baked wrong geometry into the timeline (oversized card).
+    const settled = Promise.race([
+      Promise.all([
+        document.fonts ? document.fonts.ready.catch(() => {}) : Promise.resolve(),
+        document.readyState === "complete"
+          ? Promise.resolve()
+          : new Promise((resolve) => window.addEventListener("load", resolve, { once: true })),
+      ]),
+      new Promise((resolve) => setTimeout(resolve, 1500)),
+    ]);
+    settled.then(() =>
+      requestAnimationFrame(() => {
+        if (!disposed && !built) buildAndSign();
+      }),
+    );
 
-    // Re-measure once everything that can move layout has settled (fonts,
-    // late assets, scrollbar appearing) and on real viewport changes. The
-    // first paint can be measured before fonts/scrollbars settle, which
-    // bakes wrong geometry into the timeline (oversized / off-center card).
     let resizeTimer = 0;
-    const maybeRebuild = () => {
+    const onResize = () => {
       window.clearTimeout(resizeTimer);
       resizeTimer = window.setTimeout(() => {
-        if (signature() === lastSig) return;
+        if (!built || signature() === lastSig) return;
         teardown();
         buildAndSign();
       }, 250);
     };
-
-    window.addEventListener("resize", maybeRebuild);
-    if (document.readyState !== "complete") {
-      window.addEventListener("load", maybeRebuild, { once: true });
-    }
-    document.fonts?.ready.then(maybeRebuild).catch(() => {});
-    const ro = new ResizeObserver(maybeRebuild);
-    ro.observe(panel);
-    ro.observe(slot);
+    window.addEventListener("resize", onResize);
 
     return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", maybeRebuild);
-      window.removeEventListener("load", maybeRebuild);
+      disposed = true;
+      window.removeEventListener("resize", onResize);
       window.clearTimeout(resizeTimer);
       teardown();
     };
@@ -349,7 +357,7 @@ export function LandingHero() {
       {/* 2 — the white page, growing from the center over the sky */}
       <div
         ref={panelRef}
-        className="absolute inset-0 bg-[#f5f4f0] text-[#17160f]"
+        className="absolute inset-0 bg-white text-[#17160f]"
         style={{ clipPath: "inset(50% 50% 50% 50% round 36px)" }}
       >
         {/* pt clears the fixed navbar; card heights are vh-capped so the
@@ -365,7 +373,7 @@ export function LandingHero() {
             </p>
             <Link
               href="/agents"
-              className="mt-5 inline-block rounded-full bg-[#17160f] px-7 py-3 text-sm font-medium text-[#f5f4f0] transition-transform hover:scale-[1.03]"
+              className="mt-5 inline-block rounded-full bg-[#17160f] px-7 py-3 text-sm font-medium text-white transition-transform hover:scale-[1.03]"
             >
               Watch agents trade
             </Link>
