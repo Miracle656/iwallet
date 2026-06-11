@@ -8,7 +8,7 @@ agent.post("/create", async (c) => {
   const body = await c.req.json();
   const { name, userAddress } = body;
   const result: any = await agentService.buildCreateAgentTx(name, userAddress);
-  if (result?.message.includes("Name record already exists")) {
+  if (result?.message?.includes("Name record already exists")) {
     return c.json({ message: result?.message }, 400);
   }
   return c.json({ message: "Agent created successfully", result });
