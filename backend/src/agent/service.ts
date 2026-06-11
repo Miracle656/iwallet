@@ -60,6 +60,7 @@ export class AgentService {
       const createResult = await jsonClient.signAndExecuteTransaction({
         transaction: createTX,
         signer: this._keypair,
+        options: { showObjectChanges: true },
       });
 
       const createdObj = createResult.objectChanges?.find(
