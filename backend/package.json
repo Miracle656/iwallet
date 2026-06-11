@@ -14,7 +14,8 @@
     "@mysten/suins": "^1.1.4",
     "circomlibjs": "^0.1.7",
     "dotenv": "^17.4.2",
-    "hono": "^4.12.25"
+    "hono": "^4.12.25",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^20.11.17",
