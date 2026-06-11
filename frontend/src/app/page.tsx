@@ -1,9 +1,11 @@
 import { LandingHero } from "@/components/landing/landing-hero";
+import { HomeHeroCycle } from "@/components/home-hero-cycle";
+import { HomeHeroCard } from "@/components/home-hero-card";
 
 /**
  * Homepage — the Revolut-style landing (sky hero that collapses into the
- * center card). The previous hero (HomeHeroCycle/HomeHeroCard) is kept in
- * components/ in case we want the live-data card back on a later page.
+ * center card), followed by everything the homepage had before: the
+ * step-cycle hero and the live-data iWallet card.
  */
 export default function Home() {
   return (
@@ -25,6 +27,14 @@ export default function Home() {
             title="Monitor"
             body="Every order lands in the live feed; revoke the policy any time."
           />
+        </div>
+      </section>
+
+      {/* Original homepage content — merged in below the landing. */}
+      <section className="bg-canvas px-5 py-24 sm:px-8">
+        <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-7">
+          <HomeHeroCycle />
+          <HomeHeroCard />
         </div>
       </section>
     </main>

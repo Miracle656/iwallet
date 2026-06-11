@@ -116,28 +116,80 @@ export function LandingHero() {
       if (cardRobotRef.current) gsap.set(cardRobotRef.current, canvasBox);
     };
 
-    const mm = gsap.matchMedia();
+    const intros = [introRef.current, introCloneRef.current].filter(Boolean);
+    const sideCards = sideCardsRef.current.filter(Boolean);
+    const animated = [
+      panel,
+      focus,
+      inner,
+      heroRobotRef.current,
+      headingRef.current,
+      chipsRef.current,
+      ...intros,
+      ...sideCards,
+    ].filter(Boolean) as HTMLElement[];
 
-    mm.add("(prefers-reduced-motion: no-preference)", () => {
+    let tl: gsap.core.Timeline | null = null;
+
+    const teardown = () => {
+      tl?.scrollTrigger?.kill();
+      tl?.kill();
+      tl = null;
+      // Wipe every inline value we may have set so the next build measures
+      // a clean layout (the CSS vw/vh styles remain as the base).
+      gsap.set(animated, { clearProps: "all" });
+    };
+
+    // Everything is computed ONCE per build from a single measurement pass —
+    // no functional values, no refresh-time re-evaluation. Recomputing
+    // geometry mid-scrub is what caused the fast-scroll jumps.
+    const build = () => {
       applyGeometry();
-      ScrollTrigger.addEventListener("refreshInit", applyGeometry);
+      const m = metrics();
+      const z = zoom(m);
+      const cardX = m.slot.cx - m.heroCx;
+      const cardY = m.slot.cy - m.heroCy;
+      const cardScale = m.slot.w / m.outlineW;
+      const innerX = (1 - z) * m.heroCx;
+      const innerY = (1 - z) * m.heroCy;
+      const panelClipFrom = `inset(${m.heroCy - m.outlineH / 2}px ${
+        m.vw - (m.heroCx + m.outlineW / 2)
+      }px ${m.vh - (m.heroCy + m.outlineH / 2)}px ${
+        m.heroCx - m.outlineW / 2
+      }px round 28px)`;
 
-      const tl = gsap.timeline({
+      // Reduced motion: land directly on the finished page.
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        gsap.set(panel, { clipPath: "inset(0px 0px 0px 0px round 0px)" });
+        gsap.set(focus, {
+          x: cardX,
+          y: cardY,
+          scale: cardScale,
+          borderColor: "rgba(255,255,255,0)",
+        });
+        gsap.set(inner, { scale: z, x: innerX, y: innerY, transformOrigin: "0px 0px" });
+        gsap.set(intros, { autoAlpha: 0 });
+        gsap.set(heroRobotRef.current, { autoAlpha: 0 });
+        gsap.set(headingRef.current, { autoAlpha: 1 });
+        gsap.set(chipsRef.current, { autoAlpha: 1 });
+        gsap.set(sideCards, { autoAlpha: 1, y: 0 });
+        return;
+      }
+
+      tl = gsap.timeline({
         defaults: { ease: "none" },
         scrollTrigger: {
           trigger: section,
           start: "top top",
           end: "+=200%",
           pin: true,
-          anticipatePin: 1,
           scrub: 0.5,
-          invalidateOnRefresh: true,
         },
       });
 
       // Headline exits left (backdrop copy + the replica copy, in sync).
       tl.fromTo(
-        [introRef.current, introCloneRef.current].filter(Boolean),
+        intros,
         { autoAlpha: 1, x: 0 },
         { autoAlpha: 0, x: -80, duration: 0.22 },
         0,
@@ -155,16 +207,7 @@ export function LandingHero() {
       // White panel grows out of the card's own rectangle to the full page.
       tl.fromTo(
         panel,
-        {
-          clipPath: () => {
-            const m = metrics();
-            const t = m.heroCy - m.outlineH / 2;
-            const l = m.heroCx - m.outlineW / 2;
-            const r = m.vw - (m.heroCx + m.outlineW / 2);
-            const b = m.vh - (m.heroCy + m.outlineH / 2);
-            return `inset(${t}px ${r}px ${b}px ${l}px round 28px)`;
-          },
-        },
+        { clipPath: panelClipFrom },
         { clipPath: "inset(0px 0px 0px 0px round 0px)", duration: 0.52 },
         0.1,
       );
@@ -181,43 +224,17 @@ export function LandingHero() {
       tl.fromTo(
         focus,
         { x: 0, y: 0, scale: 1 },
-        {
-          x: () => {
-            const m = metrics();
-            return m.slot.cx - m.heroCx;
-          },
-          y: () => {
-            const m = metrics();
-            return m.slot.cy - m.heroCy;
-          },
-          scale: () => {
-            const m = metrics();
-            return m.slot.w / m.outlineW;
-          },
-          duration: 0.52,
-        },
+        { x: cardX, y: cardY, scale: cardScale, duration: 0.52 },
         0.1,
       );
 
       // Counter-zoom the replica so the whole robot ends up framed in the
-      // card instead of a torso crop. Origin is pinned to the top-left and
-      // compensated with explicit x/y so the robot's center never drifts
-      // (percentage transform-origins drift under the parent's FLIP scale).
+      // card instead of a torso crop. Origin pinned to 0,0 with explicit
+      // x/y compensation so the robot's center never drifts.
       tl.fromTo(
         inner,
         { x: 0, y: 0, scale: 1, transformOrigin: "0px 0px" },
-        {
-          scale: () => zoom(metrics()),
-          x: () => {
-            const m = metrics();
-            return (1 - zoom(m)) * m.heroCx;
-          },
-          y: () => {
-            const m = metrics();
-            return (1 - zoom(m)) * m.heroCy;
-          },
-          duration: 0.52,
-        },
+        { x: innerX, y: innerY, scale: z, duration: 0.52 },
         0.1,
       );
 
@@ -237,45 +254,31 @@ export function LandingHero() {
       );
 
       tl.fromTo(
-        sideCardsRef.current.filter(Boolean),
+        sideCards,
         { autoAlpha: 0, y: 90 },
         { autoAlpha: 1, y: 0, duration: 0.22, stagger: 0.08 },
         0.64,
       );
+    };
 
-      return () => {
-        ScrollTrigger.removeEventListener("refreshInit", applyGeometry);
-        tl.scrollTrigger?.kill();
-        tl.kill();
-      };
-    });
+    build();
 
-    // Reduced motion: land directly on the finished page.
-    mm.add("(prefers-reduced-motion: reduce)", () => {
-      applyGeometry();
-      const m = metrics();
-      const z = zoom(m);
-      gsap.set(panel, { clipPath: "inset(0px 0px 0px 0px round 0px)" });
-      gsap.set(focus, {
-        x: m.slot.cx - m.heroCx,
-        y: m.slot.cy - m.heroCy,
-        scale: m.slot.w / m.outlineW,
-        borderColor: "rgba(255,255,255,0)",
-      });
-      gsap.set(inner, {
-        scale: z,
-        x: (1 - z) * m.heroCx,
-        y: (1 - z) * m.heroCy,
-        transformOrigin: "0px 0px",
-      });
-      gsap.set([introRef.current, introCloneRef.current].filter(Boolean), { autoAlpha: 0 });
-      gsap.set(heroRobotRef.current, { autoAlpha: 0 });
-      gsap.set(headingRef.current, { autoAlpha: 1 });
-      gsap.set(chipsRef.current, { autoAlpha: 1 });
-      gsap.set(sideCardsRef.current.filter(Boolean), { autoAlpha: 1, y: 0 });
-    });
+    // Viewport changes invalidate the measured geometry — rebuild cleanly.
+    let resizeTimer = 0;
+    const onResize = () => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => {
+        teardown();
+        build();
+      }, 250);
+    };
+    window.addEventListener("resize", onResize);
 
-    return () => mm.revert();
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.clearTimeout(resizeTimer);
+      teardown();
+    };
   }, []);
 
   return (
