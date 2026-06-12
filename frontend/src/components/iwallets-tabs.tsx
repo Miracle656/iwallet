@@ -1,38 +1,69 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useCurrentAccount } from "@mysten/dapp-kit";
 import { AnimatedHoverText } from "@/components/animated-hover-text";
 import { HashText } from "@/components/hash-text";
 import { WalletStatusBadge } from "@/components/status-badge";
 import type { IWallet } from "@/lib/demo-data";
-import { listIdentities } from "@/lib/sui-client";
-import { getLocalIdentityIds } from "@/lib/local-identities";
+import { discoverOwnedIdentities, getIdentity, listIdentities } from "@/lib/sui-client";
+import { addLocalIdentityId, getLocalIdentityIds } from "@/lib/local-identities";
+import { usePasskeyOwner } from "@/lib/use-passkey-owner";
+import { RestoreFromFile } from "@/components/restore-from-file";
 import { HiOutlineBanknotes, HiOutlineEye, HiOutlineLink, HiOutlinePlus, HiOutlineWallet } from "react-icons/hi2";
 
 const tabs = ["Owned", "Fund"] as const;
 
 export function IWalletsTabs() {
+  const account = useCurrentAccount();
+  const passkey = usePasskeyOwner();
+  const ownerAddress = account?.address ?? passkey ?? null;
   const [active, setActive] = useState<(typeof tabs)[number]>("Owned");
   const [wallets, setWallets] = useState<IWallet[]>([]);
   const [loading, setLoading] = useState(true);
+  const [importId, setImportId] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      if (ownerAddress) {
+        const discovered = await discoverOwnedIdentities(ownerAddress);
+        discovered.forEach(addLocalIdentityId);
+      }
+      setWallets(await listIdentities(getLocalIdentityIds()));
+    } catch {
+      setWallets([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [ownerAddress]);
 
   useEffect(() => {
-    let cancelled = false;
-    listIdentities(getLocalIdentityIds())
-      .then((result) => {
-        if (!cancelled) setWallets(result);
-      })
-      .catch(() => {
-        if (!cancelled) setWallets([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    load();
+  }, [load]);
+
+  async function onImport() {
+    const id = importId.trim();
+    if (!/^0x[0-9a-fA-F]{6,}$/.test(id)) {
+      setErr("Enter a valid 0x iWallet object id");
+      return;
+    }
+    const w = await getIdentity(id);
+    if (!w) {
+      setErr("No iWallet found at that id");
+      return;
+    }
+    if (ownerAddress && w.owner && w.owner.toLowerCase() !== ownerAddress.toLowerCase()) {
+      setErr(`That iWallet is owned by ${w.owner.slice(0, 6)}…${w.owner.slice(-4)} — connect that wallet to add it`);
+      return;
+    }
+    setErr(null);
+    addLocalIdentityId(id);
+    setImportId("");
+    load();
+  }
 
   return (
     <section className="rounded-[2.4rem] border border-border bg-surface p-5 sm:p-7">
@@ -83,6 +114,25 @@ export function IWalletsTabs() {
             </div>
           </Link>
         ))}
+
+        <div className="mt-6 border-t border-border pt-4">
+          <p className="text-xs text-dim">Import an existing iWallet (e.g. one provisioned via the agent CLI)</p>
+          <div className="mt-2 flex gap-2">
+            <input
+              value={importId}
+              onChange={(e) => setImportId(e.target.value)}
+              placeholder="0x… iWallet object id"
+              className="w-full rounded-lg border border-border bg-canvas px-3 py-2 font-mono text-xs text-ink outline-none focus:border-accent/40"
+            />
+            <button onClick={onImport} className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-ink hover:border-accent/40">
+              Import
+            </button>
+          </div>
+          {err && <p className="mt-2 text-xs text-red-300">{err}</p>}
+          <div className="mt-4">
+            <RestoreFromFile onRestored={load} />
+          </div>
+        </div>
       </div>
     </section>
   );

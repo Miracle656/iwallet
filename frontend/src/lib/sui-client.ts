@@ -50,6 +50,17 @@ function toHex(value: unknown): string {
 }
 
 /**
+ * Extract the package id from a full object type string like
+ * `0xabc::prototype::IIdentity<0x2::sui::SUI>`. Per-object move calls must
+ * target the package the object was created under — wallets from older
+ * deployments abort (or silently read 0) against the current package id.
+ */
+function packageIdFromType(objectType?: string | null): string {
+  const m = /^(0x[0-9a-fA-F]+)::/.exec(objectType ?? "");
+  return m?.[1] ?? IWALLET_PACKAGE_ID;
+}
+
+/**
  * Staged balance (in MIST) for a key inside an IIdentity's bag.
  * Calls `prototype::staged_balance` via devInspect — a gas-free read-only
  * simulation. The Move fn aborts when the key is absent, so an unfunded
@@ -58,11 +69,12 @@ function toHex(value: unknown): string {
 export async function getStagedBalance(
   objectId: string,
   key: string = STAGED_BALANCE_KEY,
+  packageId: string = IWALLET_PACKAGE_ID,
 ): Promise<bigint> {
   try {
     const tx = new Transaction();
     tx.moveCall({
-      target: `${IWALLET_PACKAGE_ID}::prototype::staged_balance`,
+      target: `${packageId}::prototype::staged_balance`,
       typeArguments: [STAKE_COIN_TYPE],
       arguments: [tx.object(objectId), tx.pure.string(key)],
     });
@@ -93,18 +105,34 @@ export async function getIdentity(objectId: string): Promise<IWallet | null> {
     const fields = content.fields as Record<string, unknown>;
     const name = (fields.name as string) || "iWallet";
     const identityHash = "0x" + toHex(fields.identity_hash);
+    const owner = typeof fields.owner === "string" ? (fields.owner as string) : undefined;
 
-    const balanceMist = await getStagedBalance(objectId);
-    const sui = Number(balanceMist) / 1e9;
+    // Total SUI = staged (in the vault bag) + coins sent to the iWallet address
+    // but not yet staged (transfer-to-object funding shows here immediately).
+    const stagedMist = await getStagedBalance(
+      objectId,
+      STAGED_BALANCE_KEY,
+      packageIdFromType(res.data?.type),
+    );
+    let addressSui = 0;
+    try {
+      const balances = await client.getAllBalances({ owner: objectId });
+      const sui = balances.find((b) => b.coinType === "0x2::sui::SUI");
+      if (sui) addressSui = Number(BigInt(sui.totalBalance)) / 1e9;
+    } catch {
+      /* ignore */
+    }
+    const total = Number(stagedMist) / 1e9 + addressSui;
 
     return {
       id: objectId,
       name,
       objectId,
-      status: balanceMist > BigInt(0) ? "active" : "unfunded",
+      owner,
+      status: total > 0 ? "active" : "unfunded",
       network: "sui-testnet",
       balance: {
-        tokens: [{ symbol: "SUI", amount: sui }],
+        tokens: [{ symbol: "SUI", amount: total }],
       },
       identityHash,
       createdAt: "On-chain",
@@ -128,6 +156,71 @@ export async function listIdentities(
   );
   const results = await Promise.all(ids.map((id) => getIdentity(id)));
   return results.filter((w): w is IWallet => w !== null);
+}
+
+/**
+ * Recover an owner's iWallets from chain (survives a cleared cache), from two
+ * sources merged:
+ *  1. Tx scan — the address's recent transactions, collecting the IIdentity
+ *     objects their `create_iidentity` calls created. The owner is the tx
+ *     sender even for Enoki-sponsored creates. Window: last 50 txs.
+ *  2. IdentityCreated events (current package only — older packages predate
+ *     the event). The event carries just the id, not the owner, so we read
+ *     each candidate object and keep the ones whose `owner` field matches.
+ */
+export async function discoverOwnedIdentities(owner: string): Promise<string[]> {
+  const ids = new Set<string>();
+
+  try {
+    const res = await client.queryTransactionBlocks({
+      filter: { FromAddress: owner },
+      options: { showObjectChanges: true },
+      limit: 50,
+      order: "descending",
+    });
+    for (const tx of res.data) {
+      for (const c of tx.objectChanges ?? []) {
+        const oc = c as { type?: string; objectType?: string; objectId?: string };
+        if (oc.type === "created" && String(oc.objectType ?? "").includes("::prototype::IIdentity<")) {
+          if (oc.objectId) ids.add(oc.objectId);
+        }
+      }
+    }
+  } catch {
+    /* fall through to the event scan */
+  }
+
+  try {
+    const events = await client.queryEvents({
+      query: {
+        MoveEventType: `${IWALLET_PACKAGE_ID}::prototype::IdentityCreated`,
+      },
+      limit: 50,
+      order: "descending",
+    });
+    const candidates = events.data
+      .map((e) => (e.parsedJson as { id?: string } | null)?.id)
+      .filter((id): id is string => Boolean(id) && !ids.has(id!));
+    if (candidates.length > 0) {
+      const objects = await client.multiGetObjects({
+        ids: candidates,
+        options: { showContent: true },
+      });
+      const target = owner.toLowerCase();
+      for (const obj of objects) {
+        const content = obj.data?.content;
+        if (!content || content.dataType !== "moveObject") continue;
+        const fields = content.fields as Record<string, unknown>;
+        if (typeof fields.owner === "string" && fields.owner.toLowerCase() === target) {
+          if (obj.data?.objectId) ids.add(obj.data.objectId);
+        }
+      }
+    }
+  } catch {
+    /* event scan is best-effort */
+  }
+
+  return Array.from(ids);
 }
 
 /** Project an on-chain Option<AgentPolicy> into the UI's policy shape. */
@@ -194,10 +287,11 @@ export function buildRevokePolicyTx(identityId: string): Transaction {
 }
 
 /**
- * create_iidentity(name, identity_hash, vk_bytes, none) — shares the vault,
- * owner = tx sender (the passkey). Policy is set afterward via set_policy
- * (no TS-constructible AgentPolicy). `vkBytes` must be the converted Groth16
- * verifying key (agent/src/vk.ts output), shipped as a static asset.
+ * create_iidentity(name, identity_hash, vk_bytes) — shares the vault,
+ * owner = tx sender (the passkey). Since the 0xe4f8 republish the contract
+ * always starts with no policy (the Option<AgentPolicy> param is gone);
+ * policy is set afterward via set_policy. `vkBytes` must be the converted
+ * Groth16 verifying key (agent/src/vk.ts output), shipped as a static asset.
  */
 export function buildCreateIdentityTx(
   name: string,
@@ -205,11 +299,6 @@ export function buildCreateIdentityTx(
   vkBytes: Uint8Array,
 ): Transaction {
   const tx = new Transaction();
-  // Option<AgentPolicy> is a struct option — not a pure type. Build None on-chain.
-  const nonePolicy = tx.moveCall({
-    target: "0x1::option::none",
-    typeArguments: [`${IWALLET_PACKAGE_ID}::prototype::AgentPolicy`],
-  });
   tx.moveCall({
     target: `${IWALLET_PACKAGE_ID}::prototype::create_iidentity`,
     typeArguments: [STAKE_COIN_TYPE],
@@ -217,7 +306,6 @@ export function buildCreateIdentityTx(
       tx.pure.string(name),
       tx.pure.vector("u8", Array.from(identityHashLE)),
       tx.pure.vector("u8", Array.from(vkBytes)),
-      nonePolicy,
     ],
   });
   return tx;
@@ -276,7 +364,11 @@ export async function getProfile(objectId: string): Promise<IdentityProfile | nu
     const identityHash = "0x" + toHex(fields.identity_hash);
     const owner = typeof fields.owner === "string" ? (fields.owner as string) : null;
 
-    const stagedBalanceMist = await getStagedBalance(objectId);
+    const stagedBalanceMist = await getStagedBalance(
+      objectId,
+      STAGED_BALANCE_KEY,
+      packageIdFromType(res.data?.type),
+    );
 
     // Coins sent to the shared object's address (George's funding model:
     // transfer straight to the object id).

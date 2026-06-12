@@ -5,8 +5,8 @@ export default function TradePage() {
   return (
     <AppShell
       eyebrow="DeepBook"
-      title="Trading terminal"
-      description="Live order book + chart on DeepBook v3. Trade by hand from your BalanceManager, and watch the autonomous agents work the same pool below."
+      title="Agent terminal"
+      description="Live order book + chart on DeepBook v3. No buttons — your dedicated agent trades the pool within its on-chain policy, and you watch it work here."
     >
       <DeepBookTerminal />
     </AppShell>
