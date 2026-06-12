@@ -10,7 +10,7 @@ export async function runClaudeDeepbook(
   params: Record<string, unknown>,
 ): Promise<WorkerResponse> {
   const response = await anthropic.messages.create({
-    model: "claude-3-5-sonnet-20240620",
+    model: "claude-opus-4-8",
     max_tokens: 1024,
     system:
       "You are an elite DeepBook V3 liquidity engineer. Generate explicit transaction parameters.",
