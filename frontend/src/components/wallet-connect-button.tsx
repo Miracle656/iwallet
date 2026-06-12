@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { ConnectModal, useCurrentAccount, useDisconnectWallet } from "@mysten/dapp-kit";
 import { HiOutlineWallet } from "react-icons/hi2";
 
@@ -14,6 +15,9 @@ function shortAddress(address: string): string {
 export function WalletConnectButton() {
   const account = useCurrentAccount();
   const { mutate: disconnect } = useDisconnectWallet();
+  // Controlled open state — keeps the Radix Dialog from flipping
+  // uncontrolled→controlled (the React dev warning).
+  const [open, setOpen] = useState(false);
 
   if (account) {
     return (
@@ -26,6 +30,8 @@ export function WalletConnectButton() {
 
   return (
     <ConnectModal
+      open={open}
+      onOpenChange={setOpen}
       trigger={
         <button className={buttonClass}>
           <HiOutlineWallet className="text-base" />

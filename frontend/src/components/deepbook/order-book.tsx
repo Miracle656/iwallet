@@ -1,28 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { fetchOrderBook, type OrderBook, type Pool } from "@/lib/deepbook";
+import { usePoll } from "@/lib/use-poll";
 
-export function OrderBookPanel({ pool, pollMs = 2500 }: { pool: Pool; pollMs?: number }) {
+export function OrderBookPanel({ pool, pollMs = 5000 }: { pool: Pool; pollMs?: number }) {
   const [book, setBook] = useState<OrderBook>({ bids: [], asks: [] });
   const [loaded, setLoaded] = useState(false);
 
-  useEffect(() => {
-    let alive = true;
-    const load = async () => {
-      const b = await fetchOrderBook(pool.key, 12);
-      if (alive) {
+  usePoll(
+    () => {
+      fetchOrderBook(pool.key, 12).then((b) => {
         setBook(b);
         setLoaded(true);
-      }
-    };
-    load();
-    const t = setInterval(load, pollMs);
-    return () => {
-      alive = false;
-      clearInterval(t);
-    };
-  }, [pool.key, pollMs]);
+      });
+    },
+    pollMs,
+    [pool.key, pollMs],
+  );
 
   const asks = book.asks.slice(0, 10).reverse();
   const bids = book.bids.slice(0, 10);
