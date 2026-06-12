@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { AgentService } from "./service.ts";
+import { semanticRouter } from "./router.ts";
 
 export const agent = new Hono();
 const agentService = new AgentService();
@@ -37,4 +38,40 @@ agent.get("/get_name_record/:name", async (c) => {
     );
   }
   return c.json({ message: "Name record retrieved successfully", result });
+});
+
+agent.post("/execute", async (c) => {
+  const { prompt, iWalletId } = await c.req.json();
+
+  // 1. Route the intent (Fast, stateless)
+  const routing = await semanticRouter(prompt);
+  console.log(
+    `🔀 Routed to: ${routing.target_agent} (Confidence: ${routing.confidence_score})`,
+  );
+
+  // Fallback for safety
+  if (routing.confidence_score < 0.8 || routing.target_agent === "UNKNOWN") {
+    return c.json(
+      { error: "Intent unclear. Please rephrase your command." },
+      400,
+    );
+  }
+
+  // 2. Hand off to the Specialist Worker
+  let result;
+  switch (routing.target_agent) {
+    case "STANDARD_TRANSFER":
+      // The Transfer Worker gets the prompt, variables, and CAN load MemWal context here
+      // result = await runTransferWorker(iWalletId, prompt, routing.extracted_parameters);
+      break;
+    case "DEEPBOOK_TRADER":
+      // result = await runDeepBookWorker(iWalletId, prompt, routing.extracted_parameters);
+      break;
+    case "POLICY_GUARDIAN":
+      // result = await runPolicyWorker(iWalletId, prompt);
+      break;
+    default:
+      return c.json({ error: "Unknown target agent" }, 500);
+  }
+  return c.json({ message: "Execution successful", result });
 });
