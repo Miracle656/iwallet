@@ -28,8 +28,10 @@ bind to `$PORT`, in-memory feed (resets on restart).
 `POST /enoki/sponsor` ({ transactionKindBytes, sender, allowedMoveCallTargets }) → `{ bytes, digest }`,
 then `POST /enoki/execute` ({ digest, signature }) → executes (Enoki pays gas). Both are **public**
 (CORS) — abuse is bounded by the move-call allowlist you set per request + in the Enoki portal.
-The portal allowlist must include `0x1::option::none`, `<pkg>::prototype::create_iidentity`, and
+The portal allowlist must include `<pkg>::prototype::create_iidentity` and
 `<pkg>::prototype::set_policy` for the **current** package id (see `Published.toml`).
+(`0x1::option::none` is no longer needed — since the `0xe4f8…` republish,
+`create_iidentity` starts with no policy instead of taking an Option.)
 
 ## Run locally
 ```bash

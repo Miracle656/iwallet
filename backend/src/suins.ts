@@ -16,16 +16,23 @@ export async function createLeafSubname(
   transaction: Transaction,
 ): Promise<Transaction> {
   const suinsTransaction = new SuinsTransaction(jsonClient.suins, transaction);
-
+  const normalizedName = name.endsWith(".iwallet.sui")
+    ? name
+    : name + ".iwallet.sui";
   suinsTransaction.createLeafSubName({
     parentNft: parentNftId,
-    name,
+    name: normalizedName,
     targetAddress,
   });
 
-  jsonClient.signAndExecuteTransaction({
-    transaction,
-    signer: _keypair,
-  });
   return transaction;
+}
+
+export async function getNameRecord(name: string) {
+  try {
+    const nameRecord = await jsonClient.suins.getNameRecord(name);
+    return nameRecord;
+  } catch (error) {
+    throw new Error("Failed to get name record: " + error);
+  }
 }
