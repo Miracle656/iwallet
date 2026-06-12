@@ -287,10 +287,11 @@ export function buildRevokePolicyTx(identityId: string): Transaction {
 }
 
 /**
- * create_iidentity(name, identity_hash, vk_bytes, none) — shares the vault,
- * owner = tx sender (the passkey). Policy is set afterward via set_policy
- * (no TS-constructible AgentPolicy). `vkBytes` must be the converted Groth16
- * verifying key (agent/src/vk.ts output), shipped as a static asset.
+ * create_iidentity(name, identity_hash, vk_bytes) — shares the vault,
+ * owner = tx sender (the passkey). Since the 0xe4f8 republish the contract
+ * always starts with no policy (the Option<AgentPolicy> param is gone);
+ * policy is set afterward via set_policy. `vkBytes` must be the converted
+ * Groth16 verifying key (agent/src/vk.ts output), shipped as a static asset.
  */
 export function buildCreateIdentityTx(
   name: string,
@@ -298,11 +299,6 @@ export function buildCreateIdentityTx(
   vkBytes: Uint8Array,
 ): Transaction {
   const tx = new Transaction();
-  // Option<AgentPolicy> is a struct option — not a pure type. Build None on-chain.
-  const nonePolicy = tx.moveCall({
-    target: "0x1::option::none",
-    typeArguments: [`${IWALLET_PACKAGE_ID}::prototype::AgentPolicy`],
-  });
   tx.moveCall({
     target: `${IWALLET_PACKAGE_ID}::prototype::create_iidentity`,
     typeArguments: [STAKE_COIN_TYPE],
@@ -310,7 +306,6 @@ export function buildCreateIdentityTx(
       tx.pure.string(name),
       tx.pure.vector("u8", Array.from(identityHashLE)),
       tx.pure.vector("u8", Array.from(vkBytes)),
-      nonePolicy,
     ],
   });
   return tx;

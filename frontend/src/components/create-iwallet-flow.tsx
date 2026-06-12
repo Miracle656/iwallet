@@ -198,7 +198,6 @@ export function CreateIWalletFlow() {
 
       const tx1 = buildCreateIdentityTx(name, identityHashBytes, vkBytes);
       const r1 = await submit(tx1, [
-        "0x1::option::none",
         `${IWALLET_PACKAGE_ID}::prototype::create_iidentity`,
       ]);
       if (r1.effects?.status?.status !== "success") {

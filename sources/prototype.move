@@ -1,4 +1,4 @@
-#[allow(unused_const)]
+#[allow(unused_const, lint(self_transfer))]
 module iwallet::prototype;
 
 use sui::table;
@@ -129,11 +129,10 @@ public fun set_policy<T>(
 // ── Create the agent identity ──
 // Owner registers the identity hash and verification key at creation time.
 // After this, the object is shared and no owner key can touch it.
-entry fun create_iidentity<T>(
+public fun create_iidentity<T>(
     name: String,
     identity_hash: vector<u8>, // Poseidon(witness) — computed off-chain
     vk_bytes: vector<u8>, // Groth16 verifying key bytes from trusted setup
-    active_policy: Option<AgentPolicy>,
     ctx: &mut TxContext
 ): address {
     // Prepare the verifying key once at creation — stored in the object
@@ -146,7 +145,7 @@ entry fun create_iidentity<T>(
         pvk,
         used_nonces: table::new<vector<u8>, bool>(ctx),
         staged_balances: bag::new(ctx),
-        active_policy,
+        active_policy: option::none<AgentPolicy>(),
         owner: ctx.sender()
     };
 
