@@ -12,6 +12,7 @@ import {
 import { Transaction } from "@mysten/sui/transactions";
 import { SuiGrpcClient } from "@mysten/sui/grpc";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
+import { EnokiClient } from "@mysten/enoki";
 import dotenv from "dotenv";
 import { agent } from "./agent/controller.ts";
 dotenv.config();
@@ -35,6 +36,13 @@ function getSponsorKeypair(): Ed25519Keypair {
   }
   return keypair;
 }
+
+// Enoki sponsored transactions (Mysten's managed gas pool). The PRIVATE key
+// stays here on the backend — never the browser.
+const enoki = process.env.ENOKI_PRIVATE_API_KEY
+  ? new EnokiClient({ apiKey: process.env.ENOKI_PRIVATE_API_KEY })
+  : null;
+const ENOKI_NETWORK = (process.env.ENOKI_NETWORK ?? "testnet") as "testnet" | "mainnet" | "devnet";
 
 const app = new Hono();
 
@@ -80,6 +88,43 @@ app.post("/agent/execute", async (c) => {
     digest: result.Transaction,
     walrusBlobId: blobId,
   });
+});
+
+// ── Enoki sponsored transactions (public; scoped by allowedMoveCallTargets) ──
+// The frontend builds a transaction-kind, we sponsor it (Enoki pays gas), the
+// owner signs the returned bytes, then we execute. Lets passkey owners with 0
+// SUI create iWallets. Public on purpose — abuse is bounded by the allowlist.
+app.post("/enoki/sponsor", async (c) => {
+  if (!enoki) return c.json({ error: "Enoki not configured (set ENOKI_PRIVATE_API_KEY)" }, 503);
+  const { transactionKindBytes, sender, allowedMoveCallTargets, allowedAddresses } =
+    await c.req.json();
+  if (!transactionKindBytes || !sender) {
+    return c.json({ error: "transactionKindBytes and sender are required" }, 400);
+  }
+  try {
+    const resp = await enoki.createSponsoredTransaction({
+      network: ENOKI_NETWORK,
+      transactionKindBytes,
+      sender,
+      allowedMoveCallTargets,
+      allowedAddresses,
+    });
+    return c.json(resp); // { bytes, digest }
+  } catch (e) {
+    return c.json({ error: e instanceof Error ? e.message : "sponsor failed" }, 400);
+  }
+});
+
+app.post("/enoki/execute", async (c) => {
+  if (!enoki) return c.json({ error: "Enoki not configured" }, 503);
+  const { digest, signature } = await c.req.json();
+  if (!digest || !signature) return c.json({ error: "digest and signature are required" }, 400);
+  try {
+    const resp = await enoki.executeSponsoredTransaction({ digest, signature });
+    return c.json(resp); // { digest }
+  } catch (e) {
+    return c.json({ error: e instanceof Error ? e.message : "execute failed" }, 400);
+  }
 });
 
 // ── Agent trade feed (Sub-track 2 dashboard) ──

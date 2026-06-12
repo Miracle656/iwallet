@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { AnimatedHoverText } from "@/components/animated-hover-text";
-import { PasskeyButton } from "@/components/passkey-button";
+import { AuthButtons } from "@/components/auth-buttons";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { WalletConnectButton } from "@/components/wallet-connect-button";
 import { HiOutlineBars3, HiOutlineWallet, HiOutlineXMark } from "react-icons/hi2";
 
 const nav = [
@@ -15,7 +14,6 @@ const nav = [
   { href: "/iwallets/create", label: "Create" },
   { href: "/trade", label: "Trade" },
   { href: "/agents", label: "Agents" },
-  { href: "/iwallets/demo/transactions", label: "Ledger" },
 ];
 
 export function Navbar() {
@@ -47,10 +45,7 @@ export function Navbar() {
 
         {/* desktop: both auth buttons inline; mobile: only the hamburger */}
         <div className="flex items-center gap-2">
-          <div className="hidden items-center gap-2 lg:flex">
-            <WalletConnectButton />
-            <PasskeyButton />
-          </div>
+          <AuthButtons className="hidden items-center gap-2 lg:flex" />
           <ThemeToggle />
           <button
             type="button"
@@ -79,10 +74,7 @@ export function Navbar() {
               </Link>
             ))}
           </nav>
-          <div className="flex flex-col gap-2 border-t border-border px-5 py-4 sm:px-8 sm:flex-row sm:gap-3">
-            <WalletConnectButton />
-            <PasskeyButton />
-          </div>
+          <AuthButtons className="flex flex-col gap-2 border-t border-border px-5 py-4 sm:px-8 sm:flex-row sm:gap-3" />
         </div>
       )}
     </header>

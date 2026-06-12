@@ -32,3 +32,9 @@ export function addLocalIdentityId(objectId: string): void {
     );
   }
 }
+
+export function removeLocalIdentityId(objectId: string): void {
+  if (typeof window === "undefined") return;
+  const ids = getLocalIdentityIds().filter((id) => id !== objectId);
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
+}

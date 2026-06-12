@@ -4,6 +4,8 @@ export type IWallet = {
   id: string;
   name: string;
   objectId: string;
+  /** On-chain owner address (the IIdentity.owner field). */
+  owner?: string;
   status: IWalletStatus;
   network: "sui-testnet";
   balance: {
