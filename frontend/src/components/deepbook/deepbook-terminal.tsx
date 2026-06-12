@@ -6,12 +6,12 @@ import { AgentTradeFeed } from "@/components/agent-trade-feed";
 import { MarketHeader } from "./market-header";
 import { OrderBookPanel } from "./order-book";
 import { PriceChart } from "./price-chart";
-import { TradePanel } from "./trade-panel";
+import { AgentPanel } from "./agent-panel";
 
 /**
- * Full DeepBook trading terminal: live chart + order book, a wallet-signed
- * Buy/Sell + BalanceManager panel, and the autonomous-agent trade feed below —
- * humans and agents trading the same pool, side by side.
+ * DeepBook agent monitor: live chart + order book, the dedicated agent's status,
+ * and its autonomous trade feed. Read-only — there are no manual trading buttons
+ * (George's call: the agent presses the buttons, users just watch).
  */
 export function DeepBookTerminal() {
   const [pool, setPool] = useState<Pool>(POOLS[0]);
@@ -40,9 +40,9 @@ export function DeepBookTerminal() {
           <OrderBookPanel pool={pool} />
         </div>
 
-        {/* trade panel */}
+        {/* agent status (read-only) */}
         <div className="bg-surface p-4">
-          <TradePanel pool={pool} />
+          <AgentPanel pool={pool} />
         </div>
       </div>
     </div>

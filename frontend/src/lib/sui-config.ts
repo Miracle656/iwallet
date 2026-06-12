@@ -13,10 +13,18 @@ export const SUI_NETWORK: SuiNetwork =
 
 export const IWALLET_PACKAGE_ID =
   process.env.NEXT_PUBLIC_IWALLET_PACKAGE_ID ||
-  // Updated 2026-06-08: fresh publish after merging George's upgraded
-  // AgentPolicy (daily_limit/revoked + events, new IWalletOwner cap).
-  // Struct-layout change forced a new package id (no upgrade path).
-  "0x73b685d06ccc1c1144bf10c3a13d9cbe22315a519d2f1f4c21f4255b4bda83d9";
+  // Updated 2026-06-12: George's republish — create_iidentity no longer
+  // takes an Option<AgentPolicy> (always starts with none) and is `public`.
+  // Matches Published.toml. New creates target this package; reads on
+  // wallets from older packages still work — per-object calls derive the
+  // package from the object's type.
+  "0xe4f863e33d82db28318d50f71b8b5b6a77a9caf00a99cb8f70305e67470a6628";
+
+/** Older live deployments — wallets created on these still read fine. */
+export const LEGACY_IWALLET_PACKAGE_IDS: string[] = [
+  "0x73b685d06ccc1c1144bf10c3a13d9cbe22315a519d2f1f4c21f4255b4bda83d9",
+  "0x0edff0cf8a2e385116476bd38acdb9e2ba59dc6ac5723c5ac1ba0afc1e9a67bb",
+];
 
 export const STAKE_COIN_TYPE =
   process.env.NEXT_PUBLIC_STAKE_COIN_TYPE || "0x2::sui::SUI";

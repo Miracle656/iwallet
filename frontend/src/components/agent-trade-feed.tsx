@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { HashText } from "@/components/hash-text";
 import { SUI_NETWORK } from "@/lib/sui-config";
+import { usePoll } from "@/lib/use-poll";
 import {
   backendConfigured,
   fetchGlobalTrades,
@@ -18,43 +19,44 @@ import {
 } from "react-icons/hi2";
 
 /**
- * Live agent-trade feed. Polls the backend every few seconds. Used both
- * filtered to one iWallet (profile tab) and globally (the /agents page).
+ * Live agent-trade feed. Polls the backend every few seconds.
+ *  - `identityId`: one iWallet (profile tab).
+ *  - `identityIds`: only these iWallets (the dashboard — your agents only).
+ *  - neither: the global feed (the /agents page + /trade venue).
  */
 export function AgentTradeFeed({
   identityId,
+  identityIds,
   limit = 50,
-  pollMs = 5000,
+  pollMs = 8000,
 }: {
   identityId?: string;
+  identityIds?: string[];
   limit?: number;
   pollMs?: number;
 }) {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const idsKey = identityIds?.join(",") ?? "";
 
-  useEffect(() => {
-    if (!backendConfigured()) {
-      setLoaded(true);
-      return;
-    }
-    let alive = true;
-    const load = async () => {
-      const data = identityId
-        ? await fetchIdentityTrades(identityId, limit)
-        : await fetchGlobalTrades(limit);
-      if (alive) {
-        setTrades(data);
+  usePoll(
+    () => {
+      if (!backendConfigured()) {
         setLoaded(true);
+        return;
       }
-    };
-    load();
-    const t = setInterval(load, pollMs);
-    return () => {
-      alive = false;
-      clearInterval(t);
-    };
-  }, [identityId, limit, pollMs]);
+      const p = identityId ? fetchIdentityTrades(identityId, limit) : fetchGlobalTrades(limit);
+      p.then((data) => {
+        const scoped = identityIds
+          ? data.filter((t) => identityIds.includes(t.identityId))
+          : data;
+        setTrades(scoped);
+        setLoaded(true);
+      });
+    },
+    pollMs,
+    [identityId, idsKey, limit, pollMs],
+  );
 
   if (!backendConfigured()) {
     return (

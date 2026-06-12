@@ -16,6 +16,15 @@ import {
 } from "@mysten/sui/keypairs/passkey";
 
 const OWNER_ADDRESS_KEY = "iwallet:owner-address";
+export const PASSKEY_CHANGE_EVENT = "iwallet:passkey-change";
+
+/** Persist the owner address and notify listeners (same-tab reactivity). */
+function setStoredOwner(address: string | null): void {
+  if (typeof window === "undefined") return;
+  if (address) window.localStorage.setItem(OWNER_ADDRESS_KEY, address);
+  else window.localStorage.removeItem(OWNER_ADDRESS_KEY);
+  window.dispatchEvent(new Event(PASSKEY_CHANGE_EVENT));
+}
 
 function getProvider() {
   return new BrowserPasskeyProvider("I-Wallet", {
@@ -31,9 +40,7 @@ export async function createPasskeyOwner(): Promise<{
 }> {
   const keypair = await PasskeyKeypair.getPasskeyInstance(getProvider());
   const address = keypair.getPublicKey().toSuiAddress();
-  if (typeof window !== "undefined") {
-    window.localStorage.setItem(OWNER_ADDRESS_KEY, address);
-  }
+  setStoredOwner(address);
   return { keypair, address };
 }
 
@@ -55,9 +62,7 @@ export async function recoverPasskeyOwner(): Promise<{
   const common = findCommonPublicKey(candidatesA, candidatesB);
   const keypair = new PasskeyKeypair(common.toRawBytes(), provider);
   const address = keypair.getPublicKey().toSuiAddress();
-  if (typeof window !== "undefined") {
-    window.localStorage.setItem(OWNER_ADDRESS_KEY, address);
-  }
+  setStoredOwner(address);
   return { keypair, address };
 }
 
@@ -67,6 +72,5 @@ export function getStoredOwnerAddress(): string | null {
 }
 
 export function clearStoredOwner(): void {
-  if (typeof window === "undefined") return;
-  window.localStorage.removeItem(OWNER_ADDRESS_KEY);
+  setStoredOwner(null);
 }
