@@ -1,6 +1,4 @@
 import { LandingHero } from "@/components/landing/landing-hero";
-import { HomeHeroCycle } from "@/components/home-hero-cycle";
-import { HomeHeroCard } from "@/components/home-hero-card";
 import NameMarketplaceCard from "@/components/name-marketplace-card";
 
 /**
