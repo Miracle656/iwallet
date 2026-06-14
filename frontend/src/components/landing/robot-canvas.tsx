@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-head-element */
 /* eslint-disable @next/next/no-before-interactive-script-outside-document */
 import type { Metadata } from "next";
 import Script from "next/script";
