@@ -1,6 +1,7 @@
 import { LandingHero } from "@/components/landing/landing-hero";
 import { HomeHeroCycle } from "@/components/home-hero-cycle";
 import { HomeHeroCard } from "@/components/home-hero-card";
+import NameMarketplaceCard from "@/components/name-marketplace-card";
 
 /**
  * Homepage — the Revolut-style landing (sky hero that collapses into the
@@ -29,6 +30,7 @@ export default function Home() {
           />
         </div>
       </section>
+      <NameMarketplaceCard />
 
       {/* Original homepage content — merged in below the landing. */}
       {/*<section className="bg-canvas px-5 py-24 sm:px-8">
