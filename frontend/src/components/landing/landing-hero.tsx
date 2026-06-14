@@ -1,29 +1,47 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useMemo } from "react";
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import gsap from "gsap";
-
-const RobotCanvas = dynamic(() => import("./robot-canvas"), {
-  ssr: false,
-  loading: () => <div className="h-full w-full" />,
-});
+import { Avatar as createAvatar} from "@dicebear/core";
+import bigEars from "@dicebear/styles/big-ears.json";
 
 const SKY_GRADIENT =
   "linear-gradient(to bottom, #8fc1ff 0%, #5ba6fb 55%, #298dff 100%)";
 
+// --- Big Ears Avatar Loader ---
+function BigEarsAvatar({ seed }: { seed: string }) {
+  const avatarUri = useMemo(() => {
+    const avatar = new createAvatar(bigEars, {
+      seed,
+      // backgroundColor: ["transparent"],
+      // Forcing a serious/neutral expression
+      mouthVariant: ["variant0101", "variant0102", "variant0104", "variant0201"], 
+    mouthProbability: 100,
+      // face: ["square", "base"], 
+      hairColor: ["17160f", "33245f", "7a4a12"],
+    });
+    return avatar.toDataUri();
+  }, [seed]);
+
+  return (
+    <img
+      src={avatarUri}
+      alt="Agent Identity"
+      className="w-full h-full object-contain drop-shadow-2xl scale-[0.6]"
+    />
+  );
+}
+
 /**
  * Revolut-style intro, matching their actual mechanic:
- *  - the sky scene (robot + headline + outlined rectangle) stays full-bleed;
- *  - a white rounded panel grows from the center over it, next heading
- *    already inside and fading in;
- *  - the outlined rectangle is the one region the panel never covers — it
- *    keeps showing the scene (a pixel-aligned replica) and shrinks into the
- *    middle card slot, then the side cards rise in.
- * Snap model: the scroll gesture is the trigger, never the driver. The
- * first downward gesture on the closed hero plays the timed transition
- * while the page holds still; an upward gesture at the top reverses it.
+ * - the sky scene (avatar + headline + outlined rectangle) stays full-bleed;
+ * - a white rounded panel grows from the center over it, next heading
+ * already inside and fading in;
+ * - the outlined rectangle is the one region the panel never covers — it
+ * keeps showing the scene (a pixel-aligned replica) and shrinks into the
+ * middle card slot, then the side cards rise in.
  */
 export function LandingHero() {
   const sectionRef = useRef<HTMLElement>(null);
@@ -33,8 +51,8 @@ export function LandingHero() {
   const chipsRef = useRef<HTMLDivElement>(null);
   const introRef = useRef<HTMLDivElement>(null);
   const introCloneRef = useRef<HTMLDivElement>(null);
-  const heroRobotRef = useRef<HTMLDivElement>(null);
-  const cardRobotRef = useRef<HTMLDivElement>(null);
+  const heroAvatarRef = useRef<HTMLDivElement>(null);
+  const cardAvatarRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLDivElement>(null);
   const slotRef = useRef<HTMLDivElement>(null);
   const sideCardsRef = useRef<Array<HTMLDivElement | null>>([]);
@@ -47,9 +65,6 @@ export function LandingHero() {
     const slot = slotRef.current;
     if (!section || !panel || !focus || !inner || !slot) return;
 
-    // Where the focus card must land: the placeholder slot in the cards row.
-    // offset* metrics ignore transforms, so re-measuring on refresh is safe;
-    // the chain ends at the panel (inset-0 = viewport when pinned).
     const metrics = () => {
       const vw = panel.clientWidth;
       const vh = panel.clientHeight;
@@ -63,7 +78,6 @@ export function LandingHero() {
       }
       const w = slot.offsetWidth;
       const h = slot.offsetHeight;
-      // Hero geometry — must match the inline styles below.
       const heroCx = vw * 0.55;
       const heroCy = vh * 0.52;
       const outlineW = vh * 0.54;
@@ -79,17 +93,11 @@ export function LandingHero() {
       };
     };
 
-    // Counter-zoom factor for the replica: the whole robot (~96vh tall in
-    // replica space) should end up at ~115% of the slot height.
     const zoom = (m: ReturnType<typeof metrics>) => {
       const cardScale = m.slot.w / m.outlineW;
       return (m.slot.h * 1.15) / (m.vh * 0.96 * cardScale);
     };
 
-    // Single source of truth for the hero geometry. The inline CSS uses
-    // vw/vh as a first paint, but CSS 100vw includes the scrollbar while the
-    // JS metrics don't — mixing the two drifts every hand-off by ~10px, so
-    // the pixel values are re-set from JS here (and on every ST refresh).
     const applyGeometry = () => {
       const m = metrics();
       gsap.set(focus, {
@@ -110,8 +118,8 @@ export function LandingHero() {
         left: m.heroCx - m.vh * 0.45,
         top: m.heroCy - m.vh * 0.55,
       };
-      if (heroRobotRef.current) gsap.set(heroRobotRef.current, canvasBox);
-      if (cardRobotRef.current) gsap.set(cardRobotRef.current, canvasBox);
+      if (heroAvatarRef.current) gsap.set(heroAvatarRef.current, canvasBox);
+      if (cardAvatarRef.current) gsap.set(cardAvatarRef.current, canvasBox);
     };
 
     const intros = [introRef.current, introCloneRef.current].filter(Boolean);
@@ -120,32 +128,23 @@ export function LandingHero() {
       panel,
       focus,
       inner,
-      heroRobotRef.current,
+      heroAvatarRef.current,
       headingRef.current,
       chipsRef.current,
       ...intros,
       ...sideCards,
     ].filter(Boolean) as HTMLElement[];
 
-    // Scroll depth (px) past which the page counts as "opened" on reload.
     const PLAY_AT = 60;
-
     let tl: gsap.core.Timeline | null = null;
-    // Binary state machine: the hero is either closed (sky) or open (white
-    // page) — the timeline is only ever travelling between those two.
     let state: "hero" | "open" = "hero";
 
     const teardown = () => {
       tl?.kill();
       tl = null;
-      // Wipe every inline value we may have set so the next build measures
-      // a clean layout (the CSS vw/vh styles remain as the base).
       gsap.set(animated, { clearProps: "all" });
     };
 
-    // Everything is computed ONCE per build from a single measurement pass —
-    // no functional values, no refresh-time re-evaluation. Recomputing
-    // geometry mid-scrub is what caused the fast-scroll jumps.
     const build = () => {
       applyGeometry();
       const m = metrics();
@@ -161,31 +160,29 @@ export function LandingHero() {
         m.heroCx - m.outlineW / 2
       }px round 28px)`;
 
-      // Reduced motion: land directly on the finished page.
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
         gsap.set(panel, { clipPath: "inset(0px 0px 0px 0px round 0px)" });
         gsap.set(focus, {
           x: cardX,
           y: cardY,
           scale: cardScale,
-          borderColor: "rgba(255,255,255,0)",
         });
-        gsap.set(inner, { scale: z, x: innerX, y: innerY, transformOrigin: "0px 0px" });
+        gsap.set(inner, {
+          scale: z,
+          x: innerX,
+          y: innerY,
+          transformOrigin: "0px 0px",
+        });
         gsap.set(intros, { autoAlpha: 0 });
-        gsap.set(heroRobotRef.current, { autoAlpha: 0 });
+        gsap.set(heroAvatarRef.current, { autoAlpha: 0 });
         gsap.set(headingRef.current, { autoAlpha: 1 });
         gsap.set(chipsRef.current, { autoAlpha: 1 });
         gsap.set(sideCards, { autoAlpha: 1, y: 0 });
         return;
       }
 
-      // Snap model: the transition is a TIME-based animation played once
-      // when the user crosses a small scroll threshold (and reversed when
-      // they return to the top) — not scrubbed against scroll position.
-      // Durations are seconds.
       tl = gsap.timeline({ paused: true, defaults: { ease: "power3.inOut" } });
 
-      // Headline exits left (backdrop copy + the replica copy, in sync).
       tl.fromTo(
         intros,
         { autoAlpha: 1, x: 0 },
@@ -193,16 +190,13 @@ export function LandingHero() {
         0,
       );
 
-      // The backdrop robot bows out early — from here on the only robot you
-      // see is the one inside the cut-out card (no double exposure).
       tl.fromTo(
-        heroRobotRef.current,
+        heroAvatarRef.current,
         { autoAlpha: 1 },
         { autoAlpha: 0, duration: 0.3 },
         0.1,
       );
 
-      // White panel grows out of the card's own rectangle to the full page.
       tl.fromTo(
         panel,
         { clipPath: panelClipFrom },
@@ -210,7 +204,6 @@ export function LandingHero() {
         0.15,
       );
 
-      // The focus card shrinks from the hero outline into the slot.
       tl.fromTo(
         focus,
         { x: 0, y: 0, scale: 1 },
@@ -218,9 +211,6 @@ export function LandingHero() {
         0.15,
       );
 
-      // Counter-zoom the replica so the whole robot ends up framed in the
-      // card instead of a torso crop. Origin pinned to 0,0 with explicit
-      // x/y compensation so the robot's center never drifts.
       tl.fromTo(
         inner,
         { x: 0, y: 0, scale: 1, transformOrigin: "0px 0px" },
@@ -228,15 +218,13 @@ export function LandingHero() {
         0.15,
       );
 
-      // The thin outline melts away as the card takes shape.
-      tl.fromTo(
-        focus,
-        { borderColor: "rgba(255,255,255,0.7)" },
-        { borderColor: "rgba(255,255,255,0)", duration: 0.3 },
-        0.8,
-      );
+      // tl.fromTo(
+      //   focus,
+      //   { borderColor: "rgba(255,255,255,0.7)" },
+      //   { borderColor: "rgba(255,255,255,0)", duration: 0.3 },
+      //   0.8,
+      // );
 
-      // Heading fades in while the panel finishes growing (Revolut look).
       tl.fromTo(
         headingRef.current,
         { autoAlpha: 0, y: 24 },
@@ -254,12 +242,16 @@ export function LandingHero() {
       tl.fromTo(
         sideCards,
         { autoAlpha: 0, y: 90 },
-        { autoAlpha: 1, y: 0, duration: 0.55, stagger: 0.12, ease: "power3.out" },
+        {
+          autoAlpha: 1,
+          y: 0,
+          duration: 0.55,
+          stagger: 0.12,
+          ease: "power3.out",
+        },
         1.05,
       );
 
-      // Reload / rebuild while already scrolled down: land on the finished
-      // state instantly instead of replaying.
       if (window.scrollY > PLAY_AT) {
         state = "open";
         tl.progress(1);
@@ -268,10 +260,6 @@ export function LandingHero() {
       }
     };
 
-    // The layout signature the current timeline was built from. Rebuilding
-    // after the initial build is only allowed on a real viewport change —
-    // never on a timer or observer that can fire mid-experience (a teardown
-    // while the user sits at the final state visibly breaks the scene).
     let lastSig = "";
     let built = false;
     let disposed = false;
@@ -286,10 +274,6 @@ export function LandingHero() {
       built = true;
     };
 
-    // Defer the one and only build until layout has settled (fonts loaded,
-    // window load → scrollbar present), capped at 1.5s. Phase 1 of the hero
-    // is pure CSS, so nothing is missing while we wait — but measuring too
-    // early baked wrong geometry into the timeline (oversized card).
     const settled = Promise.race([
       Promise.all([
         document.fonts ? document.fonts.ready.catch(() => {}) : Promise.resolve(),
@@ -299,10 +283,11 @@ export function LandingHero() {
       ]),
       new Promise((resolve) => setTimeout(resolve, 1500)),
     ]);
+    
     settled.then(() =>
       requestAnimationFrame(() => {
         if (!disposed && !built) buildAndSign();
-      }),
+      })
     );
 
     let resizeTimer = 0;
@@ -316,11 +301,6 @@ export function LandingHero() {
     };
     window.addEventListener("resize", onResize);
 
-    // ── Snap input handling ──
-    // The scroll gesture is the trigger, never the driver. On the closed
-    // hero, the first downward gesture plays the transition while the page
-    // holds still (all scroll input swallowed until it finishes); at the
-    // top of the open page, an upward gesture plays it in reverse.
     const playOpen = () => {
       if (tl && state === "hero" && !tl.isActive()) {
         state = "open";
@@ -380,8 +360,6 @@ export function LandingHero() {
       }
     };
 
-    // Scrollbar drag can't be intercepted — if the page moved while the
-    // hero was closed, jump straight to the open state.
     const onScroll = () => {
       if (tl && state === "hero" && !tl.isActive() && window.scrollY > PLAY_AT) {
         state = "open";
@@ -410,10 +388,10 @@ export function LandingHero() {
 
   return (
     <section ref={sectionRef} className="relative h-screen overflow-hidden">
-      {/* 1 — backdrop: full-bleed sky with the robot standing in it */}
+      {/* 1 — backdrop: full-bleed sky with the Big Ears Avatar standing in it */}
       <div className="absolute inset-0" style={{ background: SKY_GRADIENT }}>
         <div
-          ref={heroRobotRef}
+          ref={heroAvatarRef}
           className="absolute"
           style={{
             width: "90vh",
@@ -422,14 +400,11 @@ export function LandingHero() {
             top: "calc(52vh - 55vh)",
           }}
         >
-          <RobotCanvas accent="#cfe6ff" />
+          <BigEarsAvatar seed="serious-agent-main" />
         </div>
 
-        <div
-          ref={introRef}
-          className="absolute left-[7vw] top-[26vh] max-w-xl text-white"
-        >
-          <h1 className="text-[clamp(2.4rem,5.5vw,4.5rem)] font-semibold leading-[1.04] tracking-[-0.04em]">
+        <div ref={introRef} className="absolute top-[26vh] left-[7vw] max-w-xl text-white">
+          <h1 className="text-[clamp(2.4rem,5.5vw,4.5rem)] leading-[1.04] font-semibold tracking-[-0.04em]">
             Agents &amp; Beyond
           </h1>
           <p className="mt-5 max-w-md text-base leading-7 text-white/90">
@@ -451,16 +426,14 @@ export function LandingHero() {
         className="absolute inset-0 bg-white text-[#17160f]"
         style={{ clipPath: "inset(50% 50% 50% 50% round 36px)" }}
       >
-        {/* pt clears the fixed navbar; card heights are vh-capped so the
-            whole composition fits short viewports without crowding it */}
         <div className="flex h-full flex-col items-center justify-center gap-7 px-6 pt-[12vh]">
           <div ref={headingRef} className="max-w-2xl text-center opacity-0">
-            <h2 className="text-[clamp(1.8rem,4.5vw,3.25rem)] font-semibold leading-[1.08] tracking-[-0.04em]">
+            <h2 className="text-[clamp(1.8rem,4.5vw,3.25rem)] leading-[1.08] font-semibold tracking-[-0.04em]">
               Set the rules. Watch it trade.
             </h2>
             <p className="mx-auto mt-2 max-w-xl text-base leading-7 text-[#5d5b52]">
-              Budgets, expiries and allowed venues are enforced by the
-              contract — not by trust.
+              Budgets, expiries and allowed venues are enforced by the contract
+              — not by trust.
             </p>
             <Link
               href="/agents"
@@ -471,29 +444,28 @@ export function LandingHero() {
           </div>
 
           <div className="flex items-end justify-center gap-5">
-            <RobotBalanceCard
+            <AvatarBalanceCard
               ref={(node) => {
                 sideCardsRef.current[0] = node;
               }}
               label="Personal · SUI"
               amount="2.40 SUI"
-              accent="#ffb054"
+              seed="side-agent-1"
               gradient="bg-gradient-to-b from-[#e8a94e] to-[#7a4a12]"
               chipTitle="DeepBook order"
               chipMeta="Placed · just now"
               chipAmount="-0.50"
             />
 
-            {/* Placeholder slot — the focus card lands exactly here */}
             <div ref={slotRef} className="aspect-[3/4] h-[min(24rem,46vh)] rounded-[28px]" />
 
-            <RobotBalanceCard
+            <AvatarBalanceCard
               ref={(node) => {
                 sideCardsRef.current[1] = node;
               }}
               label="Owner · Passkey"
               amount="2.35 SUI"
-              accent="#b39dff"
+              seed="side-agent-2"
               gradient="bg-gradient-to-b from-[#8f76e8] to-[#33245f]"
               chipTitle="Revoke policy"
               chipMeta="One click, any time"
@@ -503,21 +475,18 @@ export function LandingHero() {
         </div>
       </div>
 
-      {/* 3 — the cut-out: outlined in the hero, becomes the middle card.
-            Contains a pixel-aligned replica of the backdrop so it reads as a
-            window onto the scene until the white panel covers everything. */}
+      {/* 3 — the cut-out: outlined in the hero, becomes the middle card. */}
       <div
         ref={focusRef}
-        className="pointer-events-none absolute overflow-hidden rounded-[28px] border"
+        className="pointer-events-none absolute overflow-hidden rounded-[28px] border-none outline-none ring-0 shadow-none transform-gpu"
         style={{
           width: "54vh",
           height: "72vh",
           left: "calc(55vw - 27vh)",
           top: "calc(52vh - 36vh)",
-          borderColor: "rgba(255,255,255,0.7)",
+          // borderColor: "rgba(255,255,255,0.7)",
         }}
       >
-        {/* viewport-sized replica, offset so it lines up with the backdrop */}
         <div
           ref={innerRef}
           className="absolute"
@@ -529,14 +498,8 @@ export function LandingHero() {
             background: SKY_GRADIENT,
           }}
         >
-          {/* headline copy — so the text runs through the rectangle
-              uninterrupted (it sits under the robot, like the reference) */}
-          <div
-            ref={introCloneRef}
-            aria-hidden
-            className="absolute left-[7vw] top-[26vh] max-w-xl text-white"
-          >
-            <h1 className="text-[clamp(2.4rem,5.5vw,4.5rem)] font-semibold leading-[1.04] tracking-[-0.04em]">
+          <div ref={introCloneRef} aria-hidden className="absolute top-[26vh] left-[7vw] max-w-xl text-white">
+            <h1 className="text-[clamp(2.4rem,5.5vw,4.5rem)] leading-[1.04] font-semibold tracking-[-0.04em]">
               Agents &amp; Beyond
             </h1>
             <p className="mt-5 max-w-md text-base leading-7 text-white/90">
@@ -548,7 +511,7 @@ export function LandingHero() {
             </span>
           </div>
           <div
-            ref={cardRobotRef}
+            ref={cardAvatarRef}
             className="absolute"
             style={{
               width: "90vh",
@@ -557,27 +520,20 @@ export function LandingHero() {
               top: "calc(52vh - 55vh)",
             }}
           >
-            <RobotCanvas accent="#cfe6ff" />
+            <BigEarsAvatar seed="serious-agent-main" />
           </div>
         </div>
 
         <div className="relative flex flex-col items-center gap-1.5 pt-[7vh] text-white">
-          <span className="text-xs uppercase tracking-wide text-white/80">Agent</span>
-          <span className="text-4xl font-semibold tracking-tight drop-shadow-sm">
-            6.01 SUI
-          </span>
-          <span className="rounded-full bg-white px-4 py-1.5 text-sm font-medium text-[#17160f]">
-            Accounts
-          </span>
+          <span className="text-xs tracking-wide text-white/80 uppercase">Agent</span>
+          <span className="text-4xl font-semibold tracking-tight drop-shadow-sm">6.01 SUI</span>
+          <span className="rounded-full bg-white px-4 py-1.5 text-sm font-medium text-[#17160f]">Accounts</span>
         </div>
-        <div
-          ref={chipsRef}
-          className="absolute inset-x-0 bottom-[4vh] flex justify-center gap-2 opacity-0"
-        >
-          <span className="rounded-md bg-black/80 px-2.5 py-1.5 text-[1.4vh] font-semibold uppercase tracking-wide text-white">
+        <div ref={chipsRef} className="absolute inset-x-0 bottom-[4vh] flex justify-center gap-2 opacity-0">
+          <span className="rounded-md bg-black/80 px-2.5 py-1.5 text-[1.4vh] font-semibold tracking-wide text-white uppercase">
             ⛓ Policy on-chain
           </span>
-          <span className="rounded-md bg-white px-2.5 py-1.5 text-[1.4vh] font-semibold uppercase tracking-wide text-[#17160f]">
+          <span className="rounded-md bg-white px-2.5 py-1.5 text-[1.4vh] font-semibold tracking-wide text-[#17160f] uppercase">
             Replay-safe
           </span>
         </div>
@@ -586,55 +542,50 @@ export function LandingHero() {
   );
 }
 
-type RobotBalanceCardProps = {
+type AvatarBalanceCardProps = {
   ref?: (node: HTMLDivElement | null) => void;
   label: string;
   amount: string;
-  accent: string;
+  seed: string;
   gradient: string;
   chipTitle: string;
   chipMeta: string;
   chipAmount: string;
 };
 
-/** Side card: a color-tweaked duplicate of the robot behind the balance. */
-function RobotBalanceCard({
+/** Side card: Uses the new BigEarsAvatar behind the balance. */
+function AvatarBalanceCard({
   ref,
   label,
   amount,
-  accent,
+  seed,
   gradient,
   chipTitle,
   chipMeta,
   chipAmount,
-}: RobotBalanceCardProps) {
+}: AvatarBalanceCardProps) {
   return (
     <div
       ref={ref}
       className={`relative hidden aspect-[3/4] h-[min(20rem,38vh)] flex-col overflow-hidden rounded-[24px] opacity-0 shadow-[0_18px_44px_rgba(23,22,15,0.18)] sm:flex ${gradient}`}
     >
-      {/* robot sits in the lower part of the card so its face clears the text */}
-      <div className="absolute inset-x-0 bottom-[-8%] top-[30%]">
-        <RobotCanvas accent={accent} />
+      <div className="absolute inset-x-0 top-[30%] bottom-[-8%]">
+        <BigEarsAvatar seed={seed} />
       </div>
       <div className="relative z-10 flex flex-col items-center gap-1.5 pt-6 text-white">
-        <span className="text-[11px] uppercase tracking-wide text-white/80">{label}</span>
+        <span className="text-[11px] tracking-wide text-white/80 uppercase">{label}</span>
         <span className="text-2xl font-semibold tracking-tight">{amount}</span>
-        <span className="rounded-full bg-white px-3.5 py-1 text-xs font-medium text-[#17160f]">
-          Accounts
-        </span>
+        <span className="rounded-full bg-white px-3.5 py-1 text-xs font-medium text-[#17160f]">Accounts</span>
       </div>
-      <div className="relative z-10 mt-auto m-3 flex items-center gap-2.5 rounded-2xl bg-white px-3 py-2.5 shadow-sm">
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/15 text-xs">
+      <div className="relative z-10 m-3 mt-auto flex items-center gap-2.5 rounded-2xl bg-white px-3 py-2.5 shadow-sm">
+        <span className="bg-slate-100 flex h-7 w-7 items-center justify-center rounded-full text-xs">
           ◎
         </span>
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="truncate text-xs font-medium text-[#17160f]">{chipTitle}</span>
           <span className="truncate text-[10px] text-[#8a877b]">{chipMeta}</span>
         </span>
-        {chipAmount ? (
-          <span className="text-xs font-medium text-[#17160f]">{chipAmount}</span>
-        ) : null}
+        {chipAmount ? <span className="text-xs font-medium text-[#17160f]">{chipAmount}</span> : null}
       </div>
     </div>
   );
