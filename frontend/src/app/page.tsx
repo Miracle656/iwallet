@@ -13,7 +13,7 @@ export default function Home() {
       <LandingHero />
 
       {/* The page continues on the white the hero collapsed into. */}
-      <section className="bg-white px-6 pb-28 pt-10 text-[#17160f]">
+      <section className="bg-white px-6 pt-10 pb-28 text-[#17160f]">
         <div className="mx-auto grid max-w-5xl gap-5 sm:grid-cols-3">
           <FeatureBlurb
             title="Create"
@@ -31,12 +31,12 @@ export default function Home() {
       </section>
 
       {/* Original homepage content — merged in below the landing. */}
-      <section className="bg-canvas px-5 py-24 sm:px-8">
+      {/*<section className="bg-canvas px-5 py-24 sm:px-8">
         <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-7">
           <HomeHeroCycle />
           <HomeHeroCard />
         </div>
-      </section>
+      </section>*/}
     </main>
   );
 }
