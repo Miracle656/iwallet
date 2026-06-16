@@ -97,7 +97,7 @@ export default function IWalletMonitorCard() {
   }, []);
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-[#05030a] p-6 font-sans antialiased">
+    <div className="flex items-center justify-center min-h-screen bg-[#05030a] p-4 sm:p-6 font-sans antialiased">
       
       {/* Outer Card Wrapper with Neon Glow Base */}
       <div className="relative w-full max-w-5xl rounded-3xl bg-gradient-to-br from-indigo-500/20 via-purple-500/10 to-pink-500/20 p-[1px] shadow-[0_0_80px_rgba(99,102,241,0.1)]">
@@ -112,13 +112,13 @@ export default function IWalletMonitorCard() {
           />
 
           {/* LEFT SIDE PANEL: Title & Description */}
-          <div className="relative z-20 flex-1 p-10 md:p-14 flex flex-col justify-center">
+          <div className="relative z-20 flex-1 p-6 sm:p-10 md:p-14 flex flex-col justify-center">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 w-fit mb-6">
               <ShieldCheck className="w-4 h-4 text-indigo-400" />
               <span className="text-[10px] text-indigo-300 uppercase tracking-widest font-bold">On-Chain Privacy Layer</span>
             </div>
             
-            <h2 className="text-4xl md:text-5xl font-bold text-white leading-tight tracking-tight mb-4">
+            <h2 className="text-2xl sm:text-4xl md:text-5xl font-bold text-white leading-tight tracking-tight mb-4">
               Monitor Agentic <br /> Activity Live
             </h2>
             <p className="text-slate-400 text-sm md:text-base max-w-sm leading-relaxed">
@@ -127,7 +127,7 @@ export default function IWalletMonitorCard() {
           </div>
 
           {/* RIGHT SIDE PANEL: Live Stream Engine */}
-          <div className="relative z-20 flex-1 h-[480px] md:h-[540px] flex flex-col justify-between p-6">
+          <div className="relative z-20 flex-1 h-[400px] sm:h-[480px] md:h-[540px] flex flex-col justify-between p-4 sm:p-6">
             
             {/* Smooth Top & Bottom Clipping Overlays */}
             <div className="absolute top-0 left-0 right-0 h-20 bg-gradient-to-b from-[#0a0714] to-transparent z-30 pointer-events-none" />

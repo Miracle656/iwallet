@@ -78,9 +78,10 @@ export function LandingHero() {
       }
       const w = slot.offsetWidth;
       const h = slot.offsetHeight;
-      const heroCx = vw * 0.55;
+      const isMobile = vw < 640;
+      const heroCx = isMobile ? vw * 0.5 : vw * 0.55;
       const heroCy = vh * 0.52;
-      const outlineW = vh * 0.54;
+      const outlineW = Math.min(vh * 0.54, vw * (isMobile ? 0.86 : 1));
       const outlineH = vh * 0.72;
       return {
         vw,
@@ -396,14 +397,14 @@ export function LandingHero() {
           style={{
             width: "90vh",
             height: "110vh",
-            left: "calc(55vw - 45vh)",
+            left: "calc(50% - 45vh)",
             top: "calc(52vh - 55vh)",
           }}
         >
           <BigEarsAvatar seed="serious-agent-main" />
         </div>
 
-        <div ref={introRef} className="absolute top-[26vh] left-[7vw] max-w-xl text-white">
+        <div ref={introRef} className="absolute top-[12vh] left-[5vw] max-w-[min(36rem,88vw)] text-white sm:top-[26vh] sm:left-[7vw]">
           <h1 className="text-[clamp(2.4rem,5.5vw,4.5rem)] leading-[1.04] font-semibold tracking-[-0.04em]">
             Agents &amp; Beyond
           </h1>
@@ -426,24 +427,24 @@ export function LandingHero() {
         className="absolute inset-0 bg-white text-[#17160f]"
         style={{ clipPath: "inset(50% 50% 50% 50% round 36px)" }}
       >
-        <div className="flex h-full flex-col items-center justify-center gap-7 px-6 pt-[12vh]">
+        <div className="flex h-full flex-col items-center justify-center gap-4 px-4 pt-[12vh] sm:gap-7 sm:px-6">
           <div ref={headingRef} className="max-w-2xl text-center opacity-0">
-            <h2 className="text-[clamp(1.8rem,4.5vw,3.25rem)] leading-[1.08] font-semibold tracking-[-0.04em]">
+            <h2 className="text-[clamp(1.5rem,4.5vw,3.25rem)] leading-[1.08] font-semibold tracking-[-0.04em]">
               Set the rules. Watch it trade.
             </h2>
-            <p className="mx-auto mt-2 max-w-xl text-base leading-7 text-[#5d5b52]">
+            <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-[#5d5b52] sm:text-base sm:leading-7">
               Budgets, expiries and allowed venues are enforced by the contract
               — not by trust.
             </p>
             <Link
               href="/agents"
-              className="mt-5 inline-block rounded-full bg-[#17160f] px-7 py-3 text-sm font-medium text-white transition-transform hover:scale-[1.03]"
+              className="mt-4 inline-block rounded-full bg-[#17160f] px-6 py-2.5 text-sm font-medium text-white transition-transform hover:scale-[1.03] sm:mt-5 sm:px-7 sm:py-3"
             >
               Watch agents trade
             </Link>
           </div>
 
-          <div className="flex items-end justify-center gap-5">
+          <div className="flex items-end justify-center gap-3 sm:gap-5">
             <AvatarBalanceCard
               ref={(node) => {
                 sideCardsRef.current[0] = node;
@@ -457,7 +458,7 @@ export function LandingHero() {
               chipAmount="-0.50"
             />
 
-            <div ref={slotRef} className="aspect-[3/4] h-[min(24rem,46vh)] rounded-[28px]" />
+            <div ref={slotRef} className="aspect-[3/4] h-[min(24rem,46vh)] w-[min(18rem,80vw)] rounded-[28px] sm:w-auto" />
 
             <AvatarBalanceCard
               ref={(node) => {
@@ -480,11 +481,10 @@ export function LandingHero() {
         ref={focusRef}
         className="pointer-events-none absolute overflow-hidden rounded-[28px] border-none outline-none ring-0 shadow-none transform-gpu"
         style={{
-          width: "54vh",
+          width: "min(54vh, 86vw)",
           height: "72vh",
-          left: "calc(55vw - 27vh)",
+          left: "calc(50% - min(27vh, 43vw))",
           top: "calc(52vh - 36vh)",
-          // borderColor: "rgba(255,255,255,0.7)",
         }}
       >
         <div
@@ -493,12 +493,12 @@ export function LandingHero() {
           style={{
             width: "100vw",
             height: "100vh",
-            left: "calc(27vh - 55vw)",
+            left: "calc(min(27vh, 43vw) - 50%)",
             top: "calc(36vh - 52vh)",
             background: SKY_GRADIENT,
           }}
         >
-          <div ref={introCloneRef} aria-hidden className="absolute top-[26vh] left-[7vw] max-w-xl text-white">
+          <div ref={introCloneRef} aria-hidden className="absolute top-[12vh] left-[5vw] max-w-[min(36rem,88vw)] text-white sm:top-[26vh] sm:left-[7vw]">
             <h1 className="text-[clamp(2.4rem,5.5vw,4.5rem)] leading-[1.04] font-semibold tracking-[-0.04em]">
               Agents &amp; Beyond
             </h1>
@@ -516,7 +516,7 @@ export function LandingHero() {
             style={{
               width: "90vh",
               height: "110vh",
-              left: "calc(55vw - 45vh)",
+              left: "calc(50% - 45vh)",
               top: "calc(52vh - 55vh)",
             }}
           >
