@@ -1,34 +1,36 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useLayoutEffect, useRef, useMemo } from "react";
+import { useLayoutEffect, useRef } from "react";
 import Link from "next/link";
 import gsap from "gsap";
-import { Avatar as createAvatar} from "@dicebear/core";
+import { Avatar as DiceBearAvatar, Style } from "@dicebear/core";
 import bigEars from "@dicebear/styles/big-ears.json";
 
 const SKY_GRADIENT =
   "linear-gradient(to bottom, #8fc1ff 0%, #5ba6fb 55%, #298dff 100%)";
 
-// --- Big Ears Avatar Loader ---
-function BigEarsAvatar({ seed }: { seed: string }) {
-  const avatarUri = useMemo(() => {
-    const avatar = new createAvatar(bigEars, {
+// Pre-generate avatars once at module level — DiceBear is CPU-heavy, avoid re-running per render.
+const _bigEarsStyle = new Style(bigEars);
+const _avatarCache = new Map<string, string>();
+function getAvatarUri(seed: string): string {
+  if (!_avatarCache.has(seed)) {
+    const uri = new DiceBearAvatar(_bigEarsStyle, {
       seed,
-      // backgroundColor: ["transparent"],
-      // Forcing a serious/neutral expression
-      mouthVariant: ["variant0101", "variant0102", "variant0104", "variant0201"], 
-    mouthProbability: 100,
-      // face: ["square", "base"], 
+      mouthVariant: ["variant0101", "variant0102", "variant0104", "variant0201"],
+      mouthProbability: 100,
       hairColor: ["17160f", "33245f", "7a4a12"],
-    });
-    return avatar.toDataUri();
-  }, [seed]);
+    }).toDataUri();
+    _avatarCache.set(seed, uri);
+  }
+  return _avatarCache.get(seed)!;
+}
 
+function BigEarsAvatar({ seed }: { seed: string }) {
   return (
     <img
-      src={avatarUri}
-      alt="Agent Identity"
+      src={getAvatarUri(seed)}
+      alt=""
       className="w-full h-full object-contain drop-shadow-2xl scale-[0.6]"
     />
   );
@@ -458,7 +460,7 @@ export function LandingHero() {
               chipAmount="-0.50"
             />
 
-            <div ref={slotRef} className="aspect-[3/4] h-[min(24rem,46vh)] w-[min(18rem,80vw)] rounded-[28px] sm:w-auto" />
+            <div ref={slotRef} className="aspect-[3/4] h-[min(24rem,46vh)] rounded-[28px]" />
 
             <AvatarBalanceCard
               ref={(node) => {
