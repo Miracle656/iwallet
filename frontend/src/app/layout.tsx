@@ -17,15 +17,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        {/* Default is light. Only apply .dark if the user previously saved dark. */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html:
-              "(function(){try{if(localStorage.getItem('theme')==='dark'){document.documentElement.classList.add('dark')}}catch(e){}})()",
-          }}
-        />
-      </head>
+      <head />
       <body className="min-h-full flex flex-col">
         <Providers>
           <Navbar />
