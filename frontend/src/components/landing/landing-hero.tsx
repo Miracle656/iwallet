@@ -82,7 +82,7 @@ export function LandingHero() {
       const h = slot.offsetHeight;
       const isMobile = vw < 640;
       const heroCx = isMobile ? vw * 0.5 : vw * 0.55;
-      const heroCy = vh * 0.52;
+      const heroCy = isMobile ? vh * 0.62 : vh * 0.52;
       const outlineW = Math.min(vh * 0.54, vw * (isMobile ? 0.86 : 1));
       const outlineH = vh * 0.72;
       return {
@@ -271,6 +271,10 @@ export function LandingHero() {
       return [m.vw, m.vh, m.slot.left, m.slot.top, m.slot.w, m.slot.h].join("|");
     };
 
+    // Apply geometry on the first frame so the cut-out is correctly positioned
+    // before the deferred timeline build (fonts + load settle).
+    requestAnimationFrame(() => { if (!disposed) applyGeometry(); });
+
     const buildAndSign = () => {
       build();
       lastSig = signature();
@@ -406,7 +410,7 @@ export function LandingHero() {
           <BigEarsAvatar seed="serious-agent-main" />
         </div>
 
-        <div ref={introRef} className="absolute top-[12vh] left-[5vw] max-w-[min(36rem,88vw)] text-white sm:top-[26vh] sm:left-[7vw]">
+        <div ref={introRef} className="absolute top-[6vh] left-[5vw] right-[5vw] text-white sm:right-auto sm:top-[26vh] sm:left-[7vw] sm:max-w-xl">
           <h1 className="text-[clamp(2.4rem,5.5vw,4.5rem)] leading-[1.04] font-semibold tracking-[-0.04em]">
             Agents &amp; Beyond
           </h1>
@@ -484,7 +488,7 @@ export function LandingHero() {
         className="pointer-events-none absolute overflow-hidden rounded-[28px] border-none outline-none ring-0 shadow-none transform-gpu"
         style={{
           width: "min(54vh, 86vw)",
-          height: "72vh",
+          height: "min(72vh, 72vw)",
           left: "calc(50% - min(27vh, 43vw))",
           top: "calc(52vh - 36vh)",
         }}
@@ -495,12 +499,12 @@ export function LandingHero() {
           style={{
             width: "100vw",
             height: "100vh",
-            left: "calc(min(27vh, 43vw) - 50%)",
+            left: "calc(min(27vh, 43vw) - 50vw)",
             top: "calc(36vh - 52vh)",
             background: SKY_GRADIENT,
           }}
         >
-          <div ref={introCloneRef} aria-hidden className="absolute top-[12vh] left-[5vw] max-w-[min(36rem,88vw)] text-white sm:top-[26vh] sm:left-[7vw]">
+          <div ref={introCloneRef} aria-hidden className="absolute top-[6vh] left-[5vw] right-[5vw] text-white sm:right-auto sm:top-[26vh] sm:left-[7vw] sm:max-w-xl">
             <h1 className="text-[clamp(2.4rem,5.5vw,4.5rem)] leading-[1.04] font-semibold tracking-[-0.04em]">
               Agents &amp; Beyond
             </h1>
