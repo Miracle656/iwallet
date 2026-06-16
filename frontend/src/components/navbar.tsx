@@ -46,7 +46,7 @@ export function Navbar() {
         {/* desktop: both auth buttons inline; mobile: only the hamburger */}
         <div className="flex items-center gap-2">
           <AuthButtons className="hidden items-center gap-2 lg:flex" />
-          <ThemeToggle />
+          {/* <ThemeToggle /> */}
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
