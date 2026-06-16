@@ -103,6 +103,7 @@ export function LandingHero() {
 
     const applyGeometry = () => {
       const m = metrics();
+      const isMobile = m.vw < 640;
       gsap.set(focus, {
         left: m.heroCx - m.outlineW / 2,
         top: m.heroCy - m.outlineH / 2,
@@ -115,11 +116,13 @@ export function LandingHero() {
         left: m.outlineW / 2 - m.heroCx,
         top: m.outlineH / 2 - m.heroCy,
       });
+      const avatarW = isMobile ? m.vw * 0.7 : m.vh * 0.9;
+      const avatarH = avatarW * (110 / 90);
       const canvasBox = {
-        width: m.vh * 0.9,
-        height: m.vh * 1.1,
-        left: m.heroCx - m.vh * 0.45,
-        top: m.heroCy - m.vh * 0.55,
+        width: avatarW,
+        height: avatarH,
+        left: m.heroCx - avatarW / 2,
+        top: m.heroCy - avatarH * 0.5,
       };
       if (heroAvatarRef.current) gsap.set(heroAvatarRef.current, canvasBox);
       if (cardAvatarRef.current) gsap.set(cardAvatarRef.current, canvasBox);
@@ -401,10 +404,10 @@ export function LandingHero() {
           ref={heroAvatarRef}
           className="absolute"
           style={{
-            width: "90vh",
-            height: "110vh",
-            left: "calc(50% - 45vh)",
-            top: "calc(52vh - 55vh)",
+            width: "min(90vh, 70vw)",
+            height: "min(110vh, 85.5vw)",
+            left: "calc(50% - min(45vh, 35vw))",
+            top: "calc(52vh - min(55vh, 42.75vw))",
           }}
         >
           <BigEarsAvatar seed="serious-agent-main" />
@@ -520,10 +523,10 @@ export function LandingHero() {
             ref={cardAvatarRef}
             className="absolute"
             style={{
-              width: "90vh",
-              height: "110vh",
-              left: "calc(50% - 45vh)",
-              top: "calc(52vh - 55vh)",
+              width: "min(90vh, 70vw)",
+              height: "min(110vh, 85.5vw)",
+              left: "calc(50% - min(45vh, 35vw))",
+              top: "calc(52vh - min(55vh, 42.75vw))",
             }}
           >
             <BigEarsAvatar seed="serious-agent-main" />

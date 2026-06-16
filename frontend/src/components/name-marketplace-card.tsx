@@ -52,12 +52,6 @@ const baseAgents: AgentItem[] = [
 
 const marqueeItems = [...baseAgents, ...baseAgents, ...baseAgents];
 
-function AgentAvatar({ seed }: { seed: string }) {
-  return (
-    <img src={getAvatarUri(seed)} alt="" className="h-10 w-10 rounded-xl object-cover border border-border bg-elevated" />
-  );
-}
-
 function StatusDot({ status }: { status: AgentStatus }) {
   const cls =
     status === "trading"     ? "bg-accent" :
@@ -77,13 +71,23 @@ function ActivityIcon({ status }: { status: AgentStatus }) {
 function AgentRow({ agent, isActive }: { agent: AgentItem; isActive: boolean }) {
   return (
     <div
-      className={`flex items-center gap-3 px-5 py-3.5 transition-colors duration-500 ${
-        isActive ? "bg-accent/5" : ""
+      className={`flex items-center gap-3 px-5 transition-all duration-500 ${
+        isActive
+          ? "py-5 bg-accent/8 border-l-[3px] border-accent"
+          : "py-3.5 border-l-[3px] border-transparent"
       }`}
     >
-      <AgentAvatar seed={agent.handle} />
+      <div className={`flex-shrink-0 transition-all duration-500 ${isActive ? "h-12 w-12" : "h-10 w-10"}`}>
+        <img
+          src={getAvatarUri(agent.handle)}
+          alt=""
+          className="h-full w-full rounded-xl object-cover border border-border bg-elevated"
+        />
+      </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-ink">{agent.handle}</p>
+        <p className={`truncate font-medium text-ink transition-all duration-500 ${isActive ? "text-base" : "text-sm"}`}>
+          {agent.handle}
+        </p>
         <div className="mt-0.5 flex items-center gap-1.5">
           <StatusDot status={agent.status} />
           <p className="truncate text-xs text-muted">{agent.activity}</p>
@@ -92,7 +96,7 @@ function AgentRow({ agent, isActive }: { agent: AgentItem; isActive: boolean }) 
       <div className="flex flex-col items-end gap-0.5">
         <div className="flex items-center gap-1">
           <ActivityIcon status={agent.status} />
-          <span className="text-sm font-semibold tabular-nums text-ink">
+          <span className={`font-semibold tabular-nums text-ink transition-all duration-500 ${isActive ? "text-base" : "text-sm"}`}>
             {agent.status === "verifying" ? "Verified" : agent.value}
           </span>
         </div>
@@ -123,9 +127,12 @@ function MetricRow({
 }
 
 export default function IWalletMonitorCard() {
-  const [activeId, setActiveId]   = useState<string | null>(null);
-  const [liveAgents, setLiveAgents] = useState<AgentItem[]>(baseAgents);
-  const [metrics, setMetrics]     = useState({ active: 1245, volume: 48.2, zkRatio: 99.4 });
+  const [activeId, setActiveId]       = useState<string | null>(null);
+  const [liveAgents, setLiveAgents]   = useState<AgentItem[]>(baseAgents);
+  const [metrics, setMetrics]         = useState({ active: 1245, volume: 48.2, zkRatio: 99.4 });
+  const [highlightPaused, setHighlightPaused] = useState(false);
+  const [hoverPaused, setHoverPaused] = useState(false);
+  const scrollPaused = highlightPaused || hoverPaused;
 
   useEffect(() => {
     const actions: { activity: string; status: AgentStatus }[] = [
@@ -138,6 +145,7 @@ export default function IWalletMonitorCard() {
       const idx    = Math.floor(Math.random() * baseAgents.length);
       const target = baseAgents[idx];
       setActiveId(target.id);
+      setHighlightPaused(true);
 
       setLiveAgents((prev) =>
         prev.map((agent) => {
@@ -158,7 +166,10 @@ export default function IWalletMonitorCard() {
         zkRatio: parseFloat((99.4 + Math.random() * 0.5).toFixed(1)),
       }));
 
-      setTimeout(() => setActiveId(null), 2500);
+      setTimeout(() => {
+        setActiveId(null);
+        setHighlightPaused(false);
+      }, 2500);
     }, 4500);
 
     return () => clearInterval(interval);
@@ -237,7 +248,15 @@ export default function IWalletMonitorCard() {
               <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-10 bg-gradient-to-b from-surface to-transparent" />
               <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-10 bg-gradient-to-t from-surface to-transparent" />
 
-              <div className="absolute inset-x-0 animate-marquee-y flex flex-col divide-y divide-border will-change-transform">
+              <div
+                className="absolute inset-x-0 flex flex-col divide-y divide-border will-change-transform"
+                style={{
+                  animation: "marquee-y 24s linear infinite",
+                  animationPlayState: scrollPaused ? "paused" : "running",
+                }}
+                onMouseEnter={() => setHoverPaused(true)}
+                onMouseLeave={() => setHoverPaused(false)}
+              >
                 {marqueeItems.map((item, i) => {
                   const live = liveAgents.find((a) => a.id === item.id) ?? item;
                   return (
@@ -260,8 +279,6 @@ export default function IWalletMonitorCard() {
           from { transform: translateY(0); }
           to   { transform: translateY(-33.3333%); }
         }
-        .animate-marquee-y { animation: marquee-y 24s linear infinite; }
-        .animate-marquee-y:hover { animation-play-state: paused; }
       `}} />
     </section>
   );
