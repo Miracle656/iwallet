@@ -453,7 +453,7 @@ export function LandingHero() {
             </Link>
           </div>
 
-          <div className="flex items-end justify-center gap-3 sm:gap-5">
+          <div className="flex items-end justify-center gap-2 overflow-x-hidden sm:gap-5">
             <AvatarBalanceCard
               ref={(node) => {
                 sideCardsRef.current[0] = node;
@@ -467,7 +467,7 @@ export function LandingHero() {
               chipAmount="-0.50"
             />
 
-            <div ref={slotRef} className="aspect-[3/4] h-[min(24rem,46vh)] rounded-[28px]" />
+            <div ref={slotRef} className="aspect-[3/4] w-[65vw] rounded-[28px] sm:w-auto sm:h-[min(24rem,46vh)]" />
 
             <AvatarBalanceCard
               ref={(node) => {
@@ -576,17 +576,17 @@ function AvatarBalanceCard({
   return (
     <div
       ref={ref}
-      className={`relative hidden aspect-[3/4] h-[min(20rem,38vh)] flex-col overflow-hidden rounded-[24px] opacity-0 shadow-[0_18px_44px_rgba(23,22,15,0.18)] sm:flex ${gradient}`}
+      className={`relative flex aspect-[3/4] w-[30vw] flex-col overflow-hidden rounded-[16px] opacity-0 shadow-[0_18px_44px_rgba(23,22,15,0.18)] sm:w-auto sm:h-[min(20rem,38vh)] sm:rounded-[24px] ${gradient}`}
     >
       <div className="absolute inset-x-0 top-[30%] bottom-[-8%]">
         <BigEarsAvatar seed={seed} />
       </div>
-      <div className="relative z-10 flex flex-col items-center gap-1.5 pt-6 text-white">
-        <span className="text-[11px] tracking-wide text-white/80 uppercase">{label}</span>
-        <span className="text-2xl font-semibold tracking-tight">{amount}</span>
-        <span className="rounded-full bg-white px-3.5 py-1 text-xs font-medium text-[#17160f]">Accounts</span>
+      <div className="relative z-10 flex flex-col items-center gap-1 pt-4 text-white sm:gap-1.5 sm:pt-6">
+        <span className="text-[9px] tracking-wide text-white/80 uppercase sm:text-[11px]">{label}</span>
+        <span className="text-base font-semibold tracking-tight sm:text-2xl">{amount}</span>
+        <span className="rounded-full bg-white px-2 py-0.5 text-[9px] font-medium text-[#17160f] sm:px-3.5 sm:py-1 sm:text-xs">Accounts</span>
       </div>
-      <div className="relative z-10 m-3 mt-auto flex items-center gap-2.5 rounded-2xl bg-white px-3 py-2.5 shadow-sm">
+      <div className="relative z-10 m-2 mt-auto hidden items-center gap-2.5 rounded-2xl bg-white px-3 py-2.5 shadow-sm sm:m-3 sm:flex">
         <span className="bg-slate-100 flex h-7 w-7 items-center justify-center rounded-full text-xs">
           ◎
         </span>
