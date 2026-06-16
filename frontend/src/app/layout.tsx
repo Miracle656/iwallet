@@ -17,15 +17,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        {/* Apply saved theme before paint. Default is dark (no class). */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html:
-              "(function(){try{if(localStorage.getItem('theme')==='light'){document.documentElement.classList.add('light')}}catch(e){}})()",
-          }}
-        />
-      </head>
+      <head />
       <body className="min-h-full flex flex-col">
         <Providers>
           <Navbar />

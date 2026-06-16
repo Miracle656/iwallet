@@ -1,34 +1,36 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useLayoutEffect, useRef, useMemo } from "react";
+import { useLayoutEffect, useRef } from "react";
 import Link from "next/link";
 import gsap from "gsap";
-import { Avatar as createAvatar} from "@dicebear/core";
+import { Avatar as DiceBearAvatar, Style } from "@dicebear/core";
 import bigEars from "@dicebear/styles/big-ears.json";
 
 const SKY_GRADIENT =
   "linear-gradient(to bottom, #8fc1ff 0%, #5ba6fb 55%, #298dff 100%)";
 
-// --- Big Ears Avatar Loader ---
-function BigEarsAvatar({ seed }: { seed: string }) {
-  const avatarUri = useMemo(() => {
-    const avatar = new createAvatar(bigEars, {
+// Pre-generate avatars once at module level — DiceBear is CPU-heavy, avoid re-running per render.
+const _bigEarsStyle = new Style(bigEars);
+const _avatarCache = new Map<string, string>();
+function getAvatarUri(seed: string): string {
+  if (!_avatarCache.has(seed)) {
+    const uri = new DiceBearAvatar(_bigEarsStyle, {
       seed,
-      // backgroundColor: ["transparent"],
-      // Forcing a serious/neutral expression
-      mouthVariant: ["variant0101", "variant0102", "variant0104", "variant0201"], 
-    mouthProbability: 100,
-      // face: ["square", "base"], 
+      mouthVariant: ["variant0101", "variant0102", "variant0104", "variant0201"],
+      mouthProbability: 100,
       hairColor: ["17160f", "33245f", "7a4a12"],
-    });
-    return avatar.toDataUri();
-  }, [seed]);
+    }).toDataUri();
+    _avatarCache.set(seed, uri);
+  }
+  return _avatarCache.get(seed)!;
+}
 
+function BigEarsAvatar({ seed }: { seed: string }) {
   return (
     <img
-      src={avatarUri}
-      alt="Agent Identity"
+      src={getAvatarUri(seed)}
+      alt=""
       className="w-full h-full object-contain drop-shadow-2xl scale-[0.6]"
     />
   );
@@ -78,9 +80,10 @@ export function LandingHero() {
       }
       const w = slot.offsetWidth;
       const h = slot.offsetHeight;
-      const heroCx = vw * 0.55;
-      const heroCy = vh * 0.52;
-      const outlineW = vh * 0.54;
+      const isMobile = vw < 640;
+      const heroCx = isMobile ? vw * 0.5 : vw * 0.55;
+      const heroCy = isMobile ? vh * 0.70 : vh * 0.52;
+      const outlineW = Math.min(vh * 0.54, vw * (isMobile ? 0.86 : 1));
       const outlineH = vh * 0.72;
       return {
         vw,
@@ -100,6 +103,7 @@ export function LandingHero() {
 
     const applyGeometry = () => {
       const m = metrics();
+      const isMobile = m.vw < 640;
       gsap.set(focus, {
         left: m.heroCx - m.outlineW / 2,
         top: m.heroCy - m.outlineH / 2,
@@ -112,11 +116,13 @@ export function LandingHero() {
         left: m.outlineW / 2 - m.heroCx,
         top: m.outlineH / 2 - m.heroCy,
       });
+      const avatarW = isMobile ? m.vw * 0.7 : m.vh * 0.9;
+      const avatarH = avatarW * (110 / 90);
       const canvasBox = {
-        width: m.vh * 0.9,
-        height: m.vh * 1.1,
-        left: m.heroCx - m.vh * 0.45,
-        top: m.heroCy - m.vh * 0.55,
+        width: avatarW,
+        height: avatarH,
+        left: m.heroCx - avatarW / 2,
+        top: m.heroCy - avatarH * 0.5,
       };
       if (heroAvatarRef.current) gsap.set(heroAvatarRef.current, canvasBox);
       if (cardAvatarRef.current) gsap.set(cardAvatarRef.current, canvasBox);
@@ -268,6 +274,10 @@ export function LandingHero() {
       return [m.vw, m.vh, m.slot.left, m.slot.top, m.slot.w, m.slot.h].join("|");
     };
 
+    // Apply geometry on the first frame so the cut-out is correctly positioned
+    // before the deferred timeline build (fonts + load settle).
+    requestAnimationFrame(() => { if (!disposed) applyGeometry(); });
+
     const buildAndSign = () => {
       build();
       lastSig = signature();
@@ -394,26 +404,26 @@ export function LandingHero() {
           ref={heroAvatarRef}
           className="absolute"
           style={{
-            width: "90vh",
-            height: "110vh",
-            left: "calc(55vw - 45vh)",
-            top: "calc(52vh - 55vh)",
+            width: "min(90vh, 70vw)",
+            height: "min(110vh, 85.5vw)",
+            left: "calc(50% - min(45vh, 35vw))",
+            top: "calc(52vh - min(55vh, 42.75vw))",
           }}
         >
           <BigEarsAvatar seed="serious-agent-main" />
         </div>
 
-        <div ref={introRef} className="absolute top-[26vh] left-[7vw] max-w-xl text-white">
-          <h1 className="text-[clamp(2.4rem,5.5vw,4.5rem)] leading-[1.04] font-semibold tracking-[-0.04em]">
+        <div ref={introRef} className="absolute top-[12vh] left-[5vw] right-[5vw] text-white sm:right-auto sm:top-[26vh] sm:left-[7vw] sm:max-w-xl">
+          <h1 className="text-[clamp(2rem,5.5vw,4.5rem)] leading-[1.08] font-semibold tracking-[-0.04em]">
             Agents &amp; Beyond
           </h1>
-          <p className="mt-5 max-w-md text-base leading-7 text-white/90">
+          <p className="mt-5 hidden max-w-md text-base leading-7 text-white/90 sm:block">
             This is your agent&rsquo;s wallet, redefined. Budget-capped,
             time-boxed, revocable — every trade proved on-chain.
           </p>
           <Link
             href="/iwallets/create"
-            className="mt-7 inline-block rounded-full bg-[#17160f] px-7 py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.03]"
+            className="mt-5 inline-block rounded-full bg-[#17160f] px-7 py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.03] sm:mt-7"
           >
             Create your iWallet
           </Link>
@@ -426,24 +436,24 @@ export function LandingHero() {
         className="absolute inset-0 bg-white text-[#17160f]"
         style={{ clipPath: "inset(50% 50% 50% 50% round 36px)" }}
       >
-        <div className="flex h-full flex-col items-center justify-center gap-7 px-6 pt-[12vh]">
+        <div className="flex h-full flex-col items-center justify-center gap-4 px-4 sm:gap-7 sm:px-6 sm:pt-[8vh]">
           <div ref={headingRef} className="max-w-2xl text-center opacity-0">
-            <h2 className="text-[clamp(1.8rem,4.5vw,3.25rem)] leading-[1.08] font-semibold tracking-[-0.04em]">
+            <h2 className="text-[clamp(1.5rem,4.5vw,3.25rem)] leading-[1.08] font-semibold tracking-[-0.04em]">
               Set the rules. Watch it trade.
             </h2>
-            <p className="mx-auto mt-2 max-w-xl text-base leading-7 text-[#5d5b52]">
+            <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-[#5d5b52] sm:text-base sm:leading-7">
               Budgets, expiries and allowed venues are enforced by the contract
               — not by trust.
             </p>
             <Link
               href="/agents"
-              className="mt-5 inline-block rounded-full bg-[#17160f] px-7 py-3 text-sm font-medium text-white transition-transform hover:scale-[1.03]"
+              className="mt-4 inline-block rounded-full bg-[#17160f] px-6 py-2.5 text-sm font-medium text-white transition-transform hover:scale-[1.03] sm:mt-5 sm:px-7 sm:py-3"
             >
               Watch agents trade
             </Link>
           </div>
 
-          <div className="flex items-end justify-center gap-5">
+          <div className="flex items-end justify-center gap-2 overflow-x-hidden sm:gap-5">
             <AvatarBalanceCard
               ref={(node) => {
                 sideCardsRef.current[0] = node;
@@ -457,7 +467,7 @@ export function LandingHero() {
               chipAmount="-0.50"
             />
 
-            <div ref={slotRef} className="aspect-[3/4] h-[min(24rem,46vh)] rounded-[28px]" />
+            <div ref={slotRef} className="aspect-[3/4] w-[65vw] rounded-[28px] sm:w-auto sm:h-[min(24rem,46vh)]" />
 
             <AvatarBalanceCard
               ref={(node) => {
@@ -480,11 +490,10 @@ export function LandingHero() {
         ref={focusRef}
         className="pointer-events-none absolute overflow-hidden rounded-[28px] border-none outline-none ring-0 shadow-none transform-gpu"
         style={{
-          width: "54vh",
-          height: "72vh",
-          left: "calc(55vw - 27vh)",
+          width: "min(54vh, 86vw)",
+          height: "min(72vh, 72vw)",
+          left: "calc(50% - min(27vh, 43vw))",
           top: "calc(52vh - 36vh)",
-          // borderColor: "rgba(255,255,255,0.7)",
         }}
       >
         <div
@@ -493,20 +502,20 @@ export function LandingHero() {
           style={{
             width: "100vw",
             height: "100vh",
-            left: "calc(27vh - 55vw)",
+            left: "calc(min(27vh, 43vw) - 50vw)",
             top: "calc(36vh - 52vh)",
             background: SKY_GRADIENT,
           }}
         >
-          <div ref={introCloneRef} aria-hidden className="absolute top-[26vh] left-[7vw] max-w-xl text-white">
-            <h1 className="text-[clamp(2.4rem,5.5vw,4.5rem)] leading-[1.04] font-semibold tracking-[-0.04em]">
+          <div ref={introCloneRef} aria-hidden className="absolute top-[12vh] left-[5vw] right-[5vw] text-white sm:right-auto sm:top-[26vh] sm:left-[7vw] sm:max-w-xl">
+            <h1 className="text-[clamp(2rem,5.5vw,4.5rem)] leading-[1.08] font-semibold tracking-[-0.04em]">
               Agents &amp; Beyond
             </h1>
-            <p className="mt-5 max-w-md text-base leading-7 text-white/90">
+            <p className="mt-5 hidden max-w-md text-base leading-7 text-white/90 sm:block">
               This is your agent&rsquo;s wallet, redefined. Budget-capped,
               time-boxed, revocable — every trade proved on-chain.
             </p>
-            <span className="mt-7 inline-block rounded-full bg-[#17160f] px-7 py-3.5 text-sm font-medium text-white">
+            <span className="mt-5 inline-block rounded-full bg-[#17160f] px-7 py-3.5 text-sm font-medium text-white sm:mt-7">
               Create your iWallet
             </span>
           </div>
@@ -514,10 +523,10 @@ export function LandingHero() {
             ref={cardAvatarRef}
             className="absolute"
             style={{
-              width: "90vh",
-              height: "110vh",
-              left: "calc(55vw - 45vh)",
-              top: "calc(52vh - 55vh)",
+              width: "min(90vh, 70vw)",
+              height: "min(110vh, 85.5vw)",
+              left: "calc(50% - min(45vh, 35vw))",
+              top: "calc(52vh - min(55vh, 42.75vw))",
             }}
           >
             <BigEarsAvatar seed="serious-agent-main" />
@@ -567,17 +576,17 @@ function AvatarBalanceCard({
   return (
     <div
       ref={ref}
-      className={`relative hidden aspect-[3/4] h-[min(20rem,38vh)] flex-col overflow-hidden rounded-[24px] opacity-0 shadow-[0_18px_44px_rgba(23,22,15,0.18)] sm:flex ${gradient}`}
+      className={`relative flex aspect-[3/4] w-[30vw] flex-col overflow-hidden rounded-[16px] opacity-0 shadow-[0_18px_44px_rgba(23,22,15,0.18)] sm:w-auto sm:h-[min(20rem,38vh)] sm:rounded-[24px] ${gradient}`}
     >
       <div className="absolute inset-x-0 top-[30%] bottom-[-8%]">
         <BigEarsAvatar seed={seed} />
       </div>
-      <div className="relative z-10 flex flex-col items-center gap-1.5 pt-6 text-white">
-        <span className="text-[11px] tracking-wide text-white/80 uppercase">{label}</span>
-        <span className="text-2xl font-semibold tracking-tight">{amount}</span>
-        <span className="rounded-full bg-white px-3.5 py-1 text-xs font-medium text-[#17160f]">Accounts</span>
+      <div className="relative z-10 flex flex-col items-center gap-1 pt-4 text-white sm:gap-1.5 sm:pt-6">
+        <span className="text-[9px] tracking-wide text-white/80 uppercase sm:text-[11px]">{label}</span>
+        <span className="text-base font-semibold tracking-tight sm:text-2xl">{amount}</span>
+        <span className="rounded-full bg-white px-2 py-0.5 text-[9px] font-medium text-[#17160f] sm:px-3.5 sm:py-1 sm:text-xs">Accounts</span>
       </div>
-      <div className="relative z-10 m-3 mt-auto flex items-center gap-2.5 rounded-2xl bg-white px-3 py-2.5 shadow-sm">
+      <div className="relative z-10 m-2 mt-auto hidden items-center gap-2.5 rounded-2xl bg-white px-3 py-2.5 shadow-sm sm:m-3 sm:flex">
         <span className="bg-slate-100 flex h-7 w-7 items-center justify-center rounded-full text-xs">
           ◎
         </span>

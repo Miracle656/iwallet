@@ -1,215 +1,272 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import React, { useMemo, useState, useEffect } from "react";
-import { Droplet, ShieldCheck, Activity, Cpu } from "lucide-react";
-import { Avatar as DiceBearAvatar } from "@dicebear/core";
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { Avatar as DiceBearAvatar, Style } from "@dicebear/core";
 import bigEars from "@dicebear/styles/big-ears.json";
 
-// --- Types ---
-type AgentActivityItem = {
+// Pre-generate all avatar URIs at module level — avoids repeated CPU-heavy SVG builds.
+const _style = new Style(bigEars);
+const _cache = new Map<string, string>();
+function getAvatarUri(seed: string): string {
+  if (!_cache.has(seed)) {
+    _cache.set(
+      seed,
+      new DiceBearAvatar(_style, {
+        seed,
+        backgroundColor: ["b6e3f4", "c0aede", "d1d4f9", "ffd5dc", "ffdfbf"],
+        size: 48,
+      }).toDataUri(),
+    );
+  }
+  return _cache.get(seed)!;
+}
+import {
+  HiOutlineCpuChip,
+  HiOutlineChartBar,
+  HiOutlineShieldCheck,
+  HiOutlineBolt,
+  HiOutlineArrowRight,
+  HiOutlineBanknotes,
+} from "react-icons/hi2";
+
+type AgentStatus = "idle" | "trading" | "verifying" | "transferring";
+
+type AgentItem = {
   id: string;
   handle: string;
   activity: string;
   value: string;
   txHash: string;
-  statusColor: string;
+  status: AgentStatus;
 };
 
-// --- Mock Data ---
-const baseAgents: AgentActivityItem[] = [
-  { id: "1", handle: "@alpha-trader", activity: "Awaiting Mandate", value: "0.00", txHash: "0x3a...d91", statusColor: "text-gray-400" },
-  { id: "2", handle: "@deepbook-bot", activity: "Monitoring Pools", value: "420.50", txHash: "0x7d...49j", statusColor: "text-cyan-400" },
-  { id: "3", handle: "@zk-guard", activity: "Idle Security", value: "0.00", txHash: "0xe5...22c", statusColor: "text-amber-500" },
-  { id: "4", handle: "@liquidity-elf", activity: "Yield Farming", value: "25.00", txHash: "0x9b...11a", statusColor: "text-emerald-400" },
-  { id: "5", handle: "@claude-agent", activity: "Analyzing Prompts", value: "14.98", txHash: "0x47...482", statusColor: "text-purple-400" },
+const baseAgents: AgentItem[] = [
+  { id: "1", handle: "@alpha-trader",   activity: "Awaiting mandate",   value: "0.00 SUI",    txHash: "0x3a…d91", status: "idle" },
+  { id: "2", handle: "@deepbook-bot",   activity: "Monitoring pools",   value: "420.50 SUI",  txHash: "0x7d…49j", status: "trading" },
+  { id: "3", handle: "@zk-guard",       activity: "Policy guardian",    value: "0.00 SUI",    txHash: "0xe5…22c", status: "idle" },
+  { id: "4", handle: "@liquidity-elf",  activity: "Yield farming",      value: "25.00 SUI",   txHash: "0x9b…11a", status: "trading" },
+  { id: "5", handle: "@claude-agent",   activity: "Analyzing prompts",  value: "14.98 SUI",   txHash: "0x47…482", status: "trading" },
 ];
 
-// Duplicate list for infinite smooth loop execution
 const marqueeItems = [...baseAgents, ...baseAgents, ...baseAgents];
 
-// --- Robot Avatar Loader ---
-const AgentAvatar = ({ seed }: { seed: string }) => {
-  const avatarUri = useMemo(() => {
-    const avatar = new DiceBearAvatar(bigEars, {
-      seed,
-      // Softer pastel backgrounds look much better with the Big Ears style
-      backgroundColor: ["b6e3f4", "c0aede", "d1d4f9", "ffd5dc", "ffdfbf"],
-      size: 12,
-    });
-    return avatar.toDataUri();
-  }, [seed]);
+function StatusDot({ status }: { status: AgentStatus }) {
+  const cls =
+    status === "trading"     ? "bg-accent" :
+    status === "verifying"   ? "bg-amber-400" :
+    status === "transferring"? "bg-emerald-500" :
+    "bg-dim";
+  return <span className={`inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full ${cls}`} />;
+}
 
+function ActivityIcon({ status }: { status: AgentStatus }) {
+  if (status === "verifying")    return <HiOutlineShieldCheck className="h-3.5 w-3.5 text-amber-500" />;
+  if (status === "trading")      return <HiOutlineBolt className="h-3.5 w-3.5 text-accent" />;
+  if (status === "transferring") return <HiOutlineBanknotes className="h-3.5 w-3.5 text-emerald-500" />;
+  return <HiOutlineCpuChip className="h-3.5 w-3.5 text-dim" />;
+}
+
+function AgentRow({ agent, isActive }: { agent: AgentItem; isActive: boolean }) {
   return (
-    <img
-      src={avatarUri}
-      alt="Agent Identity"
-      className="w-12 h-12 rounded-xl object-cover border border-white/10 bg-slate-900/50"
-    />
+    <div
+      className={`flex items-center gap-3 px-5 transition-all duration-500 ${
+        isActive
+          ? "py-5 bg-accent/8 border-l-[3px] border-accent"
+          : "py-3.5 border-l-[3px] border-transparent"
+      }`}
+    >
+      <div className={`flex-shrink-0 transition-all duration-500 ${isActive ? "h-12 w-12" : "h-10 w-10"}`}>
+        <img
+          src={getAvatarUri(agent.handle)}
+          alt=""
+          className="h-full w-full rounded-xl object-cover border border-border bg-elevated"
+        />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className={`truncate font-medium text-ink transition-all duration-500 ${isActive ? "text-base" : "text-sm"}`}>
+          {agent.handle}
+        </p>
+        <div className="mt-0.5 flex items-center gap-1.5">
+          <StatusDot status={agent.status} />
+          <p className="truncate text-xs text-muted">{agent.activity}</p>
+        </div>
+      </div>
+      <div className="flex flex-col items-end gap-0.5">
+        <div className="flex items-center gap-1">
+          <ActivityIcon status={agent.status} />
+          <span className={`font-semibold tabular-nums text-ink transition-all duration-500 ${isActive ? "text-base" : "text-sm"}`}>
+            {agent.status === "verifying" ? "Verified" : agent.value}
+          </span>
+        </div>
+        <span className="font-mono text-[10px] text-dim">{agent.txHash}</span>
+      </div>
+    </div>
   );
-};
+}
+
+function MetricRow({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center justify-between py-3 border-b border-border last:border-0">
+      <div className="flex items-center gap-2 text-sm text-muted">
+        {icon}
+        {label}
+      </div>
+      <span className="font-semibold tabular-nums text-ink">{value}</span>
+    </div>
+  );
+}
 
 export default function IWalletMonitorCard() {
-  // Simulation States
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [liveAgents, setLiveAgents] = useState<AgentActivityItem[]>(baseAgents);
-  const [metrics, setMetrics] = useState({ active: 1245, volume: 48.2, zkRatio: 99.4 });
+  const [activeId, setActiveId]       = useState<string | null>(null);
+  const [liveAgents, setLiveAgents]   = useState<AgentItem[]>(baseAgents);
+  const [metrics, setMetrics]         = useState({ active: 1245, volume: 48.2, zkRatio: 99.4 });
+  const [highlightPaused, setHighlightPaused] = useState(false);
+  const [hoverPaused, setHoverPaused] = useState(false);
+  const scrollPaused = highlightPaused || hoverPaused;
 
-  // Live Blockchain State Machine Simulation Loop
   useEffect(() => {
-    const interval = setInterval(() => {
-      // Step 1: Select a random agent to trigger an action
-      const randomIndex = Math.floor(Math.random() * baseAgents.length);
-      const targetAgent = baseAgents[randomIndex];
-      
-      setActiveId(targetAgent.id);
+    const actions: { activity: string; status: AgentStatus }[] = [
+      { activity: "Placing trade",       status: "trading" },
+      { activity: "Verifying ZK proof",  status: "verifying" },
+      { activity: "Executing transfer",  status: "transferring" },
+    ];
 
-      // Step 2: Mutate the active agent's state to simulate real-time transactions
+    const interval = setInterval(() => {
+      const idx    = Math.floor(Math.random() * baseAgents.length);
+      const target = baseAgents[idx];
+      setActiveId(target.id);
+      setHighlightPaused(true);
+
       setLiveAgents((prev) =>
         prev.map((agent) => {
-          if (agent.id === targetAgent.id) {
-            const actions = [
-              { activity: "⚡ Placing Trade", value: (Math.random() * 50 + 10).toFixed(2), statusColor: "text-cyan-400 font-bold" },
-              { activity: "🛡️ Verifying ZK Proof", value: "0.00", statusColor: "text-amber-400 font-bold tracking-wide animate-pulse" },
-              { activity: "💸 Executing Service Pay", value: (Math.random() * 5 + 1).toFixed(2), statusColor: "text-purple-400 font-bold" },
-            ];
-            return { ...agent, ...actions[Math.floor(Math.random() * actions.length)] };
-          }
-          return agent;
+          if (agent.id !== target.id) return agent;
+          const action = actions[Math.floor(Math.random() * actions.length)];
+          return {
+            ...agent,
+            activity: action.activity,
+            status:   action.status,
+            value:    `${(Math.random() * 50 + 1).toFixed(2)} SUI`,
+          };
         })
       );
 
-      // Step 3: Roll up global metrics in sync with the action
       setMetrics((m) => ({
-        active: m.active + Math.floor(Math.random() * 3),
-        volume: parseFloat((m.volume + Math.random() * 5).toFixed(1)),
+        active:  m.active + Math.floor(Math.random() * 3),
+        volume:  parseFloat((m.volume + Math.random() * 5).toFixed(1)),
         zkRatio: parseFloat((99.4 + Math.random() * 0.5).toFixed(1)),
       }));
 
-      // Step 4: Cool down and return to smooth streaming state
       setTimeout(() => {
         setActiveId(null);
+        setHighlightPaused(false);
       }, 2500);
-
     }, 4500);
 
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-[#05030a] p-6 font-sans antialiased">
-      
-      {/* Outer Card Wrapper with Neon Glow Base */}
-      <div className="relative w-full max-w-5xl rounded-3xl bg-gradient-to-br from-indigo-500/20 via-purple-500/10 to-pink-500/20 p-[1px] shadow-[0_0_80px_rgba(99,102,241,0.1)]">
-        
-        {/* Core Frame Layout */}
-        <div className="relative flex flex-col md:flex-row w-full h-full bg-[#0a0714]/98 backdrop-blur-3xl rounded-[23px] overflow-hidden">
-          
-          {/* Futuristic Dotted Grid */}
-          <div 
-            className="absolute inset-0 opacity-15 pointer-events-none" 
-            style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.1) 1px, transparent 0)', backgroundSize: '20px 20px' }}
-          />
+    <section className="bg-canvas px-5 py-16 sm:px-8 lg:px-10">
+      <div className="mx-auto max-w-5xl">
 
-          {/* LEFT SIDE PANEL: Title & Description */}
-          <div className="relative z-20 flex-1 p-10 md:p-14 flex flex-col justify-center">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 w-fit mb-6">
-              <ShieldCheck className="w-4 h-4 text-indigo-400" />
-              <span className="text-[10px] text-indigo-300 uppercase tracking-widest font-bold">On-Chain Privacy Layer</span>
-            </div>
-            
-            <h2 className="text-4xl md:text-5xl font-bold text-white leading-tight tracking-tight mb-4">
-              Monitor Agentic <br /> Activity Live
+        {/* Section header */}
+        <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-accent">
+              Live activity
+            </p>
+            <h2 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-ink sm:text-4xl">
+              Monitor agents in real time
             </h2>
-            <p className="text-slate-400 text-sm md:text-base max-w-sm leading-relaxed">
-              I-Wallet provides secure, keyless identity for autonomous AI agents using ZK-proofs and Sui&apos;s object architecture—preventing prompt injections and key thefts.
+            <p className="mt-3 max-w-md text-sm leading-6 text-muted">
+              Every iWallet agent operates within its on-chain policy — budget
+              capped, time-boxed, revocable. Watch trades execute and proofs
+              verify without exposing a private key.
             </p>
           </div>
+          <Link
+            href="/agents"
+            className="inline-flex items-center gap-2 self-start rounded-full border border-border px-5 py-2.5 text-sm font-medium text-ink transition hover:border-accent/40 hover:text-accent sm:self-auto"
+          >
+            View all agents
+            <HiOutlineArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
 
-          {/* RIGHT SIDE PANEL: Live Stream Engine */}
-          <div className="relative z-20 flex-1 h-[480px] md:h-[540px] flex flex-col justify-between p-6">
-            
-            {/* Smooth Top & Bottom Clipping Overlays */}
-            <div className="absolute top-0 left-0 right-0 h-20 bg-gradient-to-b from-[#0a0714] to-transparent z-30 pointer-events-none" />
-            <div className="absolute bottom-[90px] left-0 right-0 h-20 bg-gradient-to-t from-[#0a0714] to-transparent z-30 pointer-events-none" />
+        {/* Card */}
+        <div className="overflow-hidden rounded-3xl border border-border bg-surface shadow-[0_12px_32px_rgba(23,22,15,0.06)]">
+          <div className="grid grid-cols-1 md:grid-cols-2">
 
-            {/* Extended Overflow Container (Fixed clipping boundary walls) */}
-            <div className="relative flex-1 overflow-hidden px-8 -mx-8 py-4 -my-4">
-              <div className="absolute left-8 right-8 animate-marquee-y flex flex-col gap-3.5 backface-hidden transform-gpu">
-                {marqueeItems.map((item, index) => {
-                  // Connect looped cards back to their synchronized state engine reference
-                  const currentLiveState = liveAgents.find((a) => a.id === item.id) || item;
-                  const isActive = currentLiveState.id === activeId;
+            {/* Left — metrics + copy */}
+            <div className="border-b border-border p-6 sm:p-8 md:border-b-0 md:border-r">
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted">
+                Network health
+              </p>
+              <div className="mt-4">
+                <MetricRow
+                  icon={<HiOutlineCpuChip className="h-4 w-4 text-accent" />}
+                  label="Active agents"
+                  value={metrics.active.toLocaleString()}
+                />
+                <MetricRow
+                  icon={<HiOutlineChartBar className="h-4 w-4 text-accent" />}
+                  label="Volume"
+                  value={`${metrics.volume}k SUI`}
+                />
+                <MetricRow
+                  icon={<HiOutlineShieldCheck className="h-4 w-4 text-accent" />}
+                  label="Proof success"
+                  value={`${metrics.zkRatio}%`}
+                />
+              </div>
 
-                  return (
-                    <div
-                      key={`${item.id}-${index}`}
-                      style={{ transform: isActive ? "scale(1.05)" : "scale(1)" }}
-                      className={`relative flex items-center justify-between p-4 rounded-2xl transition-all duration-500 ease-out will-change-transform ${
-                        isActive
-                          ? "bg-gradient-to-r from-purple-600/20 via-pink-600/15 to-indigo-600/20 border border-purple-500 shadow-[0_0_40px_rgba(168,85,247,0.4)] z-40 opacity-100"
-                          : "bg-white/[0.02] border border-white/5 z-10 opacity-35 filter blur-[0.4px]"
-                      }`}
-                    >
-                      {/* Identity Details */}
-                      <div className="flex items-center gap-4">
-                        <AgentAvatar seed={currentLiveState.handle} />
-                        <div className="flex flex-col">
-                          <span className="text-white font-semibold text-base tracking-wide">{currentLiveState.handle}</span>
-                          <span className={`text-xs transition-colors duration-300 ${currentLiveState.statusColor}`}>
-                            {currentLiveState.activity}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      {/* Operational Value Metrics */}
-                      <div className="flex flex-col items-end">
-                        <div className="flex items-center gap-1.5">
-                          {currentLiveState.activity.includes("ZK") ? (
-                            <ShieldCheck className="w-4 h-4 text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.5)]" />
-                          ) : (
-                            <Droplet className="w-3.5 h-3.5 fill-cyan-400 text-cyan-400" />
-                          )}
-                          <span className="font-bold text-base text-white font-mono">
-                            {currentLiveState.activity.includes("ZK") ? "Verified" : currentLiveState.value}
-                          </span>
-                        </div>
-                        <span className="text-slate-500 text-xs font-mono mt-0.5">{currentLiveState.txHash}</span>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="mt-6 rounded-2xl bg-elevated p-4">
+                <div className="flex items-start gap-3">
+                  <HiOutlineShieldCheck className="mt-0.5 h-4 w-4 flex-shrink-0 text-accent" />
+                  <p className="text-xs leading-5 text-muted">
+                    All transactions are verified on Sui using ZK proofs. No
+                    agent can exceed the budget cap set by the owner — enforced
+                    by the contract, not by trust.
+                  </p>
+                </div>
               </div>
             </div>
 
-            {/* Synchronized Live Performance Metrics Bar */}
-            <div className="relative z-40 mt-4 backdrop-blur-md bg-white/[0.02] border border-white/10 rounded-2xl p-4 flex justify-between items-center px-6 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-              <div className="flex flex-col items-center">
-                <span className="text-slate-500 text-[10px] uppercase tracking-widest mb-1 flex items-center gap-1">
-                  <Cpu className="w-3 h-3 text-purple-400" /> Active Agents
-                </span>
-                <span className="text-white font-bold text-lg font-mono transition-all duration-300">
-                  {metrics.active.toLocaleString()}
-                </span>
-              </div>
-              <div className="flex flex-col items-center">
-                <span className="text-slate-500 text-[10px] uppercase tracking-widest mb-1 flex items-center gap-1">
-                  <Activity className="w-3 h-3 text-cyan-400" /> Volume
-                </span>
-                <div className="flex items-center gap-0.5">
-                  <Droplet className="w-3.5 h-3.5 fill-cyan-500 text-cyan-500" />
-                  <span className="text-white font-bold text-lg font-mono transition-all duration-300">
-                    {metrics.volume}k
-                  </span>
-                </div>
-              </div>
-              <div className="flex flex-col items-center">
-                <span className="text-slate-500 text-[10px] uppercase tracking-widest mb-1 flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3 text-amber-400" /> Proof Success
-                </span>
-                <span className="text-white font-bold text-lg font-mono transition-all duration-300">
-                  {metrics.zkRatio}%
-                </span>
+            {/* Right — scrolling agent feed */}
+            <div className="relative h-[340px] overflow-hidden sm:h-[380px]">
+              {/* fade overlays */}
+              <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-10 bg-gradient-to-b from-surface to-transparent" />
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-10 bg-gradient-to-t from-surface to-transparent" />
+
+              <div
+                className="absolute inset-x-0 flex flex-col divide-y divide-border will-change-transform"
+                style={{
+                  animation: "marquee-y 24s linear infinite",
+                  animationPlayState: scrollPaused ? "paused" : "running",
+                }}
+                onMouseEnter={() => setHoverPaused(true)}
+                onMouseLeave={() => setHoverPaused(false)}
+              >
+                {marqueeItems.map((item, i) => {
+                  const live = liveAgents.find((a) => a.id === item.id) ?? item;
+                  return (
+                    <AgentRow
+                      key={`${item.id}-${i}`}
+                      agent={live}
+                      isActive={live.id === activeId}
+                    />
+                  );
+                })}
               </div>
             </div>
 
@@ -217,19 +274,12 @@ export default function IWalletMonitorCard() {
         </div>
       </div>
 
-      {/* Embedded Stylesheet containing GPU accelerated layout variables */}
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes marquee-y {
-          0% { transform: translateY(0); }
-          100% { transform: translateY(-33.3333%); }
-        }
-        .animate-marquee-y {
-          animation: marquee-y 22s linear infinite;
-        }
-        .animate-marquee-y:hover {
-          animation-play-state: paused;
+          from { transform: translateY(0); }
+          to   { transform: translateY(-33.3333%); }
         }
       `}} />
-    </div>
+    </section>
   );
 }
