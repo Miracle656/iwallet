@@ -436,7 +436,7 @@ export function LandingHero() {
         className="absolute inset-0 bg-white text-[#17160f]"
         style={{ clipPath: "inset(50% 50% 50% 50% round 36px)" }}
       >
-        <div className="flex h-full flex-col items-center justify-center gap-4 px-4 pt-[12vh] sm:gap-7 sm:px-6">
+        <div className="flex h-full flex-col items-center justify-center gap-4 px-4 sm:gap-7 sm:px-6 sm:pt-[8vh]">
           <div ref={headingRef} className="max-w-2xl text-center opacity-0">
             <h2 className="text-[clamp(1.5rem,4.5vw,3.25rem)] leading-[1.08] font-semibold tracking-[-0.04em]">
               Set the rules. Watch it trade.
