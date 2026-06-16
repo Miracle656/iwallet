@@ -82,7 +82,7 @@ export function LandingHero() {
       const h = slot.offsetHeight;
       const isMobile = vw < 640;
       const heroCx = isMobile ? vw * 0.5 : vw * 0.55;
-      const heroCy = isMobile ? vh * 0.62 : vh * 0.52;
+      const heroCy = isMobile ? vh * 0.70 : vh * 0.52;
       const outlineW = Math.min(vh * 0.54, vw * (isMobile ? 0.86 : 1));
       const outlineH = vh * 0.72;
       return {
@@ -413,17 +413,17 @@ export function LandingHero() {
           <BigEarsAvatar seed="serious-agent-main" />
         </div>
 
-        <div ref={introRef} className="absolute top-[6vh] left-[5vw] right-[5vw] text-white sm:right-auto sm:top-[26vh] sm:left-[7vw] sm:max-w-xl">
-          <h1 className="text-[clamp(2.4rem,5.5vw,4.5rem)] leading-[1.04] font-semibold tracking-[-0.04em]">
+        <div ref={introRef} className="absolute top-[12vh] left-[5vw] right-[5vw] text-white sm:right-auto sm:top-[26vh] sm:left-[7vw] sm:max-w-xl">
+          <h1 className="text-[clamp(2rem,5.5vw,4.5rem)] leading-[1.08] font-semibold tracking-[-0.04em]">
             Agents &amp; Beyond
           </h1>
-          <p className="mt-5 max-w-md text-base leading-7 text-white/90">
+          <p className="mt-5 hidden max-w-md text-base leading-7 text-white/90 sm:block">
             This is your agent&rsquo;s wallet, redefined. Budget-capped,
             time-boxed, revocable — every trade proved on-chain.
           </p>
           <Link
             href="/iwallets/create"
-            className="mt-7 inline-block rounded-full bg-[#17160f] px-7 py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.03]"
+            className="mt-5 inline-block rounded-full bg-[#17160f] px-7 py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.03] sm:mt-7"
           >
             Create your iWallet
           </Link>
@@ -507,15 +507,15 @@ export function LandingHero() {
             background: SKY_GRADIENT,
           }}
         >
-          <div ref={introCloneRef} aria-hidden className="absolute top-[6vh] left-[5vw] right-[5vw] text-white sm:right-auto sm:top-[26vh] sm:left-[7vw] sm:max-w-xl">
-            <h1 className="text-[clamp(2.4rem,5.5vw,4.5rem)] leading-[1.04] font-semibold tracking-[-0.04em]">
+          <div ref={introCloneRef} aria-hidden className="absolute top-[12vh] left-[5vw] right-[5vw] text-white sm:right-auto sm:top-[26vh] sm:left-[7vw] sm:max-w-xl">
+            <h1 className="text-[clamp(2rem,5.5vw,4.5rem)] leading-[1.08] font-semibold tracking-[-0.04em]">
               Agents &amp; Beyond
             </h1>
-            <p className="mt-5 max-w-md text-base leading-7 text-white/90">
+            <p className="mt-5 hidden max-w-md text-base leading-7 text-white/90 sm:block">
               This is your agent&rsquo;s wallet, redefined. Budget-capped,
               time-boxed, revocable — every trade proved on-chain.
             </p>
-            <span className="mt-7 inline-block rounded-full bg-[#17160f] px-7 py-3.5 text-sm font-medium text-white">
+            <span className="mt-5 inline-block rounded-full bg-[#17160f] px-7 py-3.5 text-sm font-medium text-white sm:mt-7">
               Create your iWallet
             </span>
           </div>
