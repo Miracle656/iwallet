@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useCurrentAccount, useSignAndExecuteTransaction, useSignTransaction } from "@mysten/dapp-kit";
 import type { Transaction } from "@mysten/sui/transactions";
@@ -52,7 +52,8 @@ export function CreateIWalletFlow() {
 
   const [ownerSource, setOwnerSource] = useState<OwnerSource | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const zkAddress = getZkLoginAddress();
+  const [zkAddress, setZkAddress] = useState<string | null>(null);
+  useEffect(() => { setZkAddress(getZkLoginAddress()); }, []);
 
   const ownerAddress =
     ownerSource === "wallet" ? account?.address ?? null :
