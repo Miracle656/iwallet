@@ -19,8 +19,8 @@ const PROVER_URL =
 const SALT_URL =
   process.env.NEXT_PUBLIC_ZK_SALT_URL ?? `${BACKEND}/v1/zklogin/salt`;
 
-const SESSION_KEY = "iwallet_zklogin_session";       // pre-callback (ephemeral key)
-const SIGNER_KEY  = "iwallet_zklogin_signer";        // post-callback (signing material)
+const SESSION_KEY = "iwallet_zklogin_session";  // pre-callback, sessionStorage (survives redirect)
+const SIGNER_KEY  = "iwallet_zklogin_signer";   // post-callback, localStorage (survives tab close)
 
 type StoredSession = {
   ephemeralPrivKey: string;
@@ -50,13 +50,13 @@ export function getZkLoginAddress(): string | null {
 export function clearZkLoginSession(): void {
   localStorage.removeItem("zklogin_address");
   localStorage.removeItem("zklogin_agent_id");
-  sessionStorage.removeItem(SIGNER_KEY);
+  localStorage.removeItem(SIGNER_KEY);
 }
 
-/** Returns stored signing material for the current session, or null if not signed in / session expired. */
+/** Returns stored signing material, or null if not signed in / proof expired. */
 export function getZkSignerMaterial(): ZkSignerMaterial | null {
   if (typeof window === "undefined") return null;
-  const raw = sessionStorage.getItem(SIGNER_KEY);
+  const raw = localStorage.getItem(SIGNER_KEY);
   if (!raw) return null;
   try {
     return JSON.parse(raw) as ZkSignerMaterial;
@@ -193,7 +193,7 @@ export async function processZkLoginCallback(): Promise<ZkLoginResult> {
     decoded.aud,
   ).toString();
 
-  // Keep signing material in sessionStorage for this tab's lifetime
+  // Keep signing material in localStorage so it survives tab close / navigation
   const signerMaterial: ZkSignerMaterial = {
     address,
     ephemeralPrivKey: session.ephemeralPrivKey,
@@ -201,7 +201,7 @@ export async function processZkLoginCallback(): Promise<ZkLoginResult> {
     addressSeed,
     zkProof,
   };
-  sessionStorage.setItem(SIGNER_KEY, JSON.stringify(signerMaterial));
+  localStorage.setItem(SIGNER_KEY, JSON.stringify(signerMaterial));
 
   // Send to backend for agent autonomous signing
   const storeRes = await fetch(`${BACKEND}/v1/auth/zklogin/store`, {
