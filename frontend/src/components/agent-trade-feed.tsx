@@ -10,12 +10,14 @@ import {
   fetchIdentityTrades,
   type Trade,
 } from "@/lib/trades";
+import { useAgentSocket } from "@/lib/agent-socket";
 import {
   HiOutlineArrowTrendingDown,
   HiOutlineArrowTrendingUp,
   HiOutlineBolt,
   HiOutlineCpuChip,
   HiOutlineSignal,
+  HiOutlineWifi,
 } from "react-icons/hi2";
 
 /**
@@ -38,6 +40,19 @@ export function AgentTradeFeed({
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loaded, setLoaded] = useState(false);
   const idsKey = identityIds?.join(",") ?? "";
+
+  // Socket.io live updates — merges incoming trades on top of the poll snapshot
+  const { connected, trades: socketTrades } = useAgentSocket({ identityId });
+
+  // Merge socket trades into the poll snapshot (dedup by id)
+  const merged = (() => {
+    if (socketTrades.length === 0) return trades;
+    const byId = new Map<string, Trade>(trades.map((t) => [t.id, t]));
+    for (const st of socketTrades) {
+      if (!byId.has(st.id)) byId.set(st.id, st as unknown as Trade);
+    }
+    return Array.from(byId.values()).sort((a, b) => b.ts - a.ts).slice(0, limit);
+  })();
 
   usePoll(
     () => {
@@ -67,7 +82,7 @@ export function AgentTradeFeed({
     );
   }
 
-  if (loaded && trades.length === 0) {
+  if (loaded && merged.length === 0) {
     return (
       <div className="py-10 text-center">
         <p className="inline-flex items-center gap-2 text-sm text-muted">
@@ -79,11 +94,18 @@ export function AgentTradeFeed({
   }
 
   return (
-    <ul className="flex flex-col gap-2.5">
-      {trades.map((t) => (
-        <TradeRow key={t.id} t={t} showOwner={!identityId} />
-      ))}
-    </ul>
+    <div className="flex flex-col gap-3">
+      {connected && (
+        <p className="inline-flex items-center gap-1.5 text-[11px] text-emerald-300">
+          <HiOutlineWifi className="text-xs" /> Live
+        </p>
+      )}
+      <ul className="flex flex-col gap-2.5">
+        {merged.map((t) => (
+          <TradeRow key={t.id} t={t} showOwner={!identityId} />
+        ))}
+      </ul>
+    </div>
   );
 }
 

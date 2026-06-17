@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { HashText } from "@/components/hash-text";
 import { AgentTradeFeed } from "@/components/agent-trade-feed";
 import type { ActivityItem, CoinHolding, IdentityProfile, PolicyView } from "@/lib/sui-client";
@@ -23,6 +23,14 @@ type AgentResponse = {
   execution_plan: string[];
   results: { agent: string; status: "success" | "error"; result: unknown }[];
   requires_confirmation: boolean;
+};
+
+type ChatMsg = {
+  id: string;
+  role: "user" | "agent";
+  text: string;
+  response?: AgentResponse;
+  error?: string;
 };
 
 const tabs = ["Portfolio", "Policy", "Agent", "Agent Trades", "Activity"] as const;
@@ -93,12 +101,12 @@ export function IWalletProfile({
       </section>
 
       <section className="rounded-[2.4rem] border border-border bg-surface p-5 sm:p-7">
-        <div className="flex flex-wrap gap-2 border-b border-border pb-4">
+        <div className="flex gap-2 overflow-x-auto border-b border-border pb-4 [&::-webkit-scrollbar]:hidden">
           {tabs.map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`rounded-full px-4 py-2 text-sm font-medium transition ${t === tab ? "bg-accent text-on-accent" : "text-muted hover:text-ink"}`}
+              className={`flex-shrink-0 rounded-full px-4 py-2 text-sm font-medium transition ${t === tab ? "bg-accent text-on-accent" : "text-muted hover:text-ink"}`}
             >
               {t}
             </button>
@@ -230,92 +238,172 @@ function PolicyTab({ policy }: { policy: PolicyView | null }) {
 }
 
 function AgentTab({ iWalletId }: { iWalletId: string }) {
-  const [prompt, setPrompt] = useState("");
+  const [msgs, setMsgs] = useState<ChatMsg[]>([]);
+  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [response, setResponse] = useState<AgentResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
-  async function execute() {
-    const p = prompt.trim();
-    if (!p) return;
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [msgs, loading]);
+
+  async function send() {
+    const text = input.trim();
+    if (!text || loading) return;
+    setMsgs((p) => [...p, { id: crypto.randomUUID(), role: "user", text }]);
+    setInput("");
     setLoading(true);
-    setError(null);
-    setResponse(null);
     try {
       const res = await fetch(`${BACKEND}/v1/agent/execute`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: p, iWalletId }),
+        body: JSON.stringify({ prompt: text, iWalletId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? `Agent error (${res.status})`);
-      setResponse(data as AgentResponse);
+      setMsgs((p) => [
+        ...p,
+        { id: crypto.randomUUID(), role: "agent", text: data.message, response: data as AgentResponse },
+      ]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unknown error");
+      setMsgs((p) => [
+        ...p,
+        { id: crypto.randomUUID(), role: "agent", text: "", error: e instanceof Error ? e.message : "Unknown error" },
+      ]);
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="rounded-[1.6rem] border border-accent/20 bg-accent/5 p-4">
-        <p className="inline-flex items-center gap-2 text-sm text-accent">
-          <HiOutlineCpuChip /> Agent prompt
-        </p>
-        <p className="mt-1 text-xs text-muted">
-          Tell the agent what to do in plain English. It routes your request to the right sub-agent automatically.
-        </p>
+    <div className="flex flex-col gap-4">
+      {/* Chat history */}
+      <div className="flex min-h-72 max-h-[460px] flex-col gap-3 overflow-y-auto rounded-[1.6rem] border border-border bg-canvas p-4">
+        {msgs.length === 0 && (
+          <div className="m-auto flex flex-col items-center gap-3 py-8 text-center">
+            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-elevated text-2xl text-accent">
+              <HiOutlineCpuChip />
+            </span>
+            <div>
+              <p className="text-sm font-medium text-ink">Ask your agent anything</p>
+              <p className="mt-1 text-xs text-muted">
+                Try &quot;swap 10 SUI for USDC&quot; or &quot;what&apos;s my policy cap?&quot;
+              </p>
+            </div>
+          </div>
+        )}
+
+        {msgs.map((msg) => (
+          <div
+            key={msg.id}
+            className={`flex items-start gap-2.5 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}
+          >
+            {msg.role === "agent" && (
+              <span className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-elevated text-accent text-sm">
+                <HiOutlineCpuChip />
+              </span>
+            )}
+
+            <div className={`flex max-w-[85%] flex-col gap-2 ${msg.role === "user" ? "items-end" : "items-start"}`}>
+              <div
+                className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                  msg.role === "user"
+                    ? "rounded-tr-sm bg-accent text-on-accent"
+                    : "rounded-tl-sm bg-elevated text-ink"
+                }`}
+              >
+                {msg.role === "user"
+                  ? msg.text
+                  : msg.error
+                    ? msg.error
+                    : (msg.response?.message ?? msg.text)}
+              </div>
+
+              {msg.response && msg.response.execution_plan.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {msg.response.execution_plan.map((step, i) => (
+                    <span key={i} className="rounded-full bg-accent/10 px-2.5 py-1 text-[11px] font-medium text-accent">
+                      {step}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {msg.response?.results.map((r, i) => (
+                <div
+                  key={i}
+                  className={`w-full rounded-[1rem] border p-3 ${
+                    r.status === "success"
+                      ? "border-emerald-300/25 bg-emerald-300/5"
+                      : "border-red-300/25 bg-red-300/5"
+                  }`}
+                >
+                  <p className={`text-[11px] font-semibold mb-1 ${r.status === "success" ? "text-emerald-300" : "text-red-300"}`}>
+                    {r.agent}
+                  </p>
+                  <pre className="whitespace-pre-wrap break-all text-[11px] text-muted">
+                    {typeof r.result === "string" ? r.result : JSON.stringify(r.result, null, 2)}
+                  </pre>
+                </div>
+              ))}
+
+              {msg.response?.requires_confirmation && (
+                <p className="text-[11px] text-amber-300">
+                  ⚠ Multiple actions — verify results above before treating them as final.
+                </p>
+              )}
+
+              {msg.error && (
+                <div className="w-full rounded-[1rem] border border-red-300/25 bg-red-300/5 p-3 text-xs text-red-300">
+                  {msg.error}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+
+        {loading && (
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-elevated text-accent text-sm">
+              <HiOutlineCpuChip />
+            </span>
+            <div className="rounded-2xl rounded-tl-sm bg-elevated px-4 py-3">
+              <div className="flex gap-1">
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-accent [animation-delay:0ms]" />
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-accent [animation-delay:150ms]" />
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-accent [animation-delay:300ms]" />
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div ref={bottomRef} />
       </div>
 
-      <div className="flex flex-col gap-2">
+      {/* Input bar */}
+      <div className="flex items-end gap-2">
         <textarea
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) execute(); }}
-          placeholder={`e.g. "swap 10 SUI for USDC" or "set my budget to 500 SUI"`}
-          rows={3}
-          className="w-full resize-none rounded-xl border border-border bg-canvas px-4 py-3 text-sm text-ink outline-none placeholder:text-dim focus:border-accent/50"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              send();
+            }
+          }}
+          placeholder='e.g. "swap 10 SUI for USDC" or "set my budget to 500 SUI"'
+          rows={2}
+          className="flex-1 resize-none rounded-xl border border-border bg-canvas px-4 py-3 text-sm text-ink outline-none placeholder:text-dim focus:border-accent/50"
         />
         <button
-          onClick={execute}
-          disabled={loading || !prompt.trim()}
-          className="self-end inline-flex items-center gap-2 rounded-full bg-accent px-6 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-soft disabled:opacity-40"
+          onClick={send}
+          disabled={loading || !input.trim()}
+          className="flex-shrink-0 self-end inline-flex items-center gap-2 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-on-accent hover:bg-accent-soft disabled:opacity-40"
         >
           <HiOutlinePaperAirplane />
-          {loading ? "Running…" : "Execute"}
+          <span className="hidden sm:inline">Send</span>
         </button>
       </div>
-
-      {error && (
-        <div className="rounded-[1.25rem] border border-red-300/30 bg-red-300/10 p-4 text-sm text-red-300">
-          {error}
-        </div>
-      )}
-
-      {response && (
-        <div className="flex flex-col gap-3">
-          <p className="text-xs text-dim">
-            Plan: <span className="text-ink">{response.execution_plan.join(" → ")}</span>
-          </p>
-          {response.results.map((r, i) => (
-            <div
-              key={i}
-              className={`rounded-[1.25rem] border p-4 ${r.status === "success" ? "border-accent/20 bg-accent/5" : "border-red-300/30 bg-red-300/10"}`}
-            >
-              <p className="text-xs font-medium text-dim">{r.agent}</p>
-              <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-words text-xs text-ink">
-                {typeof r.result === "string" ? r.result : JSON.stringify(r.result, null, 2)}
-              </pre>
-            </div>
-          ))}
-          {response.requires_confirmation && (
-            <p className="text-xs text-amber-300">
-              ⚠ Multiple actions detected — verify the results above before considering them final.
-            </p>
-          )}
-        </div>
-      )}
     </div>
   );
 }
