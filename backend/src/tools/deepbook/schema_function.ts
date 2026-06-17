@@ -22,7 +22,7 @@ import { grpcClient } from "../../lib/sui_client.ts";
 dotenv.config();
 
 const tx = new Transaction();
-const _keypair = Ed25519Keypair.fromSecretKey(process.env.PK!);
+const _keypair = process.env.PK ? Ed25519Keypair.fromSecretKey(process.env.PK) : null;
 
 // create balance manager
 export async function createBalanceManager(
