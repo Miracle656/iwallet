@@ -1,47 +1,53 @@
-/**
- * Enoki sponsored-transaction client (talks to our backend, which holds the
- * private Enoki key). Lets an owner with zero SUI create an iWallet — Enoki
- * pays gas, scoped to the allowed move-call targets.
- */
+// src/lib/enoki.ts
+import { 
+  EnokiFlow, 
+  EnokiClient,
+  EnokiNetwork,
+  createLocalStorage,
+  createDefaultEncryption,
+  registerEnokiWallets,
+  isEnokiNetwork
+} from '@mysten/enoki';
+import { getJsonRpcFullnodeUrl, SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 
-const BASE = (process.env.NEXT_PUBLIC_BACKEND_URL ?? "").replace(/\/$/, "");
+const NETWORK = (process.env.NEXT_PUBLIC_SUI_NETWORK as EnokiNetwork) || 'mainnet';
+const suiClient  = new SuiJsonRpcClient({
+  url: getJsonRpcFullnodeUrl("testnet"),
+  network: 'testnet'
+})
 
-export function enokiConfigured(): boolean {
-  return BASE.length > 0;
-}
+// Client-side Enoki flow (for OAuth/zkLogin)
+// EnokiFlow is a class you instantiate, not a factory function
+registerEnokiWallets({
+    client: suiClient,
+    network: 'testnet',
+      apiKey: process.env.NEXT_PUBLIC_ENOKI_API_KEY!,
+      providers: {
+        google: {
+          clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID as string
+        }
+      }
+    })
 
-/** Ask the backend to sponsor a transaction-kind. Returns the full tx bytes to sign + a digest. */
-export async function sponsorTransaction(args: {
-  transactionKindBytes: string; // base64
-  sender: string;
-  allowedMoveCallTargets: string[];
-  allowedAddresses?: string[];
-}): Promise<{ bytes: string; digest: string }> {
-  const res = await fetch(`${BASE}/enoki/sponsor`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(args),
+
+export function setupEnokiWallets(network: 'testnet' | 'mainnet' | 'devnet') {
+  if (!isEnokiNetwork(network)) return () => {};
+
+  return registerEnokiWallets({
+    client: suiClient,
+    network,
+    apiKey: process.env.NEXT_PUBLIC_ENOKI_API_KEY!,
+    providers: {
+      google: {
+        clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
+      },
+    },
   });
-  if (!res.ok) {
-    const err = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(err.error ?? `sponsor failed (${res.status})`);
-  }
-  return res.json();
 }
 
-/** Execute the sponsored tx with the owner's signature. */
-export async function executeSponsored(
-  digest: string,
-  signature: string,
-): Promise<{ digest: string }> {
-  const res = await fetch(`${BASE}/enoki/execute`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ digest, signature }),
-  });
-  if (!res.ok) {
-    const err = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(err.error ?? `execute failed (${res.status})`);
-  }
-  return res.json();
-}
+// Backend client (for sponsored transactions)
+export const enokiClient = typeof window === 'undefined'
+  ? new EnokiClient({
+      apiKey: process.env.ENOKI_SECRET_KEY!,
+    })
+  : null;

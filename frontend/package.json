@@ -13,6 +13,7 @@
     "@dicebear/styles": "^10.2.0",
     "@mysten/dapp-kit": "^1.0.6",
     "@mysten/deepbook-v3": "^1.2.1",
+    "@mysten/enoki": "^1.1.0",
     "@mysten/sui": "^2.16.2",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
