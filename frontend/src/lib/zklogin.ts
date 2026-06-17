@@ -19,8 +19,8 @@ const PROVER_URL =
 const SALT_URL =
   process.env.NEXT_PUBLIC_ZK_SALT_URL ?? `${BACKEND}/v1/zklogin/salt`;
 
-const SESSION_KEY = "iwallet_zklogin_session";  // pre-callback, sessionStorage (survives redirect)
-const SIGNER_KEY  = "iwallet_zklogin_signer";   // post-callback, localStorage (survives tab close)
+const SESSION_KEY = "iwallet_zklogin_session"; // pre-callback, sessionStorage (survives redirect)
+const SIGNER_KEY = "iwallet_zklogin_signer"; // post-callback, localStorage (survives tab close)
 
 type StoredSession = {
   ephemeralPrivKey: string;
@@ -166,12 +166,15 @@ export async function processZkLoginCallback(): Promise<ZkLoginResult> {
   if (!jwt) throw new Error("No id_token in callback URL");
 
   const raw = sessionStorage.getItem(SESSION_KEY);
-  if (!raw) throw new Error("No zkLogin session found — did the page reload mid-flow?");
+  if (!raw)
+    throw new Error("No zkLogin session found — did the page reload mid-flow?");
   const session: StoredSession = JSON.parse(raw);
   sessionStorage.removeItem(SESSION_KEY);
 
   const ephemeral = Ed25519Keypair.fromSecretKey(session.ephemeralPrivKey);
-  const extendedEphemeralPublicKey = getExtendedEphemeralPublicKey(ephemeral.getPublicKey());
+  const extendedEphemeralPublicKey = getExtendedEphemeralPublicKey(
+    ephemeral.getPublicKey(),
+  );
 
   const salt = await fetchSalt(jwt);
   const zkProof = await fetchZkProof({
