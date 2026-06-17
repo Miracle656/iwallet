@@ -1,10 +1,10 @@
 import { Hono } from "hono";
 import { AgentService } from "./service.ts";
-import { semanticRouter } from "./router.ts";
-import { runKimiWalletOps } from "./workers/kimi_wallet_ops.ts";
-import { runClaudeDeepbook } from "./workers/claude_deepbook.ts";
-import { runQwenPolicyGuardian } from "./workers/qwen_policy.ts";
-import { executeUserRequest } from "./orchestrator.ts";
+// import { semanticRouter } from "./router.ts";
+// import { runKimiWalletOps } from "./workers/kimi_wallet_ops.ts";
+// import { runClaudeDeepbook } from "./workers/claude_deepbook.ts";
+// import { runQwenPolicyGuardian } from "./workers/qwen_policy.ts";
+import { processTasks } from "./orchestrator.ts";
 
 export const agent = new Hono();
 const agentService = new AgentService();
@@ -47,6 +47,6 @@ agent.get("/get_name_record/:name", async (c) => {
 agent.post("/execute", async (c) => {
   const { prompt, iWalletId } = await c.req.json();
 
-  const result = await executeUserRequest(iWalletId, prompt);
+  const result = await processTasks(prompt, ["task1"], {});
   return c.json({ message: "Execution successful", result });
 });

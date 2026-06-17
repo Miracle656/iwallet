@@ -1354,5 +1354,85 @@
       "additionalProperties": false
     },
     "strict": true
+  },
+  {
+    "type": "function",
+    "name": "getAvailableCoins",
+    "description": "Use getAvailableCoins to retrieve a list of all supported coin symbols (e.g., SUI, USDC, DEEP) on the specified network.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "network": {
+          "type": "string",
+          "enum": ["testnet", "mainnet"],
+          "description": "The network environment to query."
+        }
+      },
+      "required": ["network"],
+      "additionalProperties": false
+    },
+    "strict": true
+  },
+  {
+    "type": "function",
+    "name": "getCoinDetails",
+    "description": "Use getCoinDetails to get the precise on-chain address, coin type, and scalar decimal details for a specific coin symbol.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "coinSymbol": {
+          "type": "string",
+          "description": "The symbol of the coin to query (e.g., SUI, USDC)."
+        },
+        "network": {
+          "type": "string",
+          "enum": ["testnet", "mainnet"],
+          "description": "The network environment to query."
+        }
+      },
+      "required": ["coinSymbol", "network"],
+      "additionalProperties": false
+    },
+    "strict": true
+  },
+  {
+    "type": "function",
+    "name": "getAvailablePools",
+    "description": "Use getAvailablePools to retrieve a list of all supported DeepBook trading pool keys (e.g., DEEP_SUI, SUI_USDC).",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "network": {
+          "type": "string",
+          "enum": ["testnet", "mainnet"],
+          "description": "The network environment to query."
+        }
+      },
+      "required": ["network"],
+      "additionalProperties": false
+    },
+    "strict": true
+  },
+  {
+    "type": "function",
+    "name": "getPoolDetails",
+    "description": "Use getPoolDetails to get the exact on-chain pool address, base coin, and quote coin for a specific DeepBook pool key.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "poolKey": {
+          "type": "string",
+          "description": "The pool key to query (e.g., DEEP_SUI)."
+        },
+        "network": {
+          "type": "string",
+          "enum": ["testnet", "mainnet"],
+          "description": "The network environment to query."
+        }
+      },
+      "required": ["poolKey", "network"],
+      "additionalProperties": false
+    },
+    "strict": true
   }
 ]

@@ -20,18 +20,7 @@
   --color-accent: #298dff;
   --color-accent-soft: #5aa9ff;
   --color-on-accent: #ffffff;
-  --color-canvas: #101113;
-  --color-surface: #131416;
-  --color-elevated: #222328;
-  --color-border: rgba(255, 255, 255, 0.10);
-  --color-ink: #e5eef1;
-  --color-muted: #92979d;
-  --color-dim: #6f747a;
-}
-
-/* :root.light beats the @theme :root defaults regardless of layer order */
-:root.light,
-html.light {
+  /* White / light is the default */
   --color-canvas: #ffffff;
   --color-surface: #f4f6fa;
   --color-elevated: #e7edf4;
@@ -39,6 +28,18 @@ html.light {
   --color-ink: #0b1220;
   --color-muted: #5d6675;
   --color-dim: #8b93a1;
+}
+
+/* .dark class restores the dark palette */
+:root.dark,
+html.dark {
+  --color-canvas: #101113;
+  --color-surface: #131416;
+  --color-elevated: #222328;
+  --color-border: rgba(255, 255, 255, 0.10);
+  --color-ink: #e5eef1;
+  --color-muted: #92979d;
+  --color-dim: #6f747a;
 }
 
 body {

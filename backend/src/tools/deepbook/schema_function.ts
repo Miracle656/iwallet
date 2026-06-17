@@ -18,6 +18,14 @@ import type {
   SelfMatchingOptions,
 } from "../../types/index.js";
 import { grpcClient } from "../../lib/sui_client.ts";
+import {
+  testnetCoins,
+  mainnetCoins,
+  testnetPools,
+  mainnetPools,
+  testnetMarginPools,
+  mainnetMarginPools,
+} from "../../utils/constants.ts";
 
 dotenv.config();
 
@@ -724,4 +732,45 @@ export function vote(
 
 export function claimRebates(poolKey: string, balanceManagerKey: string) {
   return grpcClient.deepbook.deepBook.claimRebates(poolKey, balanceManagerKey);
+}
+
+/*
+  Configuration Lookup Functions
+  These allow the AI to dynamically resolve symbols to 0x addresses.
+*/
+
+export async function getAvailableCoins(network: "testnet" | "mainnet") {
+  const coins = network === "mainnet" ? mainnetCoins : testnetCoins;
+  return Object.keys(coins);
+}
+
+export async function getCoinDetails(
+  coinSymbol: string,
+  network: "testnet" | "mainnet",
+) {
+  const coins = network === "mainnet" ? mainnetCoins : testnetCoins;
+
+  if (!coins[coinSymbol]) {
+    throw new Error(`Coin ${coinSymbol} is not supported on ${network}.`);
+  }
+
+  return coins[coinSymbol];
+}
+
+export async function getAvailablePools(network: "testnet" | "mainnet") {
+  const pools = network === "mainnet" ? mainnetPools : testnetPools;
+  return Object.keys(pools);
+}
+
+export async function getPoolDetails(
+  poolKey: string,
+  network: "testnet" | "mainnet",
+) {
+  const pools = network === "mainnet" ? mainnetPools : testnetPools;
+
+  if (!pools[poolKey]) {
+    throw new Error(`Pool ${poolKey} is not supported on ${network}.`);
+  }
+
+  return pools[poolKey];
 }

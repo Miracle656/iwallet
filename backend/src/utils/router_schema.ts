@@ -1,52 +1,35 @@
 // backend/src/utils/router_schema.ts
-import type { AgentType } from "../types/agent.ts";
 
-export const RouterSchema = {
-  name: "route_user_intent",
-  description: "Analyze user prompt and identify ALL required DeFi actions",
+export const SimplePlannerSchema = {
+  name: "plan_defi_operations",
+  description:
+    "Breaks down a user prompt into sequential natural language tasks.",
   parameters: {
     type: "object",
     properties: {
-      required_agents: {
-        type: "array",
-        items: {
-          type: "string",
-          enum: ["STANDARD_TRANSFER", "DEEPBOOK_TRADER", "POLICY_GUARDIAN"],
-        },
-        description: "List ALL specialists needed to fulfill the request",
-      },
       tasks: {
         type: "array",
+        description:
+          "A chronological list of tasks to execute the user's intent.",
         items: {
           type: "object",
           properties: {
-            agent: {
+            task_description: {
               type: "string",
-              enum: ["STANDARD_TRANSFER", "DEEPBOOK_TRADER", "POLICY_GUARDIAN"],
+              description:
+                "A clear, concise description of the action to be performed (e.g., 'Swap USDC for SUI').",
             },
-            description: {
-              type: "string",
-              description: "What this specific agent needs to do",
-            },
-            extracted_params: {
+            extracted_data: {
               type: "object",
               description:
-                "Key-value pairs extracted from prompt for this task",
+                "Key-value pairs of any specific amounts, coin symbols, or addresses explicitly mentioned by the user. Leave empty if none are provided.",
+              additionalProperties: true,
             },
           },
-          required: ["agent", "description"],
+          required: ["task_description", "extracted_data"],
         },
       },
-      execution_order: {
-        type: "string",
-        enum: ["sequential", "parallel"],
-        description: "Whether tasks depend on each other or can run together",
-      },
-      requires_confirmation: {
-        type: "boolean",
-        description: "True if multiple transactions need user approval",
-      },
     },
-    required: ["required_agents", "tasks", "execution_order"],
+    required: ["tasks"],
   },
-} as const;
+};

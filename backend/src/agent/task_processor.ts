@@ -1,11 +1,20 @@
 import data from "../tools/deepbook/schema.json" with { type: "json" };
 import OpenAI from "openai";
+import { executeDefiFunction } from "./execution_registry.ts";
+import { any } from "zod";
 
-// Using OpenAI's exact nested 'tools' format
-const tool_list = data.map((func) => ({
+let tool_list = data;
+const formatted_tools = tool_list.map((tool: any) => ({
   type: "function",
-  function: func,
+  function: {
+    name: tool.name,
+    description: tool.description,
+    parameters: tool.parameters,
+  },
 }));
+let task_list = ["task1", "task2", "task3"];
+
+console.log(task_list);
 
 const kimi = new OpenAI({
   apiKey: process.env.NVIDIA_API_KEY,
@@ -14,15 +23,13 @@ const kimi = new OpenAI({
 
 export async function processTasks(
   originalPrompt: string,
-  taskList: string[], // e.g., ["Swap SUI for USDC", "Stake USDC"]
   params: Record<string, unknown>,
 ) {
   const executionResults = [];
-
-  for (let i = 0; i < taskList.length; i++) {
-    const currentTask = taskList[i];
+  for (let i = 0; i < task_list.length; i++) {
+    const currentTask = task_list[i];
     console.log(
-      `\n⚙️ Processing Task [${i + 1}/${taskList.length}]: ${currentTask}`,
+      `🔄 [Kimi] Processing task ${i + 1}/${task_list.length}: ${currentTask}`,
     );
 
     const response = await kimi.chat.completions.create({
@@ -30,14 +37,12 @@ export async function processTasks(
       messages: [
         {
           role: "system",
-          content: `You are the Executor Agent handling DeFi actions.
-Your goal is to map the specific task provided by the user to the correct tool from your schema.
-Do NOT attempt to solve other parts of the overarching goal—focus ONLY on the current task.`,
+          content: `You handle standard DeFi actions: Swaps, Staking, Transfers.
+Analyze the user prompt and trigger the correct tool. If you have enough info, call the tool.`,
         },
-        // We pass the CURRENT TASK to the LLM, not the whole prompt
         {
           role: "user",
-          content: `Original context: "${originalPrompt}"\n\nCurrent task to execute: "${currentTask}"`,
+          content: `Original goal: "${originalPrompt}"\n\nCurrent task to map: "${currentTask}"`,
         },
       ],
       tools: tool_list,
@@ -60,7 +65,6 @@ Do NOT attempt to solve other parts of the overarching goal—focus ONLY on the 
         arguments: JSON.parse(toolCall.function.arguments),
       });
 
-      // TODO: Actually execute your Move/Sui SDK function right here
       const result = await executeDefiFunction(
         toolCall.function.name,
         JSON.parse(toolCall.function.arguments),
@@ -70,7 +74,6 @@ Do NOT attempt to solve other parts of the overarching goal—focus ONLY on the 
         `💬 [Kimi] No tool needed for this task. Text response:`,
         message.content,
       );
-
       executionResults.push({
         task: currentTask,
         status: "TEXT_RESPONSE",
@@ -78,12 +81,5 @@ Do NOT attempt to solve other parts of the overarching goal—focus ONLY on the 
       });
     }
   }
-
-  // Return the FULL chronological list of tool calls once the loop finishes
   return executionResults;
 }
-
-async function executeDefiFunction(
-  functionName: string,
-  args: Record<string, unknown>,
-) {}

@@ -1,6 +1,6 @@
 // backend/src/agent/router.ts
 import OpenAI from "openai";
-import { RouterSchema } from "../utils/router_schema.ts";
+import { SimplePlannerSchema } from "../utils/router_schema.ts";
 import type { RoutingResult } from "../types/agent.ts";
 
 const openai = new OpenAI({
@@ -13,26 +13,31 @@ const openai = new OpenAI({
 export async function semanticRouter(
   userPrompt: string,
 ): Promise<RoutingResult> {
-  console.log(`🚦 Routing Intent: "${userPrompt}"`);
+  console.log(`🚦 Planning Tasks for: "${userPrompt}"`);
 
   const response = await openai.chat.completions.create({
     model: "openai/gpt-oss-120b",
     messages: [
       {
         role: "system",
-        content: `You are the primary intent router for an autonomous DeFi wallet.
-CRITICAL: A user prompt may contain MULTIPLE actions. You MUST identify ALL of them.
-Examples:
-- "send 10 SUI to goldman and swap USDC for BTC" → requires BOTH STANDARD_TRANSFER and DEEPBOOK_TRADER
-- "transfer 5 SUI to alice" → only STANDARD_TRANSFER
-- "set my daily limit to 1000 and swap SUI for USDC" → POLICY_GUARDIAN + DEEPBOOK_TRADER
+        content: `You are a problem-based task assigner the primary Task Planner for an autonomous DeFi wallet.
+      Your job is to break down the user's intent into a sequential list of logical, actionable steps.
 
-Break down each action into a separate task object.`,
+      CRITICAL RULES:
+      1. Identify every discrete action the user wants to take.
+      2. Sequence them chronologically (e.g., you must create an account before depositing).
+      3. Extract any explicitly stated amounts, coin symbols (like SUI, USDC), or addresses into the 'extracted_data' object.
+
+      Example:
+      User: "Deposit 50 USDC into my balance manager and then place a limit order to buy SUI at 0.5."
+      Tasks:
+      1. task_description: "Deposit funds into balance manager", extracted_data: { "amount": 50, "coin": "USDC" }
+      2. task_description: "Place a limit order to buy", extracted_data: { "target_coin": "SUI", "price": 0.5 }`,
       },
       { role: "user", content: userPrompt },
     ],
-    functions: [RouterSchema],
-    function_call: { name: "route_user_intent" },
+    functions: [SimplePlannerSchema],
+    function_call: { name: "plan_defi_operations" },
     temperature: 0.0,
   });
 
@@ -42,5 +47,8 @@ Break down each action into a separate task object.`,
   }
 
   const routingData = JSON.parse(args) as RoutingResult;
+  console.log(
+    `📋 Generated ${routingData.tasks.length} tasks for the execution agent.`,
+  );
   return routingData;
 }

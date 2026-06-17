@@ -3,18 +3,29 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { PasskeyKeypair } from "@mysten/sui/keypairs/passkey";
-import { useCurrentAccount, useSignAndExecuteTransaction, useSignTransaction } from "@mysten/dapp-kit";
+import {
+  useCurrentAccount,
+  useSignAndExecuteTransaction,
+  useSignTransaction,
+} from "@mysten/dapp-kit";
 import type { Transaction } from "@mysten/sui/transactions";
 import { toBase64, fromBase64 } from "@mysten/sui/utils";
 import { AnimatedHoverText } from "@/components/animated-hover-text";
 import { HashText } from "@/components/hash-text";
 import { addLocalIdentityId } from "@/lib/local-identities";
 import { createPasskeyOwner } from "@/lib/passkey";
-import { buildCreateIdentityTx, buildSetPolicyTx, suiClient } from "@/lib/sui-client";
+import {
+  buildCreateIdentityTx,
+  buildSetPolicyTx,
+  suiClient,
+} from "@/lib/sui-client";
 import { IWALLET_PACKAGE_ID } from "@/lib/sui-config";
-import { enokiConfigured, executeSponsored, sponsorTransaction } from "@/lib/enoki";
 import { fetchVerificationKeyBytes } from "@/lib/vk";
-import { computeIdentityHash, generateWitness, witnessToHex } from "@/lib/witness";
+import {
+  computeIdentityHash,
+  generateWitness,
+  witnessToHex,
+} from "@/lib/witness";
 import {
   HiOutlineArrowLeft,
   HiOutlineArrowRight,
@@ -59,13 +70,18 @@ export function CreateIWalletFlow() {
   const [error, setError] = useState<string | null>(null);
 
   const ownerAddress =
-    ownerSource === "wallet" ? account?.address ?? null :
-    ownerSource === "passkey" ? passkeyAddress : null;
+    ownerSource === "wallet"
+      ? (account?.address ?? null)
+      : ownerSource === "passkey"
+        ? passkeyAddress
+        : null;
 
   // Witness
   const [witnessHex, setWitnessHex] = useState<string | null>(null);
   const [identityHash, setIdentityHash] = useState<string | null>(null);
-  const [identityHashBytes, setIdentityHashBytes] = useState<Uint8Array | null>(null);
+  const [identityHashBytes, setIdentityHashBytes] = useState<Uint8Array | null>(
+    null,
+  );
 
   // Policy form
   const [budget, setBudget] = useState("100");
@@ -151,7 +167,10 @@ export function CreateIWalletFlow() {
     allowedMoveCallTargets: string[],
   ): Promise<SubmitResult> {
     if (!ownerAddress) throw new Error("No owner");
-    const kindBytes = await tx.build({ client: suiClient, onlyTransactionKind: true });
+    const kindBytes = await tx.build({
+      client: suiClient,
+      onlyTransactionKind: true,
+    });
     const { bytes, digest } = await sponsorTransaction({
       transactionKindBytes: toBase64(kindBytes),
       sender: ownerAddress,
@@ -175,12 +194,18 @@ export function CreateIWalletFlow() {
   }
 
   // Try sponsored (gasless) first; fall back to owner-pays-gas on any failure.
-  async function submit(tx: Transaction, allowedMoveCallTargets: string[]): Promise<SubmitResult> {
+  async function submit(
+    tx: Transaction,
+    allowedMoveCallTargets: string[],
+  ): Promise<SubmitResult> {
     if (enokiConfigured()) {
       try {
         return await submitSponsored(tx, allowedMoveCallTargets);
       } catch (e) {
-        console.warn("[create] sponsored failed, falling back to owner-pays-gas:", e);
+        console.warn(
+          "[create] sponsored failed, falling back to owner-pays-gas:",
+          e,
+        );
       }
     }
     return submitDirect(tx);
@@ -210,10 +235,14 @@ export function CreateIWalletFlow() {
       if (!newId) throw new Error(`IIdentity not created in tx ${r1.digest}`);
 
       const budgetMist = BigInt(Math.max(0, Math.floor(Number(budget) * 1e9)));
-      const expirationMs = BigInt(Date.now() + Math.max(1, Number(expiryDays)) * 86_400_000);
+      const expirationMs = BigInt(
+        Date.now() + Math.max(1, Number(expiryDays)) * 86_400_000,
+      );
       const allow = recipient.trim() ? [recipient.trim()] : [];
       const tx2 = buildSetPolicyTx(newId, budgetMist, allow, expirationMs);
-      const r2 = await submit(tx2, [`${IWALLET_PACKAGE_ID}::prototype::set_policy`]);
+      const r2 = await submit(tx2, [
+        `${IWALLET_PACKAGE_ID}::prototype::set_policy`,
+      ]);
       if (r2.effects?.status?.status !== "success") {
         throw new Error(r2.effects?.status?.error ?? "set_policy failed");
       }
@@ -243,17 +272,21 @@ export function CreateIWalletFlow() {
   const isLast = step === steps.length - 1;
 
   return (
-    <section className="rounded-[2.4rem] border border-border bg-surface p-5 sm:p-7">
+    <section className="border-border bg-surface rounded-[2.4rem] border p-5 sm:p-7">
       <div className="flex flex-wrap justify-center gap-2">
         {steps.map((label, index) => (
           <button
             key={label}
             onClick={() => setStep(index)}
             data-hover-trigger
-            className={`cursor-pointer rounded-full border px-5 py-3 text-sm ${index === step ? "border-border text-ink" : "border-transparent text-dim"}`}
+            className={`cursor-pointer rounded-full border px-5 py-3 text-sm ${index === step ? "border-border text-ink" : "text-dim border-transparent"}`}
           >
             <span className="mr-2 font-mono text-xs">{index + 1}</span>
-            {index === step ? <AnimatedHoverText>{label}</AnimatedHoverText> : label}
+            {index === step ? (
+              <AnimatedHoverText>{label}</AnimatedHoverText>
+            ) : (
+              label
+            )}
           </button>
         ))}
       </div>
@@ -265,21 +298,30 @@ export function CreateIWalletFlow() {
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full rounded-xl border border-border bg-canvas px-4 py-2.5 text-sm text-ink outline-none focus:border-accent/50"
+                className="border-border bg-canvas text-ink focus:border-accent/50 w-full rounded-xl border px-4 py-2.5 text-sm outline-none"
               />
             </Field>
 
             {ownerSource ? (
-              <div className="rounded-[1.25rem] border border-accent/20 bg-accent/5 p-4">
+              <div className="border-accent/20 bg-accent/5 rounded-[1.25rem] border p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="inline-flex items-center gap-2 text-xs text-dim">
-                      {ownerSource === "wallet" ? <HiOutlineWallet /> : <HiOutlineFingerPrint />}
+                    <p className="text-dim inline-flex items-center gap-2 text-xs">
+                      {ownerSource === "wallet" ? (
+                        <HiOutlineWallet />
+                      ) : (
+                        <HiOutlineFingerPrint />
+                      )}
                       Owner ({ownerSource})
                     </p>
-                    <p className="mt-2"><HashText value={ownerAddress!} chars={16} /></p>
+                    <p className="mt-2">
+                      <HashText value={ownerAddress!} chars={16} />
+                    </p>
                   </div>
-                  <button onClick={resetOwner} className="rounded-full border border-border px-3 py-1.5 text-xs text-ink hover:text-accent">
+                  <button
+                    onClick={resetOwner}
+                    className="border-border text-ink hover:text-accent rounded-full border px-3 py-1.5 text-xs"
+                  >
                     Switch
                   </button>
                 </div>
@@ -290,60 +332,88 @@ export function CreateIWalletFlow() {
                   type="button"
                   onClick={pickWallet}
                   disabled={!account}
-                  className="flex flex-col items-start gap-2 rounded-[1.25rem] border border-border bg-canvas p-4 text-left transition hover:border-accent/40 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="border-border bg-canvas hover:border-accent/40 flex flex-col items-start gap-2 rounded-[1.25rem] border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <span className="inline-flex items-center gap-2 text-sm font-medium text-ink">
+                  <span className="text-ink inline-flex items-center gap-2 text-sm font-medium">
                     <HiOutlineWallet className="text-accent" /> Connected wallet
                   </span>
-                  <span className="text-xs text-muted">
-                    {account ? <HashText value={account.address} chars={6} /> : "Connect from the navbar first"}
+                  <span className="text-muted text-xs">
+                    {account ? (
+                      <HashText value={account.address} chars={6} />
+                    ) : (
+                      "Connect from the navbar first"
+                    )}
                   </span>
                 </button>
                 <button
                   type="button"
                   onClick={pickPasskey}
                   disabled={busyPasskey}
-                  className="flex flex-col items-start gap-2 rounded-[1.25rem] border border-border bg-canvas p-4 text-left transition hover:border-accent/40 disabled:opacity-50"
+                  className="border-border bg-canvas hover:border-accent/40 flex flex-col items-start gap-2 rounded-[1.25rem] border p-4 text-left transition disabled:opacity-50"
                 >
-                  <span className="inline-flex items-center gap-2 text-sm font-medium text-ink">
+                  <span className="text-ink inline-flex items-center gap-2 text-sm font-medium">
                     <HiOutlineFingerPrint className="text-accent" /> Passkey
                   </span>
-                  <span className="text-xs text-muted">
-                    {busyPasskey ? "Waiting for passkey…" : "Create a new passkey on this device"}
+                  <span className="text-muted text-xs">
+                    {busyPasskey
+                      ? "Waiting for passkey…"
+                      : "Create a new passkey on this device"}
                   </span>
                 </button>
               </div>
             )}
 
-            {error && step === 0 && <p className="text-sm text-red-300">{error}</p>}
+            {error && step === 0 && (
+              <p className="text-sm text-red-300">{error}</p>
+            )}
           </Panel>
         )}
 
         {step === 1 && (
-          <Panel icon={<HiOutlineIdentification />} title="Identity — secret witness">
-            <p className="text-sm text-muted">
-              The secret witness <code className="text-ink">w</code> is generated locally and
-              never leaves your browser. The chain only ever sees{" "}
-              <code className="text-ink">Poseidon(w)</code>. Keep the recovery file — it&apos;s
-              your fund-recovery key if the agent goes offline.
+          <Panel
+            icon={<HiOutlineIdentification />}
+            title="Identity — secret witness"
+          >
+            <p className="text-muted text-sm">
+              The secret witness <code className="text-ink">w</code> is
+              generated locally and never leaves your browser. The chain only
+              ever sees <code className="text-ink">Poseidon(w)</code>. Keep the
+              recovery file — it&apos;s your fund-recovery key if the agent goes
+              offline.
             </p>
             {identityHash ? (
               <>
-                <div className="rounded-[1.25rem] border border-border p-4">
-                  <p className="text-xs text-dim">Identity hash — Poseidon(w), 32-byte LE</p>
-                  <p className="mt-2"><HashText value={identityHash} chars={16} /></p>
+                <div className="border-border rounded-[1.25rem] border p-4">
+                  <p className="text-dim text-xs">
+                    Identity hash — Poseidon(w), 32-byte LE
+                  </p>
+                  <p className="mt-2">
+                    <HashText value={identityHash} chars={16} />
+                  </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <button onClick={onGenerateWitness} data-hover-trigger className="rounded-full border border-border px-5 py-2.5 text-sm font-medium text-ink hover:text-accent">
+                  <button
+                    onClick={onGenerateWitness}
+                    data-hover-trigger
+                    className="border-border text-ink hover:text-accent rounded-full border px-5 py-2.5 text-sm font-medium"
+                  >
                     <AnimatedHoverText>Regenerate</AnimatedHoverText>
                   </button>
-                  <button onClick={onDownloadRecovery} data-hover-trigger className="inline-flex items-center gap-2 rounded-full bg-elevated px-5 py-2.5 text-sm font-semibold text-ink hover:text-accent">
+                  <button
+                    onClick={onDownloadRecovery}
+                    data-hover-trigger
+                    className="bg-elevated text-ink hover:text-accent inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold"
+                  >
                     <HiOutlineShieldCheck /> Download recovery
                   </button>
                 </div>
               </>
             ) : (
-              <button onClick={onGenerateWitness} data-hover-trigger className="inline-flex w-fit items-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-semibold text-on-accent hover:bg-accent-soft">
+              <button
+                onClick={onGenerateWitness}
+                data-hover-trigger
+                className="bg-accent text-on-accent hover:bg-accent-soft inline-flex w-fit items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold"
+              >
                 <HiOutlineIdentification /> Generate secret witness
               </button>
             )}
@@ -351,26 +421,50 @@ export function CreateIWalletFlow() {
         )}
 
         {step === 2 && (
-          <Panel icon={<HiOutlineLockClosed />} title="Policy — on-chain mandate">
-            <p className="text-sm text-muted">
-              These caps are enforced on-chain by <code className="text-ink">AgentPolicy</code>:
-              the agent can never exceed the budget, send outside the allowed pool, or act past expiry.
+          <Panel
+            icon={<HiOutlineLockClosed />}
+            title="Policy — on-chain mandate"
+          >
+            <p className="text-muted text-sm">
+              These caps are enforced on-chain by{" "}
+              <code className="text-ink">AgentPolicy</code>: the agent can never
+              exceed the budget, send outside the allowed pool, or act past
+              expiry.
             </p>
             <Field label="Budget cap (SUI)">
-              <input value={budget} onChange={(e) => setBudget(e.target.value)} inputMode="decimal" className="w-full rounded-xl border border-border bg-canvas px-4 py-2.5 text-sm text-ink outline-none focus:border-accent/50" />
+              <input
+                value={budget}
+                onChange={(e) => setBudget(e.target.value)}
+                inputMode="decimal"
+                className="border-border bg-canvas text-ink focus:border-accent/50 w-full rounded-xl border px-4 py-2.5 text-sm outline-none"
+              />
             </Field>
             <Field label="Expires in (days)">
-              <input value={expiryDays} onChange={(e) => setExpiryDays(e.target.value)} inputMode="numeric" className="w-full rounded-xl border border-border bg-canvas px-4 py-2.5 text-sm text-ink outline-none focus:border-accent/50" />
+              <input
+                value={expiryDays}
+                onChange={(e) => setExpiryDays(e.target.value)}
+                inputMode="numeric"
+                className="border-border bg-canvas text-ink focus:border-accent/50 w-full rounded-xl border px-4 py-2.5 text-sm outline-none"
+              />
             </Field>
             <Field label="Allowed recipient (DeepBook pool address — optional)">
-              <input value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="0x… pool id" className="w-full rounded-xl border border-border bg-canvas px-4 py-2.5 font-mono text-xs text-ink outline-none placeholder:text-dim focus:border-accent/50" />
+              <input
+                value={recipient}
+                onChange={(e) => setRecipient(e.target.value)}
+                placeholder="0x… pool id"
+                className="border-border bg-canvas text-ink placeholder:text-dim focus:border-accent/50 w-full rounded-xl border px-4 py-2.5 font-mono text-xs outline-none"
+              />
             </Field>
           </Panel>
         )}
 
         {step === 3 && (
           <Panel icon={<HiOutlineShieldCheck />} title="Review & create">
-            <Summary label={`Owner (${ownerSource ?? "—"})`} value={ownerAddress ?? "—"} mono />
+            <Summary
+              label={`Owner (${ownerSource ?? "—"})`}
+              value={ownerAddress ?? "—"}
+              mono
+            />
             <Summary label="Identity hash" value={identityHash ?? "—"} mono />
             <Summary label="Budget cap" value={`${budget} SUI`} />
             <Summary label="Expiry" value={`${expiryDays} day(s)`} />
@@ -378,18 +472,25 @@ export function CreateIWalletFlow() {
 
             {!createdId ? (
               <>
-                <div className="rounded-[1.25rem] border border-accent/20 bg-accent/5 p-4 text-sm text-accent">
-                  Approve with your {ownerSource === "wallet" ? "wallet" : "passkey"} to create the
-                  iWallet on-chain.{" "}
-                  {enokiConfigured() ? "Gas is sponsored — no SUI needed." : "A small gas fee applies."}
+                <div className="border-accent/20 bg-accent/5 text-accent rounded-[1.25rem] border p-4 text-sm">
+                  Approve with your{" "}
+                  {ownerSource === "wallet" ? "wallet" : "passkey"} to create
+                  the iWallet on-chain.{" "}
+                  {enokiConfigured()
+                    ? "Gas is sponsored — no SUI needed."
+                    : "A small gas fee applies."}
                 </div>
                 <button
                   onClick={onCreate}
                   disabled={submitting || !ownerSource}
                   data-hover-trigger
-                  className="inline-flex w-fit items-center gap-2 rounded-full bg-accent px-8 py-4 text-sm font-semibold text-on-accent hover:bg-accent-soft disabled:opacity-40"
+                  className="bg-accent text-on-accent hover:bg-accent-soft inline-flex w-fit items-center gap-2 rounded-full px-8 py-4 text-sm font-semibold disabled:opacity-40"
                 >
-                  {ownerSource === "wallet" ? <HiOutlineWallet /> : <HiOutlineFingerPrint />}
+                  {ownerSource === "wallet" ? (
+                    <HiOutlineWallet />
+                  ) : (
+                    <HiOutlineFingerPrint />
+                  )}
                   {submitting ? "Signing & submitting…" : "Create iWallet"}
                 </button>
                 {error && <p className="text-sm text-red-300">{error}</p>}
@@ -399,23 +500,24 @@ export function CreateIWalletFlow() {
                 <p className="inline-flex items-center gap-2 text-sm font-medium text-emerald-200">
                   <HiOutlineCheckCircle /> iWallet created on-chain
                 </p>
-                <p className="mt-2 text-xs text-muted">
-                  New IIdentity object: <HashText value={createdId} chars={10} />
+                <p className="text-muted mt-2 text-xs">
+                  New IIdentity object:{" "}
+                  <HashText value={createdId} chars={10} />
                 </p>
                 <p className="mt-3 text-xs text-emerald-200/80">
-                  Download your recovery file now — it includes this object id + the witness, so you
-                  can restore control later. Keep it secret.
+                  Download your recovery file now — it includes this object id +
+                  the witness, so you can restore control later. Keep it secret.
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button
                     onClick={onDownloadRecovery}
-                    className="inline-flex items-center gap-2 rounded-full bg-elevated px-5 py-2.5 text-sm font-semibold text-ink hover:text-accent"
+                    className="bg-elevated text-ink hover:text-accent inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold"
                   >
                     <HiOutlineShieldCheck /> Download recovery
                   </button>
                   <Link
                     href={`/iwallets/${createdId}`}
-                    className="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-soft"
+                    className="bg-accent text-on-accent hover:bg-accent-soft inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold"
                   >
                     View profile <HiOutlineArrowRight />
                   </Link>
@@ -431,7 +533,7 @@ export function CreateIWalletFlow() {
           disabled={step === 0 || submitting}
           onClick={() => setStep((v) => Math.max(0, v - 1))}
           data-hover-trigger
-          className="inline-flex items-center gap-2 rounded-full border border-border px-6 py-3 text-sm font-semibold text-ink disabled:cursor-not-allowed disabled:opacity-30"
+          className="border-border text-ink inline-flex items-center gap-2 rounded-full border px-6 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-30"
         >
           <HiOutlineArrowLeft /> <AnimatedHoverText>Back</AnimatedHoverText>
         </button>
@@ -440,9 +542,10 @@ export function CreateIWalletFlow() {
             disabled={!canContinue}
             onClick={() => setStep((v) => Math.min(steps.length - 1, v + 1))}
             data-hover-trigger
-            className="inline-flex items-center gap-2 rounded-full bg-accent px-8 py-4 text-sm font-semibold text-on-accent hover:bg-accent-soft disabled:opacity-40"
+            className="bg-accent text-on-accent hover:bg-accent-soft inline-flex items-center gap-2 rounded-full px-8 py-4 text-sm font-semibold disabled:opacity-40"
           >
-            <AnimatedHoverText>Continue</AnimatedHoverText> <HiOutlineArrowRight />
+            <AnimatedHoverText>Continue</AnimatedHoverText>{" "}
+            <HiOutlineArrowRight />
           </button>
         )}
       </div>
@@ -450,10 +553,18 @@ export function CreateIWalletFlow() {
   );
 }
 
-function Panel({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
+function Panel({
+  icon,
+  title,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
-    <section className="rounded-[1.9rem] border border-border p-5">
-      <h2 className="inline-flex items-center gap-2 text-xl font-medium text-ink">
+    <section className="border-border rounded-[1.9rem] border p-5">
+      <h2 className="text-ink inline-flex items-center gap-2 text-xl font-medium">
         <span className="text-accent">{icon}</span>
         {title}
       </h2>
@@ -462,20 +573,38 @@ function Panel({ icon, title, children }: { icon: React.ReactNode; title: string
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div>
-      <p className="mb-2 text-sm text-dim">{label}</p>
+      <p className="text-dim mb-2 text-sm">{label}</p>
       {children}
     </div>
   );
 }
 
-function Summary({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function Summary({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-border pb-3 last-of-type:border-none">
-      <span className="text-sm text-dim">{label}</span>
-      <span className={`truncate text-sm text-ink ${mono ? "font-mono text-xs" : ""}`}>{value}</span>
+    <div className="border-border flex items-center justify-between gap-4 border-b pb-3 last-of-type:border-none">
+      <span className="text-dim text-sm">{label}</span>
+      <span
+        className={`text-ink truncate text-sm ${mono ? "font-mono text-xs" : ""}`}
+      >
+        {value}
+      </span>
     </div>
   );
 }
