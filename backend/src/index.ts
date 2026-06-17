@@ -46,11 +46,14 @@ function getSponsorKeypair(): Ed25519Keypair {
 const enoki = process.env.ENOKI_PRIVATE_API_KEY
   ? new EnokiClient({ apiKey: process.env.ENOKI_PRIVATE_API_KEY })
   : null;
-const ENOKI_NETWORK = (process.env.ENOKI_NETWORK ?? "testnet") as "testnet" | "mainnet" | "devnet";
+const ENOKI_NETWORK = (process.env.ENOKI_NETWORK ?? "testnet") as
+  | "testnet"
+  | "mainnet"
+  | "devnet";
 
 const app = new Hono();
 
-const port = Number(process.env.PORT) || 3000;
+const port = Number(process.env.PORT);
 
 // CORS so the deployed frontend can read the public trade feed.
 app.use("*", cors());
@@ -99,11 +102,22 @@ app.post("/agent/execute", async (c) => {
 // owner signs the returned bytes, then we execute. Lets passkey owners with 0
 // SUI create iWallets. Public on purpose — abuse is bounded by the allowlist.
 app.post("/enoki/sponsor", async (c) => {
-  if (!enoki) return c.json({ error: "Enoki not configured (set ENOKI_PRIVATE_API_KEY)" }, 503);
-  const { transactionKindBytes, sender, allowedMoveCallTargets, allowedAddresses } =
-    await c.req.json();
+  if (!enoki)
+    return c.json(
+      { error: "Enoki not configured (set ENOKI_PRIVATE_API_KEY)" },
+      503,
+    );
+  const {
+    transactionKindBytes,
+    sender,
+    allowedMoveCallTargets,
+    allowedAddresses,
+  } = await c.req.json();
   if (!transactionKindBytes || !sender) {
-    return c.json({ error: "transactionKindBytes and sender are required" }, 400);
+    return c.json(
+      { error: "transactionKindBytes and sender are required" },
+      400,
+    );
   }
   try {
     const resp = await enoki.createSponsoredTransaction({
@@ -115,24 +129,35 @@ app.post("/enoki/sponsor", async (c) => {
     });
     return c.json(resp); // { bytes, digest }
   } catch (e) {
-    return c.json({ error: e instanceof Error ? e.message : "sponsor failed" }, 400);
+    return c.json(
+      { error: e instanceof Error ? e.message : "sponsor failed" },
+      400,
+    );
   }
 });
 
 app.post("/enoki/execute", async (c) => {
   if (!enoki) return c.json({ error: "Enoki not configured" }, 503);
   const { digest, signature } = await c.req.json();
-  if (!digest || !signature) return c.json({ error: "digest and signature are required" }, 400);
+  if (!digest || !signature)
+    return c.json({ error: "digest and signature are required" }, 400);
   try {
     const resp = await enoki.executeSponsoredTransaction({ digest, signature });
     return c.json(resp); // { digest }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    const detail = (e as any)?.response?.data ?? (e as any)?.body ?? (e as any)?.cause ?? null;
+    const detail =
+      (e as any)?.response?.data ??
+      (e as any)?.body ??
+      (e as any)?.cause ??
+      null;
     console.error("[enoki/execute] ERROR:", msg);
     console.error("[enoki/execute] detail:", JSON.stringify(detail, null, 2));
     console.error("[enoki/execute] digest:", digest);
-    console.error("[enoki/execute] sig scheme byte (base64[0]):", signature.slice(0, 4));
+    console.error(
+      "[enoki/execute] sig scheme byte (base64[0]):",
+      signature.slice(0, 4),
+    );
     return c.json({ error: msg, detail }, 400);
   }
 });
@@ -180,14 +205,17 @@ app.post("/v1/zklogin/salt", async (c) => {
   const [, payloadB64] = (token as string).split(".");
   let sub: string;
   try {
-    const payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8"));
+    const payload = JSON.parse(
+      Buffer.from(payloadB64, "base64url").toString("utf8"),
+    );
     sub = payload.sub;
     if (!sub) throw new Error("no sub");
   } catch {
     return c.json({ error: "Invalid JWT" }, 400);
   }
 
-  const secret = process.env.ZK_SALT_SECRET ?? process.env.API_SECRET ?? "dev-salt-key";
+  const secret =
+    process.env.ZK_SALT_SECRET ?? process.env.API_SECRET ?? "dev-salt-key";
   const hmac = crypto.createHmac("sha256", secret).update(sub).digest();
   // Take first 16 bytes → 128-bit integer → decimal string (Mysten salt format)
   const salt = BigInt("0x" + hmac.slice(0, 16).toString("hex")).toString();
@@ -216,11 +244,36 @@ app.post("/v1/zklogin/proof", async (c) => {
 // encrypted session and returns an agentId the frontend caches in localStorage.
 app.post("/v1/auth/zklogin/store", async (c) => {
   const body = await c.req.json();
-  const { jwt, ephemeralPrivKey, maxEpoch, randomness, salt, address, zkProof } = body;
-  if (!jwt || !ephemeralPrivKey || !maxEpoch || !randomness || !salt || !address || !zkProof) {
+  const {
+    jwt,
+    ephemeralPrivKey,
+    maxEpoch,
+    randomness,
+    salt,
+    address,
+    zkProof,
+  } = body;
+  if (
+    !jwt ||
+    !ephemeralPrivKey ||
+    !maxEpoch ||
+    !randomness ||
+    !salt ||
+    !address ||
+    !zkProof
+  ) {
     return c.json({ error: "Missing required fields" }, 400);
   }
-  const agentId = storeZkSession({ jwt, ephemeralPrivKey, maxEpoch, randomness, salt, address, zkProof, storedAt: Date.now() });
+  const agentId = storeZkSession({
+    jwt,
+    ephemeralPrivKey,
+    maxEpoch,
+    randomness,
+    salt,
+    address,
+    zkProof,
+    storedAt: Date.now(),
+  });
   console.log(`[zkLogin] Session stored for ${address} → agentId=${agentId}`);
   return c.json({ agentId, address });
 });
@@ -263,7 +316,9 @@ app.post("/v1/zklogin/execute-sponsored", async (c) => {
   }
   try {
     const sponsor = getSponsorKeypair();
-    const { signature: sponsorSig } = await sponsor.signTransaction(fromBase64(txBytes));
+    const { signature: sponsorSig } = await sponsor.signTransaction(
+      fromBase64(txBytes),
+    );
     const result = await jsonClient.executeTransactionBlock({
       transactionBlock: txBytes,
       signature: [userSignature, sponsorSig],
