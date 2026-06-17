@@ -123,6 +123,7 @@ export function CreateIWalletFlow() {
       return res as unknown as SubmitResult;
     }
     if (ownerSource === "zklogin") {
+      tx.setSenderIfNotSet(ownerAddress!);
       const txBytes = await tx.build({ client: suiClient });
       const signature = await signWithZkLogin(txBytes);
       return (await suiClient.executeTransactionBlock({
