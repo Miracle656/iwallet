@@ -15,6 +15,9 @@ export default function ZkLoginCallbackPage() {
     processZkLoginCallback()
       .then(({ address }) => {
         localStorage.setItem("zklogin_address", address);
+        // StorageEvent only fires in other tabs — dispatch manually so the navbar
+        // AuthButtons (mounted in the persistent layout) picks up the new address.
+        window.dispatchEvent(new StorageEvent("storage", { key: "zklogin_address", newValue: address }));
         router.replace("/dashboard");
       })
       .catch((err: unknown) => {
