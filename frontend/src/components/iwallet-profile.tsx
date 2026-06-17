@@ -9,12 +9,23 @@ import {
   HiOutlineArrowTopRightOnSquare,
   HiOutlineBanknotes,
   HiOutlineClock,
+  HiOutlineCpuChip,
   HiOutlineCube,
+  HiOutlinePaperAirplane,
   HiOutlineShieldCheck,
   HiOutlineWallet,
 } from "react-icons/hi2";
 
-const tabs = ["Portfolio", "Policy", "Agent Trades", "Activity"] as const;
+const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL ?? "").replace(/\/$/, "");
+
+type AgentResponse = {
+  message: string;
+  execution_plan: string[];
+  results: { agent: string; status: "success" | "error"; result: unknown }[];
+  requires_confirmation: boolean;
+};
+
+const tabs = ["Portfolio", "Policy", "Agent", "Agent Trades", "Activity"] as const;
 
 export function IWalletProfile({
   profile,
@@ -74,7 +85,7 @@ export function IWalletProfile({
         </div>
 
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Meta label="Owner (passkey)" value={profile.owner ? <HashText value={profile.owner} chars={6} /> : "—"} />
+          <Meta label="Owner" value={profile.owner ? <HashText value={profile.owner} chars={6} /> : "—"} />
           <Meta label="Identity hash" value={<HashText value={profile.identityHash} chars={6} />} />
           <Meta label="Network" value="Sui Testnet" />
           <Meta label="Coin types" value={String(profile.coins.length)} />
@@ -97,6 +108,7 @@ export function IWalletProfile({
         <div className="mt-5">
           {tab === "Portfolio" && <PortfolioTab coins={profile.coins} />}
           {tab === "Policy" && <PolicyTab policy={profile.policy} />}
+          {tab === "Agent" && <AgentTab iWalletId={profile.objectId} />}
           {tab === "Agent Trades" && <AgentTradeFeed identityId={profile.objectId} />}
           {tab === "Activity" && <ActivityTab activity={activity} />}
         </div>
@@ -213,6 +225,97 @@ function PolicyTab({ policy }: { policy: PolicyView | null }) {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function AgentTab({ iWalletId }: { iWalletId: string }) {
+  const [prompt, setPrompt] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [response, setResponse] = useState<AgentResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function execute() {
+    const p = prompt.trim();
+    if (!p) return;
+    setLoading(true);
+    setError(null);
+    setResponse(null);
+    try {
+      const res = await fetch(`${BACKEND}/v1/agent/execute`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: p, iWalletId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? `Agent error (${res.status})`);
+      setResponse(data as AgentResponse);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="rounded-[1.6rem] border border-accent/20 bg-accent/5 p-4">
+        <p className="inline-flex items-center gap-2 text-sm text-accent">
+          <HiOutlineCpuChip /> Agent prompt
+        </p>
+        <p className="mt-1 text-xs text-muted">
+          Tell the agent what to do in plain English. It routes your request to the right sub-agent automatically.
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <textarea
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) execute(); }}
+          placeholder={`e.g. "swap 10 SUI for USDC" or "set my budget to 500 SUI"`}
+          rows={3}
+          className="w-full resize-none rounded-xl border border-border bg-canvas px-4 py-3 text-sm text-ink outline-none placeholder:text-dim focus:border-accent/50"
+        />
+        <button
+          onClick={execute}
+          disabled={loading || !prompt.trim()}
+          className="self-end inline-flex items-center gap-2 rounded-full bg-accent px-6 py-2.5 text-sm font-semibold text-on-accent hover:bg-accent-soft disabled:opacity-40"
+        >
+          <HiOutlinePaperAirplane />
+          {loading ? "Running…" : "Execute"}
+        </button>
+      </div>
+
+      {error && (
+        <div className="rounded-[1.25rem] border border-red-300/30 bg-red-300/10 p-4 text-sm text-red-300">
+          {error}
+        </div>
+      )}
+
+      {response && (
+        <div className="flex flex-col gap-3">
+          <p className="text-xs text-dim">
+            Plan: <span className="text-ink">{response.execution_plan.join(" → ")}</span>
+          </p>
+          {response.results.map((r, i) => (
+            <div
+              key={i}
+              className={`rounded-[1.25rem] border p-4 ${r.status === "success" ? "border-accent/20 bg-accent/5" : "border-red-300/30 bg-red-300/10"}`}
+            >
+              <p className="text-xs font-medium text-dim">{r.agent}</p>
+              <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-words text-xs text-ink">
+                {typeof r.result === "string" ? r.result : JSON.stringify(r.result, null, 2)}
+              </pre>
+            </div>
+          ))}
+          {response.requires_confirmation && (
+            <p className="text-xs text-amber-300">
+              ⚠ Multiple actions detected — verify the results above before considering them final.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
