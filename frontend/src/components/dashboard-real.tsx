@@ -9,6 +9,7 @@ import { AgentTradeFeed } from "@/components/agent-trade-feed";
 import type { IWallet } from "@/lib/demo-data";
 import { discoverOwnedIdentities, getIdentity, listIdentities } from "@/lib/sui-client";
 import { usePasskeyOwner } from "@/lib/use-passkey-owner";
+import { getZkLoginAddress } from "@/lib/zklogin";
 import {
   addLocalIdentityId,
   getLocalIdentityIds,
@@ -33,7 +34,9 @@ import {
 export function DashboardReal() {
   const account = useCurrentAccount();
   const passkey = usePasskeyOwner();
-  const ownerAddress = (account?.address ?? passkey ?? null)?.toLowerCase() ?? null;
+  const [zkAddress, setZkAddress] = useState<string | null>(null);
+  useEffect(() => { setZkAddress(getZkLoginAddress()); }, []);
+  const ownerAddress = (account?.address ?? passkey ?? zkAddress ?? null)?.toLowerCase() ?? null;
   const [allWallets, setAllWallets] = useState<IWallet[]>([]);
   const [loading, setLoading] = useState(true);
   const [importId, setImportId] = useState("");

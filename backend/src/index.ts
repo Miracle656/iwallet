@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { serve } from "@hono/node-server";
@@ -15,6 +16,7 @@ import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { EnokiClient } from "@mysten/enoki";
 import dotenv from "dotenv";
 import { agent } from "./agent/controller.ts";
+import { storeZkSession, getZkSession } from "./lib/zklogin-store.ts";
 dotenv.config();
 
 const client = new SuiGrpcClient({
@@ -155,6 +157,71 @@ app.get("/trades/identity/:id", (c) => {
 
 app.get("/health-check", (c) => {
   return c.json({ status: "ok" });
+});
+
+// ── zkLogin services ──
+
+// Self-hosted salt service: salt = HMAC-SHA256(secret, sub) truncated to 128 bits.
+// Mysten's hosted salt service requires allowlisting our Google client ID which we
+// don't have — computing it ourselves gives us full control and no dependencies.
+app.post("/v1/zklogin/salt", async (c) => {
+  const { token } = await c.req.json();
+  if (!token) return c.json({ error: "token required" }, 400);
+
+  // Decode JWT payload (no verification needed — prover will verify the JWT itself)
+  const [, payloadB64] = (token as string).split(".");
+  let sub: string;
+  try {
+    const payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8"));
+    sub = payload.sub;
+    if (!sub) throw new Error("no sub");
+  } catch {
+    return c.json({ error: "Invalid JWT" }, 400);
+  }
+
+  const secret = process.env.ZK_SALT_SECRET ?? process.env.API_SECRET ?? "dev-salt-key";
+  const hmac = crypto.createHmac("sha256", secret).update(sub).digest();
+  // Take first 16 bytes → 128-bit integer → decimal string (Mysten salt format)
+  const salt = BigInt("0x" + hmac.slice(0, 16).toString("hex")).toString();
+  return c.json({ salt });
+});
+
+// ZK prover proxy — browser can't call Mysten's prover directly (CORS).
+app.post("/v1/zklogin/proof", async (c) => {
+  const body = await c.req.json();
+  const upstream = await fetch("https://prover-dev.mystenlabs.com/v1", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await upstream.json();
+  if (!upstream.ok) {
+    console.error("[zkLogin] prover error:", data);
+    return c.json(data, upstream.status as any);
+  }
+  return c.json(data);
+});
+
+// ── zkLogin session store (Google OAuth → agent autonomous signing) ──
+
+// Called by the frontend after the ZK proof is generated. Stores the
+// encrypted session and returns an agentId the frontend caches in localStorage.
+app.post("/v1/auth/zklogin/store", async (c) => {
+  const body = await c.req.json();
+  const { jwt, ephemeralPrivKey, maxEpoch, randomness, salt, address, zkProof } = body;
+  if (!jwt || !ephemeralPrivKey || !maxEpoch || !randomness || !salt || !address || !zkProof) {
+    return c.json({ error: "Missing required fields" }, 400);
+  }
+  const agentId = storeZkSession({ jwt, ephemeralPrivKey, maxEpoch, randomness, salt, address, zkProof, storedAt: Date.now() });
+  console.log(`[zkLogin] Session stored for ${address} → agentId=${agentId}`);
+  return c.json({ agentId, address });
+});
+
+// API-key gated: only the agent daemon calls this to retrieve signing material.
+app.get("/v1/auth/zklogin/session/:agentId", requireApiKey, (c) => {
+  const session = getZkSession(c.req.param("agentId"));
+  if (!session) return c.json({ error: "Session not found or expired" }, 404);
+  return c.json(session);
 });
 
 app.route("/v1/agent", agent);

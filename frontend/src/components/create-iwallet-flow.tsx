@@ -2,24 +2,22 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import type { PasskeyKeypair } from "@mysten/sui/keypairs/passkey";
 import { useCurrentAccount, useSignAndExecuteTransaction, useSignTransaction } from "@mysten/dapp-kit";
 import type { Transaction } from "@mysten/sui/transactions";
 import { toBase64, fromBase64 } from "@mysten/sui/utils";
 import { AnimatedHoverText } from "@/components/animated-hover-text";
 import { HashText } from "@/components/hash-text";
 import { addLocalIdentityId } from "@/lib/local-identities";
-import { createPasskeyOwner } from "@/lib/passkey";
 import { buildCreateIdentityTx, buildSetPolicyTx, suiClient } from "@/lib/sui-client";
 import { IWALLET_PACKAGE_ID } from "@/lib/sui-config";
 import { enokiConfigured, executeSponsored, sponsorTransaction } from "@/lib/enoki";
 import { fetchVerificationKeyBytes } from "@/lib/vk";
 import { computeIdentityHash, generateWitness, witnessToHex } from "@/lib/witness";
+import { getZkLoginAddress, getZkSignerMaterial, signWithZkLogin } from "@/lib/zklogin";
 import {
   HiOutlineArrowLeft,
   HiOutlineArrowRight,
   HiOutlineCheckCircle,
-  HiOutlineFingerPrint,
   HiOutlineIdentification,
   HiOutlineLockClosed,
   HiOutlineShieldCheck,
@@ -27,7 +25,7 @@ import {
 } from "react-icons/hi2";
 
 const steps = ["Owner", "Identity", "Policy", "Create"] as const;
-type OwnerSource = "wallet" | "passkey";
+type OwnerSource = "wallet" | "zklogin";
 type ObjectChange = { type?: string; objectType?: string; objectId?: string };
 type SubmitResult = {
   digest: string;
@@ -53,14 +51,12 @@ export function CreateIWalletFlow() {
   const { mutateAsync: signTx } = useSignTransaction();
 
   const [ownerSource, setOwnerSource] = useState<OwnerSource | null>(null);
-  const [passkey, setPasskey] = useState<PasskeyKeypair | null>(null);
-  const [passkeyAddress, setPasskeyAddress] = useState<string | null>(null);
-  const [busyPasskey, setBusyPasskey] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const zkAddress = getZkLoginAddress();
 
   const ownerAddress =
     ownerSource === "wallet" ? account?.address ?? null :
-    ownerSource === "passkey" ? passkeyAddress : null;
+    ownerSource === "zklogin" ? zkAddress : null;
 
   // Witness
   const [witnessHex, setWitnessHex] = useState<string | null>(null);
@@ -82,19 +78,10 @@ export function CreateIWalletFlow() {
     setOwnerSource("wallet");
   }
 
-  async function pickPasskey() {
-    setBusyPasskey(true);
+  function pickZkLogin() {
+    if (!zkAddress) return;
     setError(null);
-    try {
-      const owner = await createPasskeyOwner();
-      setPasskey(owner.keypair);
-      setPasskeyAddress(owner.address);
-      setOwnerSource("passkey");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Passkey creation failed");
-    } finally {
-      setBusyPasskey(false);
-    }
+    setOwnerSource("zklogin");
   }
 
   function resetOwner() {
@@ -134,18 +121,19 @@ export function CreateIWalletFlow() {
       const res = await signWithWallet({ transaction: tx });
       return res as unknown as SubmitResult;
     }
-    if (ownerSource === "passkey" && passkey) {
-      return (await suiClient.signAndExecuteTransaction({
-        transaction: tx,
-        signer: passkey,
+    if (ownerSource === "zklogin") {
+      const txBytes = await tx.build({ client: suiClient });
+      const signature = await signWithZkLogin(txBytes);
+      return (await suiClient.executeTransactionBlock({
+        transactionBlock: toBase64(txBytes),
+        signature,
         options: { showObjectChanges: true, showEffects: true },
       })) as unknown as SubmitResult;
     }
     throw new Error("No owner selected");
   }
 
-  // Sponsored path: Enoki pays gas. Owner only signs. allowedMoveCallTargets
-  // scopes what Enoki will sponsor.
+  // Sponsored path: Enoki pays gas. Owner only signs.
   async function submitSponsored(
     tx: Transaction,
     allowedMoveCallTargets: string[],
@@ -161,8 +149,8 @@ export function CreateIWalletFlow() {
     let signature: string;
     if (ownerSource === "wallet") {
       ({ signature } = await signTx({ transaction: bytes }));
-    } else if (passkey) {
-      ({ signature } = await passkey.signTransaction(fromBase64(bytes)));
+    } else if (ownerSource === "zklogin") {
+      signature = await signWithZkLogin(fromBase64(bytes));
     } else {
       throw new Error("No signer");
     }
@@ -224,8 +212,8 @@ export function CreateIWalletFlow() {
       const msg = e instanceof Error ? e.message : "Create failed";
       if (/insufficient.*gas|GasBalance|no.*gas/i.test(msg)) {
         setError(
-          ownerSource === "passkey"
-            ? `Owner has no SUI. Send testnet SUI to ${ownerAddress} (the passkey address) and retry.`
+          ownerSource === "zklogin"
+            ? `zkLogin address has no SUI. Send testnet SUI to ${ownerAddress} and retry.`
             : `Wallet has no testnet SUI. Top it up and retry.`,
         );
       } else {
@@ -274,8 +262,8 @@ export function CreateIWalletFlow() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="inline-flex items-center gap-2 text-xs text-dim">
-                      {ownerSource === "wallet" ? <HiOutlineWallet /> : <HiOutlineFingerPrint />}
-                      Owner ({ownerSource})
+                      <HiOutlineWallet />
+                      Owner ({ownerSource === "zklogin" ? "Google / zkLogin" : "wallet"})
                     </p>
                     <p className="mt-2"><HashText value={ownerAddress!} chars={16} /></p>
                   </div>
@@ -288,6 +276,19 @@ export function CreateIWalletFlow() {
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <button
                   type="button"
+                  onClick={pickZkLogin}
+                  disabled={!zkAddress}
+                  className="flex flex-col items-start gap-2 rounded-[1.25rem] border border-border bg-canvas p-4 text-left transition hover:border-accent/40 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <span className="inline-flex items-center gap-2 text-sm font-medium text-ink">
+                    <GoogleIcon /> Google / zkLogin
+                  </span>
+                  <span className="text-xs text-muted">
+                    {zkAddress ? <HashText value={zkAddress} chars={6} /> : "Sign in with Google first"}
+                  </span>
+                </button>
+                <button
+                  type="button"
                   onClick={pickWallet}
                   disabled={!account}
                   className="flex flex-col items-start gap-2 rounded-[1.25rem] border border-border bg-canvas p-4 text-left transition hover:border-accent/40 disabled:cursor-not-allowed disabled:opacity-50"
@@ -297,19 +298,6 @@ export function CreateIWalletFlow() {
                   </span>
                   <span className="text-xs text-muted">
                     {account ? <HashText value={account.address} chars={6} /> : "Connect from the navbar first"}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={pickPasskey}
-                  disabled={busyPasskey}
-                  className="flex flex-col items-start gap-2 rounded-[1.25rem] border border-border bg-canvas p-4 text-left transition hover:border-accent/40 disabled:opacity-50"
-                >
-                  <span className="inline-flex items-center gap-2 text-sm font-medium text-ink">
-                    <HiOutlineFingerPrint className="text-accent" /> Passkey
-                  </span>
-                  <span className="text-xs text-muted">
-                    {busyPasskey ? "Waiting for passkey…" : "Create a new passkey on this device"}
                   </span>
                 </button>
               </div>
@@ -447,6 +435,17 @@ export function CreateIWalletFlow() {
         )}
       </div>
     </section>
+  );
+}
+
+function GoogleIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden>
+      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
+      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+    </svg>
   );
 }
 
