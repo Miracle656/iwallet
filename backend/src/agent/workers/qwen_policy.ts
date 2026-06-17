@@ -2,9 +2,12 @@
 import OpenAI from "openai";
 import type { WorkerResponse } from "../../types/agent.ts";
 
-const nvidiaQwen = new OpenAI({
-  apiKey: process.env.NVIDIA_API_KEY,
-  baseURL: "https://integrate.api.nvidia.com/v1",
+let _nvidiaQwen: OpenAI | null = null;
+const nvidiaQwen = new Proxy({} as OpenAI, {
+  get: (_t, prop) => {
+    if (!_nvidiaQwen) _nvidiaQwen = new OpenAI({ apiKey: process.env.NVIDIA_API_KEY ?? "not-configured", baseURL: "https://integrate.api.nvidia.com/v1" });
+    return (_nvidiaQwen as any)[prop];
+  },
 });
 
 export async function runQwenPolicyGuardian(

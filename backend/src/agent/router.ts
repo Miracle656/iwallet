@@ -3,19 +3,25 @@ import OpenAI from "openai";
 import { SimplePlannerSchema } from "../utils/router_schema.ts";
 import type { RoutingResult } from "../types/agent.ts";
 
-const openai = new OpenAI({
-  apiKey: process.env.GROQ_API_KEY,
-  baseURL: "https://api.groq.com/openai/v1",
-  timeout: 30000, // 30s timeout
-  maxRetries: 3, // Built-in retry
-});
+let _openai: OpenAI | null = null;
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    _openai = new OpenAI({
+      apiKey: process.env.GROQ_API_KEY ?? "not-configured",
+      baseURL: "https://api.groq.com/openai/v1",
+      timeout: 30000,
+      maxRetries: 3,
+    });
+  }
+  return _openai;
+}
 
 export async function semanticRouter(
   userPrompt: string,
 ): Promise<RoutingResult> {
   console.log(`🚦 Planning Tasks for: "${userPrompt}"`);
 
-  const response = await openai.chat.completions.create({
+  const response = await getOpenAI().chat.completions.create({
     model: "openai/gpt-oss-120b",
     messages: [
       {

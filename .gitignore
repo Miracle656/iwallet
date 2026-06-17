@@ -54,3 +54,4 @@ gas-station/target/
 
 # throwaway publish output log
 publish.json
+.aider*

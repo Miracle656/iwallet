@@ -2,9 +2,12 @@
 import OpenAI from "openai";
 import type { WorkerResponse } from "../../types/agent.ts";
 
-const kimi = new OpenAI({
-  apiKey: process.env.NVIDIA_API_KEY,
-  baseURL: "https://integrate.api.nvidia.com/v1",
+let _kimi: OpenAI | null = null;
+const kimi = new Proxy({} as OpenAI, {
+  get: (_t, prop) => {
+    if (!_kimi) _kimi = new OpenAI({ apiKey: process.env.NVIDIA_API_KEY ?? "not-configured", baseURL: "https://integrate.api.nvidia.com/v1" });
+    return (_kimi as any)[prop];
+  },
 });
 
 export async function runKimiWalletOps(
