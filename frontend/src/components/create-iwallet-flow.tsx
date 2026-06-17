@@ -164,9 +164,10 @@ export function CreateIWalletFlow() {
     })) as unknown as SubmitResult;
   }
 
-  // Try sponsored (gasless) first; fall back to owner-pays-gas on any failure.
+  // Try Enoki sponsorship (gasless) first for wallet owners; zkLogin always
+  // uses the direct path because Enoki execute doesn't accept zkLogin sigs.
   async function submit(tx: Transaction, allowedMoveCallTargets: string[]): Promise<SubmitResult> {
-    if (enokiConfigured()) {
+    if (enokiConfigured() && ownerSource === "wallet") {
       try {
         return await submitSponsored(tx, allowedMoveCallTargets);
       } catch (e) {
