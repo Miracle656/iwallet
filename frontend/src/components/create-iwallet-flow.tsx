@@ -10,7 +10,7 @@ import { HashText } from "@/components/hash-text";
 import { addLocalIdentityId } from "@/lib/local-identities";
 import { buildCreateIdentityTx, buildSetPolicyTx, suiClient } from "@/lib/sui-client";
 import { IWALLET_PACKAGE_ID } from "@/lib/sui-config";
-import { enokiConfigured, executeSponsored, sponsorTransaction } from "@/lib/enoki";
+import { enokiConfigured, executeSponsored, executeZkSponsored, prepareZkTx, sponsorTransaction } from "@/lib/enoki";
 import { fetchVerificationKeyBytes } from "@/lib/vk";
 import { computeIdentityHash, generateWitness, witnessToHex } from "@/lib/witness";
 import { getZkLoginAddress, getZkSignerMaterial, signWithZkLogin } from "@/lib/zklogin";
@@ -135,28 +135,31 @@ export function CreateIWalletFlow() {
     throw new Error("No owner selected");
   }
 
-  // Sponsored path: Enoki pays gas. Owner only signs.
+  // Sponsored path: gas paid by the backend sponsor key (zkLogin) or Enoki (wallet).
   async function submitSponsored(
     tx: Transaction,
     allowedMoveCallTargets: string[],
   ): Promise<SubmitResult> {
     if (!ownerAddress) throw new Error("No owner");
     const kindBytes = await tx.build({ client: suiClient, onlyTransactionKind: true });
+
+    if (ownerSource === "zklogin") {
+      // Custom gas station — Enoki's execute rejects external zkLogin compound sigs
+      const { txBytes } = await prepareZkTx({
+        txKindBytes: toBase64(kindBytes),
+        sender: ownerAddress,
+      });
+      const signature = await signWithZkLogin(fromBase64(txBytes));
+      return (await executeZkSponsored({ txBytes, userSignature: signature })) as unknown as SubmitResult;
+    }
+
+    // Wallet owners: Enoki path
     const { bytes, digest } = await sponsorTransaction({
       transactionKindBytes: toBase64(kindBytes),
       sender: ownerAddress,
       allowedMoveCallTargets,
     });
-
-    let signature: string;
-    if (ownerSource === "wallet") {
-      ({ signature } = await signTx({ transaction: bytes }));
-    } else if (ownerSource === "zklogin") {
-      signature = await signWithZkLogin(fromBase64(bytes));
-    } else {
-      throw new Error("No signer");
-    }
-
+    const { signature } = await signTx({ transaction: bytes });
     const exec = await executeSponsored(digest, signature);
     return (await suiClient.waitForTransaction({
       digest: exec.digest,
@@ -164,10 +167,10 @@ export function CreateIWalletFlow() {
     })) as unknown as SubmitResult;
   }
 
-  // Try Enoki sponsorship (gasless) first for wallet owners; zkLogin always
-  // uses the direct path because Enoki execute doesn't accept zkLogin sigs.
+  // Try sponsored (gasless) first; fall back to owner-pays-gas on failure.
   async function submit(tx: Transaction, allowedMoveCallTargets: string[]): Promise<SubmitResult> {
-    if (enokiConfigured() && ownerSource === "wallet") {
+    const shouldSponsor = ownerSource === "zklogin" || enokiConfigured();
+    if (shouldSponsor) {
       try {
         return await submitSponsored(tx, allowedMoveCallTargets);
       } catch (e) {

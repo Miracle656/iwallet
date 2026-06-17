@@ -11,8 +11,10 @@ import {
   TradeSchema,
 } from "./trades.js";
 import { Transaction } from "@mysten/sui/transactions";
+import { fromBase64, toBase64 } from "@mysten/sui/utils";
 import { SuiGrpcClient } from "@mysten/sui/grpc";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
+import { jsonClient } from "./lib/sui_client.ts";
 import { EnokiClient } from "@mysten/enoki";
 import dotenv from "dotenv";
 import { agent } from "./agent/controller.ts";
@@ -125,7 +127,13 @@ app.post("/enoki/execute", async (c) => {
     const resp = await enoki.executeSponsoredTransaction({ digest, signature });
     return c.json(resp); // { digest }
   } catch (e) {
-    return c.json({ error: e instanceof Error ? e.message : "execute failed" }, 400);
+    const msg = e instanceof Error ? e.message : String(e);
+    const detail = (e as any)?.response?.data ?? (e as any)?.body ?? (e as any)?.cause ?? null;
+    console.error("[enoki/execute] ERROR:", msg);
+    console.error("[enoki/execute] detail:", JSON.stringify(detail, null, 2));
+    console.error("[enoki/execute] digest:", digest);
+    console.error("[enoki/execute] sig scheme byte (base64[0]):", signature.slice(0, 4));
+    return c.json({ error: msg, detail }, 400);
   }
 });
 
@@ -222,6 +230,52 @@ app.get("/v1/auth/zklogin/session/:agentId", requireApiKey, (c) => {
   const session = getZkSession(c.req.param("agentId"));
   if (!session) return c.json({ error: "Session not found or expired" }, 404);
   return c.json(session);
+});
+
+// ── zkLogin gas station (bypasses Enoki execute — Enoki rejects external zkLogin sigs) ──
+// Step 1: build the full tx with sponsor as gas owner, return txBytes for the user to sign.
+app.post("/v1/zklogin/prepare-tx", async (c) => {
+  const { txKindBytes, sender } = await c.req.json();
+  if (!txKindBytes || !sender) {
+    return c.json({ error: "txKindBytes and sender are required" }, 400);
+  }
+  try {
+    const sponsor = getSponsorKeypair();
+    const sponsorAddress = sponsor.getPublicKey().toSuiAddress();
+    const tx = Transaction.fromKind(txKindBytes); // accepts base64 string
+    tx.setSender(sender);
+    tx.setGasOwner(sponsorAddress);
+    tx.setGasBudget(10_000_000); // 0.01 SUI; SDK auto-picks gas coins from gasOwner
+    const txBytes = await tx.build({ client: jsonClient as any });
+    return c.json({ txBytes: toBase64(txBytes) });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[zklogin/prepare-tx]", msg);
+    return c.json({ error: msg }, 500);
+  }
+});
+
+// Step 2: user sends their zkLogin signature; backend co-signs as gas sponsor and executes.
+app.post("/v1/zklogin/execute-sponsored", async (c) => {
+  const { txBytes, userSignature } = await c.req.json();
+  if (!txBytes || !userSignature) {
+    return c.json({ error: "txBytes and userSignature are required" }, 400);
+  }
+  try {
+    const sponsor = getSponsorKeypair();
+    const { signature: sponsorSig } = await sponsor.signTransaction(fromBase64(txBytes));
+    const result = await jsonClient.executeTransactionBlock({
+      transactionBlock: txBytes,
+      signature: [userSignature, sponsorSig],
+      options: { showObjectChanges: true, showEffects: true },
+    });
+    console.log("[zklogin/execute-sponsored] digest:", result.digest);
+    return c.json(result);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[zklogin/execute-sponsored]", msg);
+    return c.json({ error: msg }, 500);
+  }
 });
 
 app.route("/v1/agent", agent);
