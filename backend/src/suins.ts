@@ -7,7 +7,7 @@ import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import dotenv from "dotenv";
 dotenv.config();
 
-const _keypair = Ed25519Keypair.fromSecretKey(process.env.PK!);
+const _keypair = process.env.PK ? Ed25519Keypair.fromSecretKey(process.env.PK) : null;
 
 export async function createLeafSubname(
   name: string,
