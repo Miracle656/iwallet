@@ -2,14 +2,18 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { WorkerResponse } from "../../types/agent.ts";
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+let _anthropic: Anthropic | null = null;
+function getAnthropic(): Anthropic {
+  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY ?? "not-configured" });
+  return _anthropic;
+}
 
 export async function runClaudeDeepbook(
   iWalletId: string,
   prompt: string,
   params: Record<string, unknown>,
 ): Promise<WorkerResponse> {
-  const response = await anthropic.messages.create({
+  const response = await getAnthropic().messages.create({
     model: "claude-opus-4-8",
     max_tokens: 1024,
     system:

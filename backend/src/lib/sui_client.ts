@@ -7,7 +7,13 @@ import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import dotenv from "dotenv";
 dotenv.config();
 
-const _keypair = Ed25519Keypair.fromSecretKey(process.env.PK!);
+const _pk = process.env.PK;
+const _keypair = _pk ? Ed25519Keypair.fromSecretKey(_pk) : null;
+const _agentAddress = _keypair
+  ? _keypair.getPublicKey().toSuiAddress().toString()
+  : "0x0000000000000000000000000000000000000000000000000000000000000000";
+
+export const keypair = _keypair;
 
 export const jsonClient = new SuiJsonRpcClient({
   url: getJsonRpcFullnodeUrl("testnet"),
@@ -19,7 +25,7 @@ export const grpcClient = new SuiGrpcClient({
   baseUrl: "https://fullnode.testnet.sui.io:443",
 }).$extend(
   deepbook({
-    address: _keypair.getPublicKey().toSuiAddress().toString(),
+    address: _agentAddress,
     balanceManagers: {},
   }),
 );
