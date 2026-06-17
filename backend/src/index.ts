@@ -15,6 +15,7 @@ import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { EnokiClient } from "@mysten/enoki";
 import dotenv from "dotenv";
 import { agent } from "./agent/controller.ts";
+import { storeZkSession, getZkSession } from "./lib/zklogin-store.ts";
 dotenv.config();
 
 const client = new SuiGrpcClient({
@@ -155,6 +156,28 @@ app.get("/trades/identity/:id", (c) => {
 
 app.get("/health-check", (c) => {
   return c.json({ status: "ok" });
+});
+
+// ── zkLogin session store (Google OAuth → agent autonomous signing) ──
+
+// Called by the frontend after the ZK proof is generated. Stores the
+// encrypted session and returns an agentId the frontend caches in localStorage.
+app.post("/v1/auth/zklogin/store", async (c) => {
+  const body = await c.req.json();
+  const { jwt, ephemeralPrivKey, maxEpoch, randomness, salt, address, zkProof } = body;
+  if (!jwt || !ephemeralPrivKey || !maxEpoch || !randomness || !salt || !address || !zkProof) {
+    return c.json({ error: "Missing required fields" }, 400);
+  }
+  const agentId = storeZkSession({ jwt, ephemeralPrivKey, maxEpoch, randomness, salt, address, zkProof, storedAt: Date.now() });
+  console.log(`[zkLogin] Session stored for ${address} → agentId=${agentId}`);
+  return c.json({ agentId, address });
+});
+
+// API-key gated: only the agent daemon calls this to retrieve signing material.
+app.get("/v1/auth/zklogin/session/:agentId", requireApiKey, (c) => {
+  const session = getZkSession(c.req.param("agentId"));
+  if (!session) return c.json({ error: "Session not found or expired" }, 404);
+  return c.json(session);
 });
 
 app.route("/v1/agent", agent);

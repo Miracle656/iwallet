@@ -49,7 +49,7 @@ export async function initiateGoogleLogin(): Promise<void> {
 
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
-    redirect_uri: `${window.location.origin}/auth/callback`,
+    redirect_uri: `${window.location.origin}/api/auth/callback/google`,
     response_type: "id_token",
     scope: "openid email",
     nonce,
@@ -140,7 +140,7 @@ export async function processZkLoginCallback(): Promise<ZkLoginResult> {
 
   const address = jwtToAddress(jwt, salt, false);
 
-  await fetch(`${BACKEND}/v1/auth/zklogin/store`, {
+  const storeRes = await fetch(`${BACKEND}/v1/auth/zklogin/store`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -153,6 +153,10 @@ export async function processZkLoginCallback(): Promise<ZkLoginResult> {
       zkProof,
     }),
   });
+  if (storeRes.ok) {
+    const { agentId } = (await storeRes.json()) as { agentId: string };
+    if (agentId) localStorage.setItem("zklogin_agent_id", agentId);
+  }
 
   return { address, jwt, salt };
 }
