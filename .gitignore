@@ -55,3 +55,5 @@ gas-station/target/
 # throwaway publish output log
 publish.json
 .aider*
+.aider.chat.history.md
+.aider.tags.cache.v4/
