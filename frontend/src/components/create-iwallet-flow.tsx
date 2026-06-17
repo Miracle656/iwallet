@@ -378,7 +378,7 @@ export function CreateIWalletFlow() {
                   data-hover-trigger
                   className="inline-flex w-fit items-center gap-2 rounded-full bg-accent px-8 py-4 text-sm font-semibold text-on-accent hover:bg-accent-soft disabled:opacity-40"
                 >
-                  {ownerSource === "wallet" ? <HiOutlineWallet /> : <HiOutlineFingerPrint />}
+                  {ownerSource === "wallet" ? <HiOutlineWallet /> : <GoogleIcon />}
                   {submitting ? "Signing & submitting…" : "Create iWallet"}
                 </button>
                 {error && <p className="text-sm text-red-300">{error}</p>}
