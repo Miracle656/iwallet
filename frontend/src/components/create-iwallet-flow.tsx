@@ -3,12 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Transaction } from "@mysten/sui/transactions";
-import { toBase64, fromBase64 } from "@mysten/sui/utils";
+import { toBase64 } from "@mysten/sui/utils";
 import { AnimatedHoverText } from "@/components/animated-hover-text";
 import { HashText } from "@/components/hash-text";
 import { addLocalIdentityId } from "@/lib/local-identities";
 import { buildCreateIdentityTx, buildSetPolicyTx, suiClient } from "@/lib/sui-client";
-import { executeZkSponsored, prepareZkTx } from "@/lib/enoki";
 import { fetchVerificationKeyBytes } from "@/lib/vk";
 import { computeIdentityHash, generateWitness, witnessToHex } from "@/lib/witness";
 import { getZkLoginAddress, signWithZkLogin } from "@/lib/zklogin";
@@ -91,9 +90,9 @@ export function CreateIWalletFlow() {
     URL.revokeObjectURL(url);
   }
 
-  // Fallback: zkLogin address pays gas directly (only works if address has SUI).
-  async function submitDirect(tx: Transaction): Promise<SubmitResult> {
-    tx.setSenderIfNotSet(ownerAddress!);
+  async function submit(tx: Transaction): Promise<SubmitResult> {
+    if (!ownerAddress) throw new Error("No owner");
+    tx.setSenderIfNotSet(ownerAddress);
     const txBytes = await tx.build({ client: suiClient });
     const signature = await signWithZkLogin(txBytes);
     return (await suiClient.executeTransactionBlock({
@@ -101,24 +100,6 @@ export function CreateIWalletFlow() {
       signature,
       options: { showObjectChanges: true, showEffects: true },
     })) as unknown as SubmitResult;
-  }
-
-  // Backend sponsor pays gas — user only needs a Google account, zero SUI.
-  async function submitSponsored(tx: Transaction): Promise<SubmitResult> {
-    if (!ownerAddress) throw new Error("No owner");
-    const kindBytes = await tx.build({ client: suiClient, onlyTransactionKind: true });
-    const { txBytes } = await prepareZkTx({ txKindBytes: toBase64(kindBytes), sender: ownerAddress });
-    const signature = await signWithZkLogin(fromBase64(txBytes));
-    return (await executeZkSponsored({ txBytes, userSignature: signature })) as unknown as SubmitResult;
-  }
-
-  async function submit(tx: Transaction): Promise<SubmitResult> {
-    try {
-      return await submitSponsored(tx);
-    } catch (e) {
-      console.warn("[create] sponsored failed, falling back to owner-pays-gas:", e);
-    }
-    return submitDirect(tx);
   }
 
   async function onCreate() {

@@ -15,7 +15,6 @@ import { fromBase64, toBase64 } from "@mysten/sui/utils";
 import { SuiGrpcClient } from "@mysten/sui/grpc";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { jsonClient } from "./lib/sui_client.ts";
-import { EnokiClient } from "@mysten/enoki";
 import dotenv from "dotenv";
 import { agent } from "./agent/controller.ts";
 import { storeZkSession, getZkSession } from "./lib/zklogin-store.ts";
@@ -41,12 +40,6 @@ function getSponsorKeypair(): Ed25519Keypair {
   return keypair;
 }
 
-// Enoki sponsored transactions (Mysten's managed gas pool). The PRIVATE key
-// stays here on the backend — never the browser.
-const enoki = process.env.ENOKI_PRIVATE_API_KEY
-  ? new EnokiClient({ apiKey: process.env.ENOKI_PRIVATE_API_KEY })
-  : null;
-const ENOKI_NETWORK = (process.env.ENOKI_NETWORK ?? "testnet") as "testnet" | "mainnet" | "devnet";
 
 const app = new Hono();
 
@@ -94,48 +87,6 @@ app.post("/agent/execute", async (c) => {
   });
 });
 
-// ── Enoki sponsored transactions (public; scoped by allowedMoveCallTargets) ──
-// The frontend builds a transaction-kind, we sponsor it (Enoki pays gas), the
-// owner signs the returned bytes, then we execute. Lets passkey owners with 0
-// SUI create iWallets. Public on purpose — abuse is bounded by the allowlist.
-app.post("/enoki/sponsor", async (c) => {
-  if (!enoki) return c.json({ error: "Enoki not configured (set ENOKI_PRIVATE_API_KEY)" }, 503);
-  const { transactionKindBytes, sender, allowedMoveCallTargets, allowedAddresses } =
-    await c.req.json();
-  if (!transactionKindBytes || !sender) {
-    return c.json({ error: "transactionKindBytes and sender are required" }, 400);
-  }
-  try {
-    const resp = await enoki.createSponsoredTransaction({
-      network: ENOKI_NETWORK,
-      transactionKindBytes,
-      sender,
-      allowedMoveCallTargets,
-      allowedAddresses,
-    });
-    return c.json(resp); // { bytes, digest }
-  } catch (e) {
-    return c.json({ error: e instanceof Error ? e.message : "sponsor failed" }, 400);
-  }
-});
-
-app.post("/enoki/execute", async (c) => {
-  if (!enoki) return c.json({ error: "Enoki not configured" }, 503);
-  const { digest, signature } = await c.req.json();
-  if (!digest || !signature) return c.json({ error: "digest and signature are required" }, 400);
-  try {
-    const resp = await enoki.executeSponsoredTransaction({ digest, signature });
-    return c.json(resp); // { digest }
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    const detail = (e as any)?.response?.data ?? (e as any)?.body ?? (e as any)?.cause ?? null;
-    console.error("[enoki/execute] ERROR:", msg);
-    console.error("[enoki/execute] detail:", JSON.stringify(detail, null, 2));
-    console.error("[enoki/execute] digest:", digest);
-    console.error("[enoki/execute] sig scheme byte (base64[0]):", signature.slice(0, 4));
-    return c.json({ error: msg, detail }, 400);
-  }
-});
 
 // ── Agent trade feed (Sub-track 2 dashboard) ──
 
@@ -187,26 +138,12 @@ app.post("/v1/sui-rpc", async (c) => {
 
 // ── zkLogin services ──
 
-// Salt service — uses Enoki if configured (salt is consistent with Enoki prover),
-// otherwise falls back to self-hosted HMAC so the server boots without Enoki.
+// Salt service — deterministic HMAC from sub + ZK_SALT_SECRET.
+// Salt must never change for a user (changing it changes their Sui address).
 app.post("/v1/zklogin/salt", async (c) => {
   const { token } = await c.req.json();
   if (!token) return c.json({ error: "token required" }, 400);
 
-  // Enoki path: getZkLogin returns the salt Enoki will use in its prover.
-  // The two MUST agree — if you use a different salt for proof generation the
-  // addressSeed won't match and the Groth16 verify will fail.
-  if (enoki) {
-    try {
-      const { salt } = await enoki.getZkLogin({ jwt: token as string });
-      console.log("[zkLogin/salt] Enoki salt OK");
-      return c.json({ salt });
-    } catch (e) {
-      console.error("[zkLogin/salt] Enoki failed, falling back to HMAC:", e);
-    }
-  }
-
-  // Self-hosted HMAC fallback (devnet / no Enoki key)
   const [, payloadB64] = (token as string).split(".");
   let sub: string;
   try {
@@ -222,51 +159,18 @@ app.post("/v1/zklogin/salt", async (c) => {
   return c.json({ salt });
 });
 
-// ZK prover proxy — routes through Enoki if configured (no client-ID allowlist
-// needed), otherwise falls back to Mysten's prover (requires allowlisting).
-// Enoki's response already includes addressSeed; Mysten's does not.
+// ZK prover proxy — forwards to Mysten's hosted prover.
+// Requires Google client ID allowlisted at prover-dev.mystenlabs.com for testnet,
+// or prover.mystenlabs.com for mainnet.
 app.post("/v1/zklogin/proof", async (c) => {
   const body = await c.req.json();
-
-  if (enoki && process.env.ENOKI_PRIVATE_API_KEY) {
-    try {
-      const network = (process.env.SUI_NETWORK ?? "testnet") as string;
-      // Call Enoki's zkp endpoint directly so we control the payload shape.
-      // ephemeralPublicKey must be in toSuiPublicKey() format (scheme-prefixed base64).
-      const resp = await fetch("https://api.enoki.mystenlabs.com/v1/zklogin/zkp", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.ENOKI_PRIVATE_API_KEY}`,
-          "zklogin-jwt": body.jwt as string,
-        },
-        body: JSON.stringify({
-          network,
-          ephemeralPublicKey: body.ephemeralPublicKey,
-          maxEpoch: body.maxEpoch,
-          randomness: body.jwtRandomness,
-        }),
-      });
-      const data = await resp.json();
-      if (!resp.ok) {
-        console.error("[zkLogin/proof] Enoki zkp error:", data);
-        return c.json(data, resp.status as any);
-      }
-      console.log("[zkLogin/proof] Enoki zkp OK");
-      return c.json(data);
-    } catch (e) {
-      console.error("[zkLogin/proof] Enoki exception, falling back to Mysten prover:", e);
-    }
-  }
-
-  // Fallback: Mysten's prover (requires Google client ID allowlisting for testnet)
   const network = (process.env.SUI_NETWORK ?? "testnet") as string;
   const proverUrl =
     process.env.ZK_PROVER_URL ??
-    (network === "mainnet" || network === "testnet"
+    (network === "mainnet"
       ? "https://prover.mystenlabs.com/v1"
       : "https://prover-dev.mystenlabs.com/v1");
-  console.log(`[zkLogin/proof] using Mysten prover: ${proverUrl}`);
+  console.log(`[zkLogin/proof] forwarding to ${proverUrl}`);
   const upstream = await fetch(proverUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -274,7 +178,7 @@ app.post("/v1/zklogin/proof", async (c) => {
   });
   const data = await upstream.json();
   if (!upstream.ok) {
-    console.error("[zkLogin] prover error:", data);
+    console.error("[zkLogin/proof] prover error:", data);
     return c.json(data, upstream.status as any);
   }
   return c.json(data);
@@ -302,7 +206,7 @@ app.get("/v1/auth/zklogin/session/:agentId", requireApiKey, (c) => {
   return c.json(session);
 });
 
-// ── zkLogin gas station (bypasses Enoki execute — Enoki rejects external zkLogin sigs) ──
+// ── zkLogin gas station (backend sponsors gas so the zkLogin address needs 0 SUI) ──
 // Step 1: build the full tx with sponsor as gas owner, return txBytes for the user to sign.
 app.post("/v1/zklogin/prepare-tx", async (c) => {
   const { txKindBytes, sender } = await c.req.json();

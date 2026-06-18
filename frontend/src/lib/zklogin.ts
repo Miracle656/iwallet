@@ -82,13 +82,13 @@ export async function signWithZkLogin(txBytes: Uint8Array): Promise<string> {
     );
   }
 
-  const ephemeral = Ed25519Keypair.fromSecretKey(material.ephemeralPrivKey);
+  const ephemeral = Ed25519Keypair.fromSecretKey(
+    Uint8Array.from(Buffer.from(material.ephemeralPrivKey, "base64")),
+  );
   const { signature: ephemeralSig } = await ephemeral.signTransaction(txBytes);
-  // Enoki wraps its ZKP response in { data: { proofPoints, ... } }; unwrap if present.
-  const proofObj = (material.zkProof as { data?: object })?.data ?? (material.zkProof as object);
   return getZkLoginSignature({
     inputs: {
-      ...proofObj,
+      ...(material.zkProof as object),
       addressSeed: material.addressSeed,
     } as Parameters<typeof getZkLoginSignature>[0]["inputs"],
     maxEpoch: material.maxEpoch,
@@ -188,7 +188,7 @@ export async function processZkLoginCallback(): Promise<ZkLoginResult> {
   const extendedEphemeralPublicKey = getExtendedEphemeralPublicKey(ephemeral.getPublicKey());
 
   const salt = await fetchSalt(jwt);
-  const rawProof = await fetchZkProof({
+  const zkProof = await fetchZkProof({
     jwt,
     extendedEphemeralPublicKey,
     ephemeralPublicKey: ephemeral.getPublicKey().toSuiPublicKey(),
@@ -196,8 +196,6 @@ export async function processZkLoginCallback(): Promise<ZkLoginResult> {
     randomness: session.randomness,
     salt,
   });
-  // Enoki wraps the proof in { data: { proofPoints, issBase64Details, ... } }; normalise.
-  const zkProof = (rawProof as { data?: object })?.data ?? rawProof;
 
   const address = jwtToAddress(jwt, salt, false);
 
