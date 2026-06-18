@@ -72,13 +72,18 @@ export function getZkSignerMaterial(): ZkSignerMaterial | null {
 export async function signWithZkLogin(txBytes: Uint8Array): Promise<string> {
   const material = getZkSignerMaterial();
   if (!material) throw new Error("No zkLogin session — please sign in again");
-  const ephemeral = Ed25519Keypair.fromSecretKey(material.ephemeralPrivKey);
-  const { signature: ephemeralSig } = await ephemeral.signTransaction(txBytes);
+
+  const ephemeral = Ed25519Keypair.fromSecretKey(
+    Uint8Array.from(Buffer.from(material.ephemeralPrivKey, "base64")),
+  );
+
+  // Sign the bytes
+  const ephemeralSigBytes = await ephemeral.sign(txBytes);
+  const ephemeralSig = Buffer.from(ephemeralSigBytes).toString("base64");
+
   return getZkLoginSignature({
-    inputs: {
-      ...(material.zkProof as object),
-      addressSeed: material.addressSeed,
-    } as Parameters<typeof getZkLoginSignature>[0]["inputs"],
+    ...(material.zkProof as any), // Spreads proofPoints, issBase64Details, headerBase64
+    addressSeed: material.addressSeed,
     maxEpoch: material.maxEpoch,
     userSignature: ephemeralSig,
   });

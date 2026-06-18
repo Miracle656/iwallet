@@ -6,7 +6,11 @@
  * transaction-builder (write) path is added in a later step.
  */
 
-import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
+import {
+  SuiJsonRpcClient,
+  getJsonRpcFullnodeUrl,
+  type SuiTransactionBlockResponse,
+} from "@mysten/sui/jsonRpc";
 import { Transaction } from "@mysten/sui/transactions";
 import { bcs } from "@mysten/sui/bcs";
 import type { IWallet } from "./demo-data";
@@ -30,9 +34,7 @@ const ZERO_ADDRESS =
 /** Decode a Move `vector<u8>` field (number array or base64 string) to hex. */
 function toHex(value: unknown): string {
   if (Array.isArray(value)) {
-    return value
-      .map((b) => Number(b).toString(16).padStart(2, "0"))
-      .join("");
+    return value.map((b) => Number(b).toString(16).padStart(2, "0")).join("");
   }
   if (typeof value === "string") {
     try {
@@ -105,7 +107,8 @@ export async function getIdentity(objectId: string): Promise<IWallet | null> {
     const fields = content.fields as Record<string, unknown>;
     const name = (fields.name as string) || "iWallet";
     const identityHash = "0x" + toHex(fields.identity_hash);
-    const owner = typeof fields.owner === "string" ? (fields.owner as string) : undefined;
+    const owner =
+      typeof fields.owner === "string" ? (fields.owner as string) : undefined;
 
     // Total SUI = staged (in the vault bag) + coins sent to the iWallet address
     // but not yet staged (transfer-to-object funding shows here immediately).
@@ -168,7 +171,9 @@ export async function listIdentities(
  *     the event). The event carries just the id, not the owner, so we read
  *     each candidate object and keep the ones whose `owner` field matches.
  */
-export async function discoverOwnedIdentities(owner: string): Promise<string[]> {
+export async function discoverOwnedIdentities(
+  owner: string,
+): Promise<string[]> {
   const ids = new Set<string>();
 
   try {
@@ -180,8 +185,15 @@ export async function discoverOwnedIdentities(owner: string): Promise<string[]> 
     });
     for (const tx of res.data) {
       for (const c of tx.objectChanges ?? []) {
-        const oc = c as { type?: string; objectType?: string; objectId?: string };
-        if (oc.type === "created" && String(oc.objectType ?? "").includes("::prototype::IIdentity<")) {
+        const oc = c as {
+          type?: string;
+          objectType?: string;
+          objectId?: string;
+        };
+        if (
+          oc.type === "created" &&
+          String(oc.objectType ?? "").includes("::prototype::IIdentity<")
+        ) {
           if (oc.objectId) ids.add(oc.objectId);
         }
       }
@@ -198,9 +210,16 @@ export async function discoverOwnedIdentities(owner: string): Promise<string[]> 
       limit: 50,
       order: "descending",
     });
+
     const candidates = events.data
-      .map((e) => (e.parsedJson as { id?: string } | null)?.id)
-      .filter((id): id is string => Boolean(id) && !ids.has(id!));
+      // Add the explicit type definition here:
+      .map(
+        (e: { parsedJson?: unknown }) =>
+          (e.parsedJson as { id?: string } | null)?.id,
+      )
+      .filter(
+        (id: string | undefined): id is string => Boolean(id) && !ids.has(id!),
+      );
     if (candidates.length > 0) {
       const objects = await client.multiGetObjects({
         ids: candidates,
@@ -211,7 +230,10 @@ export async function discoverOwnedIdentities(owner: string): Promise<string[]> 
         const content = obj.data?.content;
         if (!content || content.dataType !== "moveObject") continue;
         const fields = content.fields as Record<string, unknown>;
-        if (typeof fields.owner === "string" && fields.owner.toLowerCase() === target) {
+        if (
+          typeof fields.owner === "string" &&
+          fields.owner.toLowerCase() === target
+        ) {
           if (obj.data?.objectId) ids.add(obj.data.objectId);
         }
       }
@@ -244,7 +266,9 @@ function parsePolicy(raw: unknown): IWallet["policy"] {
   return {
     maxPerTransaction: `${cap} SUI budget`,
     sessionLimit: `${spent} SUI spent`,
-    expiry: expMs ? new Date(expMs).toISOString().slice(0, 16).replace("T", " ") : "—",
+    expiry: expMs
+      ? new Date(expMs).toISOString().slice(0, 16).replace("T", " ")
+      : "—",
     allowedTargets: recipients,
   };
 }
@@ -350,7 +374,9 @@ function symbolFromType(coinType: string): string {
 }
 
 /** Rich read for the iWallet profile page: identity + on-chain policy + coins held at the object address. */
-export async function getProfile(objectId: string): Promise<IdentityProfile | null> {
+export async function getProfile(
+  objectId: string,
+): Promise<IdentityProfile | null> {
   try {
     const res = await client.getObject({
       id: objectId,
@@ -362,7 +388,8 @@ export async function getProfile(objectId: string): Promise<IdentityProfile | nu
 
     const name = (fields.name as string) || "iWallet";
     const identityHash = "0x" + toHex(fields.identity_hash);
-    const owner = typeof fields.owner === "string" ? (fields.owner as string) : null;
+    const owner =
+      typeof fields.owner === "string" ? (fields.owner as string) : null;
 
     const stagedBalanceMist = await getStagedBalance(
       objectId,
@@ -380,14 +407,21 @@ export async function getProfile(objectId: string): Promise<IdentityProfile | nu
         const isSui = b.coinType === "0x2::sui::SUI";
         const raw = BigInt(b.totalBalance);
         const amount = isSui ? (Number(raw) / 1e9).toString() : raw.toString();
-        return { coinType: b.coinType, symbol: sym, amount, objectCount: b.coinObjectCount };
+        return {
+          coinType: b.coinType,
+          symbol: sym,
+          amount,
+          objectCount: b.coinObjectCount,
+        };
       });
     } catch {
       coins = [];
     }
 
     // On-chain AgentPolicy
-    const raw = (fields.active_policy as { fields?: Record<string, unknown> } | null);
+    const raw = fields.active_policy as {
+      fields?: Record<string, unknown>;
+    } | null;
     const p = (raw?.fields ?? raw) as Record<string, unknown> | null;
     const policy: PolicyView | null =
       p && p.budget_cap != null
@@ -416,7 +450,10 @@ export async function getProfile(objectId: string): Promise<IdentityProfile | nu
 }
 
 /** Recent transactions that touched the iWallet object. */
-export async function getActivity(objectId: string, limit = 12): Promise<ActivityItem[]> {
+export async function getActivity(
+  objectId: string,
+  limit = 12,
+): Promise<ActivityItem[]> {
   try {
     const res = await client.queryTransactionBlocks({
       filter: { ChangedObject: objectId },
@@ -424,7 +461,7 @@ export async function getActivity(objectId: string, limit = 12): Promise<Activit
       limit,
       order: "descending",
     });
-    return res.data.map((tx) => ({
+    return res.data.map((tx: SuiTransactionBlockResponse) => ({
       digest: tx.digest,
       timestampMs: tx.timestampMs ? Number(tx.timestampMs) : null,
       success: tx.effects?.status?.status === "success",

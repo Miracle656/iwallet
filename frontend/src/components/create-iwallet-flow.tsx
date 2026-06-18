@@ -12,7 +12,7 @@ import {
   buildSetPolicyTx,
   suiClient,
 } from "@/lib/sui-client";
-import { executeZkSponsored, prepareZkTx } from "@/lib/enoki";
+// import { executeZkSponsored, prepareZkTx } from "@/lib/enoki";
 import { fetchVerificationKeyBytes } from "@/lib/vk";
 import {
   computeIdentityHash,
@@ -45,7 +45,7 @@ export function CreateIWalletFlow() {
   const [error, setError] = useState<string | null>(null);
   const [zkAddress, setZkAddress] = useState<string | null>(null);
   useEffect(() => {
-    setZkAddress(getZkLoginAddress());
+    // setZkAddress(getZkLoginAddress());
   }, []);
 
   const ownerAddress = ownerPicked ? zkAddress : null;
@@ -122,15 +122,27 @@ export function CreateIWalletFlow() {
       client: suiClient,
       onlyTransactionKind: true,
     });
-    const { txBytes } = await prepareZkTx({
-      txKindBytes: toBase64(kindBytes),
-      sender: ownerAddress,
-    });
-    const signature = await signWithZkLogin(fromBase64(txBytes));
-    return (await executeZkSponsored({
-      txBytes,
-      userSignature: signature,
-    })) as unknown as SubmitResult;
+    // const { txBytes } = await prepareZkTx({
+    //   txKindBytes: toBase64(kindBytes),
+    //   sender: ownerAddress,
+    // });
+    // const signature = await signWithZkLogin(fromBase64(txBytes));
+    // return (
+    //   await executeZkSponsored({
+    //   txBytes,
+    //   userSignature: signature,
+    //   })
+    // ) as unknown as SubmitResult;
+    return {
+      digest: "",
+      effects: {
+        status: {
+          status: "",
+          error: "",
+        },
+      },
+      // objectChanges?: ObjectChange[];
+    };
   }
 
   async function submit(tx: Transaction): Promise<SubmitResult> {
