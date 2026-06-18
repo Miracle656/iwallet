@@ -18,8 +18,13 @@ import {
   SEED_IDENTITY_IDS,
 } from "./sui-config";
 
+const _backendUrl = (process.env.NEXT_PUBLIC_BACKEND_URL ?? "").replace(/\/$/, "");
+const _rpcUrl = _backendUrl
+  ? `${_backendUrl}/v1/sui-rpc`
+  : getJsonRpcFullnodeUrl(SUI_NETWORK);
+
 export const suiClient = new SuiJsonRpcClient({
-  url: getJsonRpcFullnodeUrl(SUI_NETWORK),
+  url: _rpcUrl,
   network: SUI_NETWORK,
 });
 const client = suiClient;

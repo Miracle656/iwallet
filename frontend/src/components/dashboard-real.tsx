@@ -108,7 +108,7 @@ export function DashboardReal() {
         <Stat label="Funded" value={String(funded)} icon={<HiOutlineCpuChip />} />
         <Stat
           label="Owner"
-          value={account ? `${account.address.slice(0, 6)}…${account.address.slice(-4)}` : "Not connected"}
+          value={ownerAddress ? `${ownerAddress.slice(0, 6)}…${ownerAddress.slice(-4)}` : "Not connected"}
           icon={<HiOutlineWallet />}
         />
       </div>

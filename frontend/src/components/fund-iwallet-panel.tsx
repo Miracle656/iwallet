@@ -1,12 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 import { Transaction } from "@mysten/sui/transactions";
+import { toBase64 } from "@mysten/sui/utils";
 import { HashText } from "@/components/hash-text";
 import { getProfile, suiClient, type IdentityProfile } from "@/lib/sui-client";
 import { recoverPasskeyOwner } from "@/lib/passkey";
 import { usePasskeyOwner } from "@/lib/use-passkey-owner";
+import { getZkLoginAddress, signWithZkLogin } from "@/lib/zklogin";
 import { SUI_NETWORK } from "@/lib/sui-config";
 import {
   HiOutlineArrowRight,
@@ -23,7 +26,9 @@ import {
 export function FundIWalletPanel({ id }: { id: string }) {
   const account = useCurrentAccount();
   const passkey = usePasskeyOwner();
-  const funder = account?.address ?? passkey ?? null;
+  const [zkAddress, setZkAddress] = useState<string | null>(null);
+  useEffect(() => { setZkAddress(getZkLoginAddress()); }, []);
+  const funder = account?.address ?? passkey ?? zkAddress ?? null;
 
   const { mutateAsync: signWithWallet } = useSignAndExecuteTransaction({
     execute: async ({ bytes, signature }) =>
@@ -69,6 +74,15 @@ export function FundIWalletPanel({ id }: { id: string }) {
       let res: { digest: string; effects?: { status?: { status?: string; error?: string } } };
       if (account) {
         res = (await signWithWallet({ transaction: tx })) as typeof res;
+      } else if (zkAddress) {
+        tx.setSenderIfNotSet(zkAddress);
+        const txBytes = await tx.build({ client: suiClient });
+        const signature = await signWithZkLogin(txBytes);
+        res = (await suiClient.executeTransactionBlock({
+          transactionBlock: toBase64(txBytes),
+          signature,
+          options: { showEffects: true },
+        })) as typeof res;
       } else {
         const { keypair } = await recoverPasskeyOwner();
         res = (await suiClient.signAndExecuteTransaction({
@@ -102,7 +116,9 @@ export function FundIWalletPanel({ id }: { id: string }) {
           <HiOutlineBanknotes className="text-accent" />
           Fund
         </span>
-        <span className="text-2xl text-dim">{profile?.name ?? "iWallet"}</span>
+        <Link href={`/iwallets/${id}`} className="text-2xl text-dim hover:text-accent transition-colors">
+          {profile?.name ?? "iWallet"}
+        </Link>
       </div>
 
       <div className="mt-7 flex flex-col gap-3 lg:flex-row">

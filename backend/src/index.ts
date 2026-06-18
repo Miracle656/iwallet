@@ -167,16 +167,46 @@ app.get("/health-check", (c) => {
   return c.json({ status: "ok" });
 });
 
+// Sui RPC proxy — browser calls are blocked by corporate/school proxies;
+// this endpoint forwards them server-side where there's no proxy restriction.
+app.post("/v1/sui-rpc", async (c) => {
+  const body = await c.req.json();
+  const SUI_RPC = process.env.SUI_RPC_URL ?? "https://fullnode.testnet.sui.io/";
+  try {
+    const upstream = await fetch(SUI_RPC, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await upstream.json();
+    return c.json(data, upstream.status as any);
+  } catch (e) {
+    return c.json({ error: e instanceof Error ? e.message : "rpc proxy failed" }, 502);
+  }
+});
+
 // ── zkLogin services ──
 
-// Self-hosted salt service: salt = HMAC-SHA256(secret, sub) truncated to 128 bits.
-// Mysten's hosted salt service requires allowlisting our Google client ID which we
-// don't have — computing it ourselves gives us full control and no dependencies.
+// Salt service — uses Enoki if configured (salt is consistent with Enoki prover),
+// otherwise falls back to self-hosted HMAC so the server boots without Enoki.
 app.post("/v1/zklogin/salt", async (c) => {
   const { token } = await c.req.json();
   if (!token) return c.json({ error: "token required" }, 400);
 
-  // Decode JWT payload (no verification needed — prover will verify the JWT itself)
+  // Enoki path: getZkLogin returns the salt Enoki will use in its prover.
+  // The two MUST agree — if you use a different salt for proof generation the
+  // addressSeed won't match and the Groth16 verify will fail.
+  if (enoki) {
+    try {
+      const { salt } = await enoki.getZkLogin({ jwt: token as string });
+      console.log("[zkLogin/salt] Enoki salt OK");
+      return c.json({ salt });
+    } catch (e) {
+      console.error("[zkLogin/salt] Enoki failed, falling back to HMAC:", e);
+    }
+  }
+
+  // Self-hosted HMAC fallback (devnet / no Enoki key)
   const [, payloadB64] = (token as string).split(".");
   let sub: string;
   try {
@@ -186,18 +216,58 @@ app.post("/v1/zklogin/salt", async (c) => {
   } catch {
     return c.json({ error: "Invalid JWT" }, 400);
   }
-
   const secret = process.env.ZK_SALT_SECRET ?? process.env.API_SECRET ?? "dev-salt-key";
   const hmac = crypto.createHmac("sha256", secret).update(sub).digest();
-  // Take first 16 bytes → 128-bit integer → decimal string (Mysten salt format)
   const salt = BigInt("0x" + hmac.slice(0, 16).toString("hex")).toString();
   return c.json({ salt });
 });
 
-// ZK prover proxy — browser can't call Mysten's prover directly (CORS).
+// ZK prover proxy — routes through Enoki if configured (no client-ID allowlist
+// needed), otherwise falls back to Mysten's prover (requires allowlisting).
+// Enoki's response already includes addressSeed; Mysten's does not.
 app.post("/v1/zklogin/proof", async (c) => {
   const body = await c.req.json();
-  const upstream = await fetch("https://prover-dev.mystenlabs.com/v1", {
+
+  if (enoki && process.env.ENOKI_PRIVATE_API_KEY) {
+    try {
+      const network = (process.env.SUI_NETWORK ?? "testnet") as string;
+      // Call Enoki's zkp endpoint directly so we control the payload shape.
+      // ephemeralPublicKey must be in toSuiPublicKey() format (scheme-prefixed base64).
+      const resp = await fetch("https://api.enoki.mystenlabs.com/v1/zklogin/zkp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.ENOKI_PRIVATE_API_KEY}`,
+          "zklogin-jwt": body.jwt as string,
+        },
+        body: JSON.stringify({
+          network,
+          ephemeralPublicKey: body.ephemeralPublicKey,
+          maxEpoch: body.maxEpoch,
+          randomness: body.jwtRandomness,
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        console.error("[zkLogin/proof] Enoki zkp error:", data);
+        return c.json(data, resp.status as any);
+      }
+      console.log("[zkLogin/proof] Enoki zkp OK");
+      return c.json(data);
+    } catch (e) {
+      console.error("[zkLogin/proof] Enoki exception, falling back to Mysten prover:", e);
+    }
+  }
+
+  // Fallback: Mysten's prover (requires Google client ID allowlisting for testnet)
+  const network = (process.env.SUI_NETWORK ?? "testnet") as string;
+  const proverUrl =
+    process.env.ZK_PROVER_URL ??
+    (network === "mainnet" || network === "testnet"
+      ? "https://prover.mystenlabs.com/v1"
+      : "https://prover-dev.mystenlabs.com/v1");
+  console.log(`[zkLogin/proof] using Mysten prover: ${proverUrl}`);
+  const upstream = await fetch(proverUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

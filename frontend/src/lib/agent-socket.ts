@@ -3,6 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 
 const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL ?? "").replace(/\/$/, "");
+// Socket.io is opt-in — set NEXT_PUBLIC_SOCKET_ENABLED=true once the backend
+// has socket.io configured. Until then the hook is a no-op.
+const SOCKET_ENABLED = process.env.NEXT_PUBLIC_SOCKET_ENABLED === "true";
 
 export type SocketTrade = {
   id: string;
@@ -34,7 +37,7 @@ export function useAgentSocket({ identityId, onTrade }: SocketOptions = {}) {
   const socketRef = useRef<any>(null);
 
   useEffect(() => {
-    if (!BACKEND) return;
+    if (!BACKEND || !SOCKET_ENABLED) return;
 
     let socket: ReturnType<typeof import("socket.io-client")["io"]>;
 

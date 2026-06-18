@@ -72,11 +72,23 @@ export function getZkSignerMaterial(): ZkSignerMaterial | null {
 export async function signWithZkLogin(txBytes: Uint8Array): Promise<string> {
   const material = getZkSignerMaterial();
   if (!material) throw new Error("No zkLogin session — please sign in again");
+
+  // Verify the session hasn't expired before signing
+  const { epoch } = await suiClient.getLatestSuiSystemState();
+  if (Number(epoch) > material.maxEpoch) {
+    clearZkLoginSession();
+    throw new Error(
+      `zkLogin session expired (current epoch ${epoch}, session valid until ${material.maxEpoch}) — please sign out and sign in again`,
+    );
+  }
+
   const ephemeral = Ed25519Keypair.fromSecretKey(material.ephemeralPrivKey);
   const { signature: ephemeralSig } = await ephemeral.signTransaction(txBytes);
+  // Enoki wraps its ZKP response in { data: { proofPoints, ... } }; unwrap if present.
+  const proofObj = (material.zkProof as { data?: object })?.data ?? (material.zkProof as object);
   return getZkLoginSignature({
     inputs: {
-      ...(material.zkProof as object),
+      ...proofObj,
       addressSeed: material.addressSeed,
     } as Parameters<typeof getZkLoginSignature>[0]["inputs"],
     maxEpoch: material.maxEpoch,
@@ -124,6 +136,7 @@ async function fetchSalt(jwt: string): Promise<string> {
 async function fetchZkProof(args: {
   jwt: string;
   extendedEphemeralPublicKey: string;
+  ephemeralPublicKey: string;
   maxEpoch: number;
   randomness: string;
   salt: string;
@@ -134,6 +147,7 @@ async function fetchZkProof(args: {
     body: JSON.stringify({
       jwt: args.jwt,
       extendedEphemeralPublicKey: args.extendedEphemeralPublicKey,
+      ephemeralPublicKey: args.ephemeralPublicKey,
       maxEpoch: args.maxEpoch,
       jwtRandomness: args.randomness,
       salt: args.salt,
@@ -174,23 +188,28 @@ export async function processZkLoginCallback(): Promise<ZkLoginResult> {
   const extendedEphemeralPublicKey = getExtendedEphemeralPublicKey(ephemeral.getPublicKey());
 
   const salt = await fetchSalt(jwt);
-  const zkProof = await fetchZkProof({
+  const rawProof = await fetchZkProof({
     jwt,
     extendedEphemeralPublicKey,
+    ephemeralPublicKey: ephemeral.getPublicKey().toSuiPublicKey(),
     maxEpoch: session.maxEpoch,
     randomness: session.randomness,
     salt,
   });
+  // Enoki wraps the proof in { data: { proofPoints, issBase64Details, ... } }; normalise.
+  const zkProof = (rawProof as { data?: object })?.data ?? rawProof;
 
   const address = jwtToAddress(jwt, salt, false);
 
   // Compute addressSeed for signing (needed by getZkLoginSignature)
   const decoded = decodeJwt(jwt);
+  // aud can be a string or string[] in JWT spec; genAddressSeed expects a string
+  const aud = Array.isArray(decoded.aud) ? (decoded.aud as string[])[0] : (decoded.aud as string);
   const addressSeed = genAddressSeed(
     BigInt(salt),
     "sub",
-    decoded.sub,
-    decoded.aud,
+    decoded.sub as string,
+    aud,
   ).toString();
 
   // Keep signing material in localStorage so it survives tab close / navigation

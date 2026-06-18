@@ -307,14 +307,14 @@ export function CreateIWalletFlow() {
                 {error && <p className="text-sm text-red-300">{error}</p>}
               </>
             ) : (
-              <div className="rounded-[1.25rem] border border-emerald-300/30 bg-emerald-300/10 p-4">
-                <p className="inline-flex items-center gap-2 text-sm font-medium text-emerald-200">
+              <div className="rounded-[1.25rem] border border-emerald-600/30 bg-emerald-50 p-4 dark:border-emerald-300/30 dark:bg-emerald-300/10">
+                <p className="inline-flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-300">
                   <HiOutlineCheckCircle /> iWallet created on-chain
                 </p>
                 <p className="mt-2 text-xs text-muted">
                   New IIdentity object: <HashText value={createdId} chars={10} />
                 </p>
-                <p className="mt-3 text-xs text-emerald-200/80">
+                <p className="mt-3 text-xs text-emerald-600 dark:text-emerald-200/80">
                   Download your recovery file now — it includes this object id + the witness, so you
                   can restore control later. Keep it secret.
                 </p>
