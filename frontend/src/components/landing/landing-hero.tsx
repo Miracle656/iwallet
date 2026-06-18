@@ -318,7 +318,7 @@ export function LandingHero() {
       }
     };
     const playClose = () => {
-      if (tl && state === "open" && !tl.isActive() && window.scrollY <= 1) {
+      if (tl && state === "open" && !tl.isActive() && window.scrollY < 8) {
         state = "hero";
         tl.reverse();
       }
@@ -333,7 +333,7 @@ export function LandingHero() {
       if (state === "hero" && e.deltaY > 0) {
         e.preventDefault();
         playOpen();
-      } else if (state === "open" && e.deltaY < 0 && window.scrollY <= 1) {
+      } else if (state === "open" && e.deltaY < 0 && window.scrollY < 8) {
         e.preventDefault();
         playClose();
       }
@@ -353,7 +353,7 @@ export function LandingHero() {
       if (state === "hero" && dy > 24) {
         e.preventDefault();
         playOpen();
-      } else if (state === "open" && dy < -24 && window.scrollY <= 1) {
+      } else if (state === "open" && dy < -24 && window.scrollY < 8) {
         e.preventDefault();
         playClose();
       }
@@ -371,9 +371,13 @@ export function LandingHero() {
     };
 
     const onScroll = () => {
-      if (tl && state === "hero" && !tl.isActive() && window.scrollY > PLAY_AT) {
+      if (!tl || tl.isActive()) return;
+      if (state === "hero" && window.scrollY > PLAY_AT) {
         state = "open";
         tl.progress(1);
+      } else if (state === "open" && window.scrollY === 0) {
+        state = "hero";
+        tl.reverse();
       }
     };
 
@@ -397,7 +401,7 @@ export function LandingHero() {
   }, []);
 
   return (
-    <section ref={sectionRef} className="relative h-screen overflow-hidden">
+    <section ref={sectionRef} className="relative h-screen overflow-hidden" style={{ background: SKY_GRADIENT }}>
       {/* 1 — backdrop: full-bleed sky with the Big Ears Avatar standing in it */}
       <div className="absolute inset-0" style={{ background: SKY_GRADIENT }}>
         <div
