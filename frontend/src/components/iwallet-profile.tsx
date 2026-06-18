@@ -254,10 +254,13 @@ function AgentTab({ iWalletId }: { iWalletId: string }) {
     setInput("");
     setLoading(true);
     try {
+      const agentId = typeof window !== "undefined"
+        ? localStorage.getItem("zklogin_agent_id") ?? undefined
+        : undefined;
       const res = await fetch(`${BACKEND}/v1/agent/execute`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: text, iWalletId }),
+        body: JSON.stringify({ prompt: text, iWalletId, agentId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? `Agent error (${res.status})`);

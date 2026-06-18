@@ -14,6 +14,7 @@ import { Transaction } from "@mysten/sui/transactions";
 import { fromBase64, toBase64 } from "@mysten/sui/utils";
 import { SuiGrpcClient } from "@mysten/sui/grpc";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
+import { EnokiClient } from "@mysten/enoki";
 import { jsonClient } from "./lib/sui_client.ts";
 import dotenv from "dotenv";
 import { agent } from "./agent/controller.ts";
@@ -40,6 +41,10 @@ function getSponsorKeypair(): Ed25519Keypair {
   return keypair;
 }
 
+// Enoki client — manages salt and ZK proof generation; undefined if key not set.
+const enoki = process.env.ENOKI_PRIVATE_API_KEY
+  ? new EnokiClient({ apiKey: process.env.ENOKI_PRIVATE_API_KEY })
+  : null;
 
 const app = new Hono();
 
@@ -138,12 +143,21 @@ app.post("/v1/sui-rpc", async (c) => {
 
 // ── zkLogin services ──
 
-// Salt service — deterministic HMAC from sub + ZK_SALT_SECRET.
-// Salt must never change for a user (changing it changes their Sui address).
+// Salt service — Enoki if configured (address must be stable!), else HMAC fallback.
 app.post("/v1/zklogin/salt", async (c) => {
   const { token } = await c.req.json();
   if (!token) return c.json({ error: "token required" }, 400);
 
+  if (enoki) {
+    try {
+      const { salt } = await enoki.getZkLogin({ jwt: token as string });
+      return c.json({ salt });
+    } catch (e) {
+      console.error("[zkLogin/salt] Enoki failed, falling back to HMAC:", e);
+    }
+  }
+
+  // HMAC fallback — deterministic, keeps same address across restarts as long as ZK_SALT_SECRET is unchanged
   const [, payloadB64] = (token as string).split(".");
   let sub: string;
   try {
@@ -159,18 +173,45 @@ app.post("/v1/zklogin/salt", async (c) => {
   return c.json({ salt });
 });
 
-// ZK prover proxy — forwards to Mysten's hosted prover.
-// Requires Google client ID allowlisted at prover-dev.mystenlabs.com for testnet,
-// or prover.mystenlabs.com for mainnet.
+// ZK prover proxy — Enoki if configured, else Mysten's hosted prover.
 app.post("/v1/zklogin/proof", async (c) => {
   const body = await c.req.json();
+
+  if (enoki) {
+    try {
+      const network = (process.env.SUI_NETWORK ?? "testnet") as string;
+      const resp = await fetch("https://api.enoki.mystenlabs.com/v1/zklogin/zkp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.ENOKI_PRIVATE_API_KEY}`,
+          "zklogin-jwt": body.jwt as string,
+        },
+        body: JSON.stringify({
+          network,
+          ephemeralPublicKey: body.ephemeralPublicKey,
+          maxEpoch: body.maxEpoch,
+          randomness: body.jwtRandomness,
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        console.error("[zkLogin/proof] Enoki error:", data);
+        // fall through to Mysten prover
+      } else {
+        return c.json(data);
+      }
+    } catch (e) {
+      console.error("[zkLogin/proof] Enoki exception, falling back:", e);
+    }
+  }
+
   const network = (process.env.SUI_NETWORK ?? "testnet") as string;
   const proverUrl =
     process.env.ZK_PROVER_URL ??
     (network === "mainnet"
       ? "https://prover.mystenlabs.com/v1"
       : "https://prover-dev.mystenlabs.com/v1");
-  console.log(`[zkLogin/proof] forwarding to ${proverUrl}`);
   const upstream = await fetch(proverUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

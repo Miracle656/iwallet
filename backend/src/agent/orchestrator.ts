@@ -18,6 +18,7 @@ const AGENT_MAP: Record<
     iWalletId: string,
     prompt: string,
     params: Record<string, unknown>,
+    agentId?: string,
   ) => Promise<WorkerResponse>
 > = {
   STANDARD_TRANSFER: runKimiWalletOps,
@@ -49,16 +50,18 @@ async function executeTask(
     description: string;
     extracted_params?: Record<string, unknown>;
   },
+  agentId?: string,
 ): Promise<AgentResult> {
   const agentFn = AGENT_MAP[task.agent];
 
-  console.log(`⚡ Executing ${task.agent}: ${task.description}`);
+  console.log(`⚡ Executing ${task.agent}: ${task.description}${agentId ? " (on-chain)" : " (plan only)"}`);
 
   try {
     const result = await agentFn(
       iWalletId,
       task.description,
       task.extracted_params ?? {},
+      agentId,
     );
 
     return {
@@ -79,6 +82,7 @@ async function executeTask(
 export async function executeUserRequest(
   iWalletId: string,
   userPrompt: string,
+  agentId?: string,
 ): Promise<ExecutionResponse> {
   // Step 1: Route
   const routing = await semanticRouter(userPrompt);
@@ -93,10 +97,10 @@ export async function executeUserRequest(
 
   if (routing.execution_order === "sequential") {
     for (const task of routing.tasks) {
-      results.push(await executeTask(iWalletId, task));
+      results.push(await executeTask(iWalletId, task, agentId));
     }
   } else {
-    const promises = routing.tasks.map((task) => executeTask(iWalletId, task));
+    const promises = routing.tasks.map((task) => executeTask(iWalletId, task, agentId));
     results.push(...(await Promise.all(promises)));
   }
 

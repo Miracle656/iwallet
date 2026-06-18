@@ -46,8 +46,9 @@ agent.get("/get_name_record/:name", async (c) => {
 
 agent.post("/execute", async (c) => {
   try {
-    const { prompt, iWalletId } = await c.req.json();
-    const result = await executeUserRequest(iWalletId, prompt);
+    const { prompt, iWalletId, agentId } = await c.req.json();
+    if (!prompt) return c.json({ error: "prompt required" }, 400);
+    const result = await executeUserRequest(iWalletId, prompt, agentId ?? undefined);
     return c.json({ message: "Execution successful", result });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

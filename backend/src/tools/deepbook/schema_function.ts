@@ -21,7 +21,10 @@ import { grpcClient } from "../../lib/sui_client.ts";
 
 dotenv.config();
 
-const tx = new Transaction();
+// Each exported write function creates its own Transaction via freshTx().
+// Using a module-level singleton caused all calls to accumulate on one object.
+let _tx = new Transaction();
+export function freshTx(): Transaction { _tx = new Transaction(); return _tx; }
 const _keypair = process.env.PK ? Ed25519Keypair.fromSecretKey(process.env.PK) : null;
 
 // create balance manager

@@ -1,5 +1,7 @@
 // 1. Import all your exported functions as a single namespace object
 import * as defiActions from "../tools/deepbook/schema_function.ts";
+import { Transaction } from "@mysten/sui/transactions";
+import { executeWithZkLogin } from "../lib/agent-signer.ts";
 
 // 2. Define the strict positional parameter order for each function
 const parameterOrderMap: Record<string, string[]> = {
@@ -131,6 +133,7 @@ const parameterOrderMap: Record<string, string[]> = {
 export async function executeDefiFunction(
   functionName: string,
   args: Record<string, unknown>,
+  agentId?: string,
 ): Promise<any> {
   // Extract the function dynamically from the namespace using the string name
   const targetFunction = defiActions[functionName as keyof typeof defiActions];
@@ -155,11 +158,20 @@ export async function executeDefiFunction(
     return args[paramKey];
   });
 
+  // Reset the shared Transaction object before every call (freshTx)
+  defiActions.freshTx();
+
   console.log(
     `🚀 Dynamically invoking: actions.${functionName}(${positionalArgs.map((x) => (typeof x === "object" ? JSON.stringify(x) : x)).join(", ")})`,
   );
 
-  // Execute using TypeScript spread syntax
+  const result = await Reflect.apply(targetFunction, null, positionalArgs);
 
-  return await Reflect.apply(targetFunction, null, positionalArgs);
+  // If the function returned a Transaction (write op) and we have a session, sign + submit
+  if (result instanceof Transaction && agentId) {
+    console.log(`✍️  Signing ${functionName} with zkLogin session ${agentId}`);
+    return await executeWithZkLogin(agentId, result);
+  }
+
+  return result;
 }
